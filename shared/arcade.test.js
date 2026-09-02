@@ -162,8 +162,10 @@ test('playNext routes the weakest topic to the level that drills it', () => {
   assert.equal(next('3.6').level, 2);
   for (const ced of ['3.4', '3.5', '3.7', '3.9']) assert.equal(next(ced).level, 3);
   for (const ced of ['4.5', '4.7', '5.1', '5.2', '5.3']) assert.equal(next(ced).game, 'fed');
-  // unmapped topic falls through to the hardest shift level
-  assert.deepEqual(next('6.2'), {
+  // Unit 6 rides Level 1's net-export cards until Level 6 exists
+  for (const ced of ['6.1', '6.2', '6.3', '6.4', '6.5', '6.6']) assert.equal(next(ced).level, 1);
+  // a still-unmapped topic falls through to the hardest shift level
+  assert.deepEqual(next('2.3'), {
     game: 'shift', level: 3, url: 'games/shift-happens.html?level=3', label: 'Shift Happens · Level 3'
   });
   // no data at all starts at level 1

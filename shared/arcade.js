@@ -394,7 +394,10 @@ var Arcade = (function () {
     '3.4': { game: 'shift', level: 3 }, '3.5': { game: 'shift', level: 3 },
     '3.7': { game: 'shift', level: 3 }, '3.9': { game: 'shift', level: 3 },
     '4.5': { game: 'fed', level: 1 }, '4.6': { game: 'fed', level: 1 }, '4.7': { game: 'fed', level: 1 },
-    '5.1': { game: 'fed', level: 1 }, '5.2': { game: 'fed', level: 1 }, '5.3': { game: 'fed', level: 1 }
+    '5.1': { game: 'fed', level: 1 }, '5.2': { game: 'fed', level: 1 }, '5.3': { game: 'fed', level: 1 },
+    // Unit 6 lands on Level 1's net-export cards until Level 6 FOREX Floor exists
+    '6.1': { game: 'shift', level: 1 }, '6.2': { game: 'shift', level: 1 }, '6.3': { game: 'shift', level: 1 },
+    '6.4': { game: 'shift', level: 1 }, '6.5': { game: 'shift', level: 1 }, '6.6': { game: 'shift', level: 1 }
   };
 
   /** Record one scored answer.
