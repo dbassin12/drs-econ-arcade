@@ -516,3 +516,53 @@ test('priming is a no-op without a speech synthesiser', () => {
   assert.equal(typeof speechSynthesis, 'undefined');
   assert.equal(A.voice.prime(), false);
 });
+
+/* ===== the round clock — a frame delta is capped, so a hidden tab cannot burn a round ===== */
+
+/** A stand-in requestAnimationFrame whose frames only run when the test says so, with the
+ *  timestamp the test chooses. @returns {{step:(now:number) => void}} */
+function stubRaf() {
+  /** @type {any} */ const g = globalThis;
+  /** @type {((now:number) => void)[]} */ const queue = [];
+  g.requestAnimationFrame = (/** @type {(now:number) => void} */ fn) => { queue.push(fn); return queue.length; };
+  g.cancelAnimationFrame = () => { };
+  return { step(now) { const fn = queue.shift(); if (fn) fn(now); } };
+}
+
+function clearRaf() {
+  /** @type {any} */ const g = globalThis;
+  delete g.requestAnimationFrame;
+  delete g.cancelAnimationFrame;
+}
+
+test('the round clock spends a real frame delta', () => {
+  const raf = stubRaf();
+  const clock = Arcade.timerBar(null, 20000, {});
+  clock.start();
+  raf.step(1000);                 // the first frame only sets the baseline
+  raf.step(1100);
+  assert.equal(clock.remaining(), 19900);
+  clearRaf();
+});
+
+test('a backgrounded tab costs the round clock one capped frame, not the whole absence', () => {
+  const raf = stubRaf();
+  let ended = false;
+  const clock = Arcade.timerBar(null, 20000, { onEnd() { ended = true; } });
+  clock.start();
+  raf.step(1000);
+  raf.step(41000);                // forty seconds in Google Classroom, and no frames in between
+  assert.equal(ended, false, 'the round expired while the tab was hidden');
+  assert.equal(clock.remaining(), 19750);
+  clearRaf();
+});
+
+test('a dropped frame on a slow Chromebook costs no more than the cap either', () => {
+  const raf = stubRaf();
+  const clock = Arcade.timerBar(null, 20000, {});
+  clock.start();
+  raf.step(500);
+  raf.step(3500);                 // a 3 s main-thread stall
+  assert.equal(clock.remaining(), 19750);
+  clearRaf();
+});

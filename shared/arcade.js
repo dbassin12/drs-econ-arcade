@@ -837,6 +837,7 @@ var Arcade = (function () {
    *  @returns {{start:() => void, stop:() => void, pause:() => void, resume:() => void, remaining:() => number, extend:(extraMs:number) => void}} */
   function timerBar(el, ms, opts) {
     var o = opts || {};
+    var MAX_FRAME_MS = 250;   // the most one frame may ever spend, however long the gap really was
     var warnAt = o.warnAt === undefined ? 3000 : o.warnAt;
     var raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null;
     var total = ms;
@@ -866,7 +867,11 @@ var Arcade = (function () {
     }
     function step(now) {
       if (!running) return;
-      var dt = last ? now - last : 0;
+      // Cap the frame delta the way Arcade.spring already does. A hidden tab fires no frames at
+      // all — a Chromebook switched to Google Classroom, a phone that locked — and the first frame
+      // back carries the whole absence, which would zero the clock and take a heart for an answer
+      // the student was never shown. A genuinely stalled device is not punished for it either.
+      var dt = last ? Math.min(now - last, MAX_FRAME_MS) : 0;
       last = now;
       left = Math.max(0, left - dt);
       beatAudio(dt);
