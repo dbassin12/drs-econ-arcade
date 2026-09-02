@@ -284,7 +284,6 @@ const HOWTO = [
 (function () {
   'use strict';
   if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined') return;
-  if (Arcade.qs('debug') === 'graph') return;   // the harness below owns the page instead
 
   var SHIFT_UNITS = 12;   // where a recognised drag lands — SNAP in shared/graph.js
   var SLIDE_UNITS = 10;   // how far a movement along a curve travels — the engine's dot step
@@ -367,9 +366,15 @@ const HOWTO = [
    *  button in the identical 48 px box, or a freshly rendered exam choice. The focus move is what
    *  stops a keyboard restarting at the top of the document on every navigation.
    *  @param {string} name a key of `screens` */
+  /** True once the page has shown a screen. The very first show() is the boot, not a screen change
+   *  anyone tapped for — a ?level= or ?era= deep link routes straight through it — so arming the
+   *  tap guard there only makes those two routes deaf for 350 ms after load. */
+  var booted = false;
+
   function show(name) {
     Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
-    Arcade.guardTaps();
+    if (booted) Arcade.guardTaps();
+    booted = true;
     Arcade.focusScreen(screens[name]);
   }
 
@@ -1466,87 +1471,6 @@ const HOWTO = [
       Arcade.toast(target && target.ready ? 'Level ' + deepLink + ' is still locked' : 'Level ' + deepLink + ' is not built yet');
     }
   }
-}());
-</script>
-
-<script>
-/* ================================================================================
-   GRAPH DEBUG HARNESS — only under ?debug=graph, and only until the graph engine is
-   settled. It hides the game's screens, mounts one adas graph with its gauges, prints
-   every release and gap payload, and gives four buttons to drive the rest of the API.
-   Nothing in this block belongs to the game; delete it wholesale, or leave it behind
-   the query flag.
-   ================================================================================ */
-(function () {
-  'use strict';
-  if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined') return;
-  if (Arcade.qs('debug') !== 'graph') return;
-
-  var app = document.getElementById('app');
-  var screens = document.querySelectorAll('.screen');
-  for (var s = 0; s < screens.length; s += 1) screens[s].classList.remove('active');
-
-  /** @param {string} tag @param {string} cls @param {string} [css] */
-  function box(tag, cls, css) {
-    var e = document.createElement(tag);
-    e.className = cls;
-    if (css) e.setAttribute('style', css);
-    app.appendChild(e);
-    return e;
-  }
-
-  var graphWrap = box('div', 'graph-wrap panel', 'padding:8px');
-  var gaugeWrap = box('div', 'graph-wrap panel', 'padding:8px');
-  var buttons = box('div', 'row', 'flex-wrap:wrap');
-  var log = box('pre', 'panel mono',
-    'height:220px;overflow:auto;margin:0;font-size:12px;line-height:1.5;white-space:pre-wrap;color:var(--text2)');
-
-  var graph = ArcadeGraph.create(graphWrap, { market: 'adas', gauges: gaugeWrap });
-  graph.setLabels({ x: 'Y1', y: 'PL1' });
-
-  /** The Playwright checks drive the same instance the buttons do. */
-  window.debugGraph = graph;
-
-  /** @param {string} name @param {*} payload */
-  function write(name, payload) {
-    console.log('[graph] ' + name, payload);
-    log.textContent = name + ' ' + JSON.stringify(payload) + '\n' + log.textContent;
-  }
-
-  /** @param {string} label @param {() => void} fn */
-  function button(label, fn) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'btn btn-ghost btn-sm';
-    b.textContent = label;
-    b.addEventListener('click', fn);
-    buttons.appendChild(b);
-  }
-
-  graph.on('release', function (p) { write('release', p); });
-  graph.on('skip', function () { write('skip', {}); });
-  graph.on('gap', function (p) {
-    write('gap', p);
-    var gap = graph.state().out.gap;
-    var truth = gap < -0.01 ? 'recessionary' : gap > 0.01 ? 'inflationary' : 'none';
-    write('markGap', { answer: p.answer, truth: truth, correct: p.answer === truth, shows: graph.markGap(p.answer === truth) });
-  });
-
-  button('setCard AD→', function () {
-    graph.setCard({ start: { AD: 0, SRAS: 0 } });
-    graph.animateTo({ shifts: { AD: 12 } }).then(function () { write('animateTo done', graph.state().out); });
-  });
-  button('askGap', function () { graph.askGap(); write('askGap', graph.state().out); });
-  button('reset', function () { graph.reset(); log.textContent = ''; write('reset', graph.state().out); });
-
-  var lrasShown = true;
-  button('toggle LRAS', function () {
-    lrasShown = !lrasShown;
-    graph.setVisible('LRAS', lrasShown);
-    write('setVisible', { LRAS: lrasShown });
-  });
-
-  write('ready', graph.state().out);
 }());
 </script>
 

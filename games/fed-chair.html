@@ -351,7 +351,6 @@ const HOWTO = [
 (function () {
   'use strict';
   if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined' || typeof FedModel === 'undefined') return;
-  if (Arcade.qs('debug') === 'sim') return;   // the harness at the foot of the file owns the page
 
   var TURNS = FedModel.HISTORY_1975.pi.length;   // ten quarters, 1975 Q1 through 1977 Q2
   var THUMB = 48;                                // the dial thumb's width, and the axis inset
@@ -417,10 +416,16 @@ const HOWTO = [
   /** Swap screens, deafen the page for a moment so a double tap cannot go two screens deep, and
    *  put the keyboard on the screen that just appeared instead of dropping it on <body>.
    *  @param {string} name a key of `screens` */
+  /** True once the page has shown a screen. The very first show() is the boot, not a screen change
+   *  anyone tapped for — a ?level= or ?era= deep link routes straight through it — so arming the
+   *  tap guard there only makes those two routes deaf for 350 ms after load. */
+  var booted = false;
+
   function show(name) {
     Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
     window.scrollTo(0, 0);
-    Arcade.guardTaps();
+    if (booted) Arcade.guardTaps();
+    booted = true;
     Arcade.focusScreen(screens[name]);
   }
 
@@ -1226,46 +1231,6 @@ const HOWTO = [
     show('era');
     Arcade.toast(era + ' is not built yet');
   }
-}());
-</script>
-
-<script>
-/* ================================================================================
-   SIM HARNESS — ?debug=sim only. Plays the three named policies through
-   FedModel.simulate and prints them, so a change to the model's tuning shows up
-   against the same three yardsticks the model's tests use. No UI.
-   ================================================================================ */
-(function () {
-  'use strict';
-  if (typeof Arcade === 'undefined' || typeof FedModel === 'undefined') return;
-  if (Arcade.qs('debug') !== 'sim') return;
-  var app = document.getElementById('app');
-  if (app) app.hidden = true;
-
-  /** @param {number} n @param {number} v @returns {number[]} */
-  function rep(n, v) { var out = []; while (out.length < n) out.push(v); return out; }
-
-  var POLICIES = {
-    hold: rep(10, 6.5),
-    aggressive: [7.5, 8.5, 9.5, 10.5].concat(rep(6, 10.5)),
-    cut: [5.5, 4.5, 4.0].concat(rep(7, 4.0))
-  };
-
-  /** @type {Record<string, any>} */ var rows = {};
-  Object.keys(POLICIES).forEach(function (name) {
-    var result = FedModel.simulate(POLICIES[name]);
-    // integrity: the named policies never take the White House call, so they earn the point
-    var scored = FedModel.score(result, { integrity: true });
-    rows[name] = {
-      'end pi': +result.final.pi.toFixed(2),
-      'end u': +result.final.u.toFixed(2),
-      'peak u': +result.peakU.toFixed(2),
-      'end piExp': +result.final.piExp.toFixed(2),
-      raw: +scored.raw.toFixed(1),
-      stamp: scored.stamp
-    };
-  });
-  console.table(rows);
 }());
 </script>
 
