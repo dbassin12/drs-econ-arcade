@@ -22,8 +22,9 @@
     <p class="muted">AP Macro · train the skills the exam grades</p>
   </header>
 
-  <div class="row">
+  <div class="row wrap">
     <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+    <span class="title-chip" id="titleChip"></span>
     <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
     <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
     <button type="button" class="btn btn-ghost" id="bigTypeBtn" aria-label="Arcade Night big-type mode" aria-pressed="false">📺</button>
@@ -171,6 +172,7 @@
 
   var initialsBtn = byId('initialsBtn'), initialsSheet = byId('initialsSheet'), initialsMount = byId('initialsMount');
   var bestShift = byId('bestShift'), medalsShift = byId('medalsShift'), bestFed = byId('bestFed');
+  var titleChip = byId('titleChip');
   var readinessBody = byId('readinessBody'), podiumBody = byId('podiumBody');
 
   /* ===== GAME CARDS — the bests and medals the games left on this device ===== */
@@ -200,6 +202,12 @@
     // Fed Chair's best is the AP stamp the run earned, 1-5, not a score.
     var fed = Arcade.bests('fed');
     bestFed.textContent = fed ? 'Best stamp: ' + fed.score + ' · ' + fed.initials : 'No run yet';
+
+    // The title runs off the same two records the cards do, so it is rendered with them.
+    var title = Arcade.titleFor();
+    var owed = title.next ? (title.next.need === 1 ? '1 pt' : title.next.need + ' pts') : '';
+    titleChip.textContent = title.emoji + ' ' + title.name
+      + (title.next ? ' · ' + owed + ' to ' + title.next.name : '');
   }
 
   /* ===== MY AP READINESS — six units, the weakest topic, the estimate, the code ===== */

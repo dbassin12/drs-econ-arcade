@@ -127,6 +127,7 @@ body {
 .sheet-why { font-weight: 400; font-size: 16px; line-height: 1.45; color: var(--text2); }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; gap: 8px; align-items: center; }
+.row.wrap { flex-wrap: wrap; }
 .mono { font-family: var(--font-mono); }
 .muted { color: var(--text2); }
 .h1 {
@@ -219,6 +220,23 @@ body {
   text-transform: uppercase;
 }
 .ribbon::before { content: '\2713'; }
+/* The earned title. It carries a whole sentence on the hub, so it wraps onto its own line beside
+   the initials chip on a phone, and it is sized in rem to grow with Arcade Night's 150 % root.
+   `width: fit-content` keeps it a pill inside an end screen's column stack, where a flex item
+   would otherwise stretch the full panel. `.up` is the rung the run just earned. */
+.title-chip {
+  width: fit-content;
+  max-width: 100%;
+  padding: .3rem .75rem;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg3);
+  color: var(--text2);
+  font-weight: 800;
+  font-size: .9rem;
+  line-height: 1.35;
+}
+.title-chip.up { border-color: var(--gold); color: var(--gold); }
 /* A level tile is two real controls side by side: `.tile-open` plays the level, `.tile-btn` replays
    the Exam Sprint. Both clear 48 px. The tile runs tight — one text column, badges wrapping onto the
    line under the name — so all seven levels fit a 740 px phone without scrolling. */

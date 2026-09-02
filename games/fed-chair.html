@@ -853,6 +853,19 @@ const SCENARIO_1975 = {
       + 'At its worst the jobless rate touched ' + num(run.peakU) + ' percent on the Chairman’s watch.';
   }
 
+  /** The earned title, under the stamp, plus the promotion beat when this term moved the player up
+   *  a rung. Titles are decoration: nothing here touches the stamp or the score.
+   *  @param {any} panel the endScreen panel @param {any} before titleFor() from before the save */
+  function showTitle(panel, before) {
+    if (!panel) return;
+    var after = Arcade.titleFor();
+    var rose = after.rank > before.rank;
+    var line = fill('title-chip' + (rose ? ' up' : ''), 'Title: ' + after.name + (rose ? ' · 🎉 New title!' : ''));
+    var head = panel.querySelector('.end-head');
+    head.parentNode.insertBefore(line, head.nextSibling);
+    if (rose) Arcade.sfx.play('coin');
+  }
+
   function showNewspaper() {
     runToken += 1;                       // the run is over; nothing still in flight may touch it
     Arcade.voice.stop();
@@ -868,11 +881,12 @@ const SCENARIO_1975 = {
     newspaperEl.appendChild(fill('np-body', newspaperBody()));
     if (run.integrity) newspaperEl.appendChild(fill('np-sidebar', N.refusedSidebar));
 
+    var beforeTitle = Arcade.titleFor();      // the rank as it stood before this term was banked
     Arcade.saveBest('fed', { score: result.stamp, initials: Arcade.initials() });
     Arcade.track('5.2', 2, result.stamp >= 3);
 
     show('news');
-    Arcade.endScreen(newsEnd, {
+    var panel = Arcade.endScreen(newsEnd, {
       title: 'THE RECORD', sub: 'Ten quarters, one number a quarter.',
       // the Fed game grades with the AP stamp, not a medal, so the medal slot stays empty
       score: Math.round(result.raw), stamp: result.stamp, medal: null,
@@ -888,6 +902,7 @@ const SCENARIO_1975 = {
         { label: 'Arcade', onClick: ignoringSkipTap(function () { window.location.href = '../index.html'; }) }
       ]
     });
+    showTitle(panel, beforeTitle);
     if (result.stamp >= 4) { Arcade.sfx.play('win'); Arcade.confetti(); }
   }
 

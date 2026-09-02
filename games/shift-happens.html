@@ -931,10 +931,11 @@ const LEVELS = [
 
   /** @param {any} L @param {number} right @param {number} total */
   function showExamResult(L, right, total) {
+    var beforeTitle = Arcade.titleFor();      // a perfect sprint is worth two points, so it promotes
     var rec = saveExam(L.n, right, total);
     sheetBtn.textContent = 'Got it';
     show('end');
-    Arcade.endScreen(screens.end, {
+    var panel = Arcade.endScreen(screens.end, {
       title: 'EXAM SPRINT', sub: 'Exam Sprint: ' + right + '/' + total,
       score: rec.best || 0, accuracy: rec.acc || 0,
       medal: rec.medal, stamp: Arcade.stampFor(rec.acc || 0),
@@ -949,6 +950,7 @@ const LEVELS = [
         { label: 'Run it again', onClick: function () { startExam(L.n); } }
       ]
     });
+    showTitle(panel, beforeTitle);
     if (right === total) Arcade.confetti();
   }
 
@@ -1002,6 +1004,19 @@ const LEVELS = [
     ];
   }
 
+  /** The earned title, under the medal, plus the promotion beat when this run moved the player up
+   *  a rung. Titles are decoration: nothing here touches a score, a medal or an unlock.
+   *  @param {any} panel the endScreen panel @param {any} before titleFor() from before the save */
+  function showTitle(panel, before) {
+    if (!panel) return;
+    var after = Arcade.titleFor();
+    var rose = after.rank > before.rank;
+    var line = fill('title-chip' + (rose ? ' up' : ''), 'Title: ' + after.name + (rose ? ' · 🎉 New title!' : ''));
+    var head = panel.querySelector('.end-head');
+    head.parentNode.insertBefore(line, head.nextSibling);
+    if (rose) Arcade.sfx.play('coin');
+  }
+
   /** @param {any} L */
   function showClear(L) {
     var acc = accuracy();
@@ -1009,12 +1024,13 @@ const LEVELS = [
     runToken += 1;                       // the run is over; nothing still awaiting may touch it
     Arcade.voice.stop();                 // no headline keeps reading over an end screen
     sheetBtn.textContent = 'Got it';
+    var beforeTitle = Arcade.titleFor();      // the rank as it stood before this run was banked
     saveProgress(L.n, score, acc);
     Arcade.saveBest('shift', { score: score, initials: Arcade.initials(), level: L.n });
     var saved = loadProgress();
     var rec = saved.levels[String(L.n)] || {};
     show('end');
-    Arcade.endScreen(screens.end, {
+    var panel = Arcade.endScreen(screens.end, {
       title: 'LEVEL CLEAR', sub: 'Level ' + L.n + ' · ' + L.name,
       // this run's medal and stamp, not the career best the level tile carries
       score: score, accuracy: acc, stamp: Arcade.stampFor(acc),
@@ -1028,6 +1044,7 @@ const LEVELS = [
         { label: 'Replay', onClick: function () { startLevel(L.n); } }
       ]
     });
+    showTitle(panel, beforeTitle);
     Arcade.confetti();
   }
 

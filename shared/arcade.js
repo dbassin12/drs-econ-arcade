@@ -905,6 +905,57 @@ var Arcade = (function () {
     return 1;
   }
 
+  /** The title ladder: the points each rung asks for, low to high. Titles are pure decoration —
+   *  they never gate a level, move a score or change a medal. */
+  var TITLES = [
+    { at: 0, name: 'Intern', emoji: '🧾' },
+    { at: 3, name: 'Analyst', emoji: '📈' },
+    { at: 7, name: 'Branch Economist', emoji: '🏢' },
+    { at: 11, name: 'Regional Fed President', emoji: '🏛️' },
+    { at: 15, name: 'Vice Chair', emoji: '🎩' },
+    { at: 19, name: 'MAESTRO', emoji: '🎼' }
+  ];
+
+  /** What a Shift level's medal is worth. @type {Record<string, number>} */
+  var TITLE_MEDAL_POINTS = { bronze: 1, silver: 2, gold: 3 };
+
+  /** @typedef {{shift?: {levels?: Record<string, any>}|null, fed?: {score?: number}|null}} TitleProgress */
+
+  /** Career points: a medal on each of Shift's three levels (max 9), two more for every level whose
+   *  Exam Sprint was perfect (max 6), and the Fed Chair best stamp (1-5).
+   *  @param {TitleProgress} p @returns {number} 0-20 */
+  function titlePoints(p) {
+    var shift = p.shift;
+    var levels = shift && shift.levels && typeof shift.levels === 'object' ? shift.levels : {};
+    var points = 0;
+    for (var n = 1; n <= 3; n += 1) {
+      var rec = levels[String(n)];
+      if (!rec || typeof rec !== 'object') continue;
+      points += TITLE_MEDAL_POINTS[String(rec.medal)] || 0;
+      if (rec.examPerfect) points += 2;
+    }
+    var stamp = Number(p.fed && p.fed.score);
+    if (Number.isFinite(stamp)) points += Math.min(5, Math.max(0, Math.floor(stamp)));
+    return points;
+  }
+
+  /** The rank the player has earned across both games.
+   *  @param {TitleProgress} [progress] used verbatim when given; otherwise read from the store
+   *  @returns {{rank:number, name:string, emoji:string, next:{name:string, need:number}|null}} */
+  function titleFor(progress) {
+    var p = progress || { shift: store.get('arcade.shift.progress', null), fed: bests('fed') };
+    var points = titlePoints(p);
+    var rank = 0;
+    for (var i = 1; i < TITLES.length; i += 1) if (points >= TITLES[i].at) rank = i;
+    var next = TITLES[rank + 1];
+    return {
+      rank: rank,
+      name: TITLES[rank].name,
+      emoji: TITLES[rank].emoji,
+      next: next ? { name: next.name, need: next.at - points } : null
+    };
+  }
+
   /** The panel every run ends on — a celebration by default, a plain red verdict under `tone:'fail'`.
    *  @param {any} el mount point; its contents are replaced
    *  @param {{title?:string, sub?:string, score?:number, accuracy?:number, medal?:string|null,
@@ -1082,7 +1133,7 @@ var Arcade = (function () {
     SPRING: SPRING, prefersReducedMotion: prefersReducedMotion, spring: spring,
     confetti: confetti, shake: shake, flash: flash,
     hearts: hearts, streak: streak, timerBar: timerBar, endScreen: endScreen,
-    medalFor: medalFor, stampFor: stampFor, initialsEntry: initialsEntry,
+    medalFor: medalFor, stampFor: stampFor, titleFor: titleFor, initialsEntry: initialsEntry,
     bigType: bigType, mountBigTypeButton: mountBigTypeButton, toast: toast
   };
 }());
