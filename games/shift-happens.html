@@ -230,6 +230,7 @@ const LEVELS = [
   var GAP_MS = 5000;      // the Level 3 "name the gap" tap
   var GAP_POINTS = 50;    // …and what it is worth, before the streak multiplier
   var EXAM_MS = 70000;    // one Exam Sprint question, matching the real exam's pace
+  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, 70 s each';
   var HEARTS = 3;
   var ROUNDS = 8;         // cards drawn from the pool before the boss
   var KEYS = 'ABCD';
@@ -397,22 +398,39 @@ const LEVELS = [
       if (rec && rec.examPerfect) badges.appendChild(fill('ribbon', 'Exam Ready'));
       if (badges.childNodes.length) info.appendChild(badges);
 
-      // The sprint replays on its own, without replaying the level it belongs to.
+      // The sprint replays on its own, without replaying the level it belongs to. A full-size .btn
+      // (48 px, never .btn-sm) on its own line, and its own tap stops before the tile's handler.
+      var sprint = null;
       if (L.ready && rec && rec.cleared) {
-        var sprint = document.createElement('button');
+        sprint = document.createElement('button');
         sprint.type = 'button';
-        sprint.className = 'btn btn-ghost btn-sm';
+        sprint.className = 'btn btn-ghost tile-btn';
         sprint.textContent = 'Exam Sprint';
         sprint.addEventListener('click', function (ev) { ev.stopPropagation(); startExam(L.n); });
         info.appendChild(sprint);
       }
       tile.appendChild(info);
 
+      /** A tap the button itself did not catch — its 16 px rounded corners are not part of its hit
+       *  area — must still be the sprint and never the tile, because falling through would replay
+       *  the whole level, the one thing this button exists to avoid.
+       *  @param {any} ev @returns {boolean} */
+      function onSprint(ev) {
+        if (!sprint) return false;
+        var r = sprint.getBoundingClientRect();
+        var pad = 6;
+        return ev.clientX >= r.left - pad && ev.clientX <= r.right + pad
+          && ev.clientY >= r.top - pad && ev.clientY <= r.bottom + pad;
+      }
+
       var medal = rec && rec.medal ? rec.medal : 'none';
       tile.appendChild(fill('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
 
       if (!locked) {
-        tile.addEventListener('click', function () { startLevel(L.n); });
+        tile.addEventListener('click', function (ev) {
+          if (onSprint(ev)) { startExam(L.n); return; }
+          startLevel(L.n);
+        });
         tile.addEventListener('keydown', function (ev) {
           if (ev.target !== tile) return;   // the nested Exam Sprint button answers its own keys
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); startLevel(L.n); }
@@ -1010,7 +1028,8 @@ const LEVELS = [
       score: score, accuracy: acc, stamp: Arcade.stampFor(acc),
       medal: Arcade.medalFor(acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) }),
       stats: runStats(),
-      note: saved.unlocked > L.n ? '' : 'Clear 75% to unlock the next level.',
+      // endScreen renders `note` immediately above the buttons, so the framing sits on the sprint.
+      note: EXAM_FRAME + (saved.unlocked > L.n ? '' : ' · Clear 75% to unlock the next level.'),
       buttons: [
         { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { startExam(L.n); } },
         { label: 'Levels', onClick: goSelect },

@@ -206,6 +206,9 @@ body {
 .ribbon::before { content: '\2713'; }
 .level-tile { display: flex; gap: 12px; align-items: center; }
 .level-tile.locked { opacity: .45; }
+/* The tile's own button keeps the 48 px tap floor but not the 24 px side padding, so it still fits
+   the tile's text column at 360 px — and sits clear of the tile's tap area above it. */
+.tile-btn { margin-top: 8px; padding: 12px 16px; font-size: 15px; }
 .level-num { font-family: var(--font-mono); font-weight: 900; font-size: 28px; }
 /* Exam Sprint — the arcade's only multiple choice. A choice composes with .btn.btn-ghost.btn-block,
    so it needs the sentence case and left edge a chunky uppercase button does not have. */
