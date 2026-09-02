@@ -13,9 +13,10 @@ var ArcadeGraph = (function () {
   var DEAD = 8;       // a drag shorter than this meant nothing
   var HIT = 8.3;      // how near a finger must pass a curve to grab it (24 px)
   var DOT_HIT = 7;    // how near a finger must land on the equilibrium dot to grab it
-  var ZONE_BAND = 50; // the invisible "at full employment" tap band, in svg units (~48 css px at
-                      // portrait 360). The mobile 48 px rule beats the LRAS line's own width; the
-                      // visible line is untouched.
+  var ZONE_BAND = 60;   // the "at full employment" tap band, in svg units, when `none` is the right
+                        // answer: ~48 css px, so the intended target obeys the mobile tap rule.
+  var ZONE_SLIVER = 12; // ...and when a gap exists, so a tap anywhere in the shaded gap answers with
+                        // the gap's own side. Only this invisible band moves; the LRAS line does not.
 
   var VB = 360;                   // the graph svg is a 360-unit square
   var PLOT_X = 48, PLOT_Y = 16;   // the plot's top-left corner inside it
@@ -460,6 +461,18 @@ var ArcadeGraph = (function () {
       return c ? c.x0 + shifts[market.ref] : 50;
     }
 
+    /** The gap the graph is showing. Sizing the zones and grading the answer both read this, so the
+     *  band a student aims at can never disagree with the answer they are marked against.
+     *  @returns {string} 'recessionary' | 'inflationary' | 'none' */
+    function gapTruth() {
+      var d = dotPos().x, r = refX();
+      return d < r - 0.01 ? 'recessionary' : d > r + 0.01 ? 'inflationary' : 'none';
+    }
+
+    /** @returns {number} how wide the "at full employment" band should be, in svg units: a real
+     *  48 px target when `none` is the right answer, a sliver when the answer is a side. */
+    function gapBandWidth() { return gapTruth() === 'none' ? ZONE_BAND : ZONE_SLIVER; }
+
     /** @param {any} c @param {number} s @returns {string} the `d` of a curve trimmed to the plot */
     function pathFor(c, s) {
       var r = xRange(c, s);
@@ -513,10 +526,10 @@ var ArcadeGraph = (function () {
 
       if (market.ref) {
         var rx = gx(refX());
-        var band = ZONE_BAND / 2;
-        attr(zoneL, 'width', n2(Math.max(0, rx - band)));
-        attr(zoneR, 'x', n2(rx + band)); attr(zoneR, 'width', n2(Math.max(0, PLOT - rx - band)));
-        attr(zoneM, 'x', n2(rx - band));
+        var half = gapBandWidth() / 2;
+        attr(zoneL, 'width', n2(Math.max(0, rx - half)));
+        attr(zoneR, 'x', n2(rx + half)); attr(zoneR, 'width', n2(Math.max(0, PLOT - rx - half)));
+        attr(zoneM, 'x', n2(rx - half)); attr(zoneM, 'width', n2(gapBandWidth()));
         if (tickText) attr(tickText, 'x', n2(PLOT_X + rx));
         if (shadeOn) {
           attr(shade, 'x', n2(Math.min(dx, rx))); attr(shade, 'width', n2(Math.abs(dx - rx)));
@@ -737,8 +750,7 @@ var ArcadeGraph = (function () {
 
     /** @param {boolean} correct @returns {string} the gap the graph actually shows */
     function markGap(correct) {
-      var d = dotPos().x, r = refX();
-      var truth = d < r - 0.01 ? 'recessionary' : d > r + 0.01 ? 'inflationary' : 'none';
+      var truth = gapTruth();
       shade.classList.remove('on');
       shade.classList.add(correct ? 'good' : 'bad');
       gapLabel.textContent = truth === 'recessionary' ? 'Recessionary gap'
