@@ -26,12 +26,13 @@
    EVENTS    the four beats, keyed by the quarter they OPEN (so the t4 call is answered
              before quarter 4 is stepped, which is what lets it change quarter 4's shock)
    NEWS      the newspaper: masthead, the outcome-keyed headline table, the sentences
-   HISTORY   what really happened, plus the FRQ rubric line for the move the player made
+   HISTORY   what really happened — the 1972 pressure first, then the run of the 1970s —
+             plus the FRQ rubric line for the move the player made
    ================================================================================ */
 const SCENARIO_1975 = {
 
   briefing: [
-    'It is January 1975 and you are Arthur Burns, Chairman of the Federal Reserve. Consumer prices are 11 percent higher than a year ago. Unemployment is 8 percent and climbing. The oil embargo that started all of this ended three months ago; the prices it set did not.',
+    'It is January 1975 and you are Arthur Burns, Chairman of the Federal Reserve. Consumer prices are 11 percent higher than a year ago. Unemployment is 8 percent and climbing. The oil embargo that started all of this was lifted last spring; the prices it set did not come back down.',
     'Nixon resigned last August. President Ford is handing out lapel buttons that say WIN — Whip Inflation Now — and asking the country to plant victory gardens. Three years ago a President leaned on this office to keep money cheap through an election, and everyone at this table remembers how that went.',
     'Your job is one number: the federal funds rate. Drag the dial, then gavel the quarter. You get ten of them, 1975 Q1 through 1977 Q2.',
     'The lag is the whole game. The rate you set today moves output NEXT quarter, and inflation the quarter AFTER that. Nothing you do today can change today’s inflation print — so stop steering by it.',
@@ -136,6 +137,7 @@ const SCENARIO_1975 = {
   },
 
   HISTORY: [
+    'This office had been leaned on before: through 1971 and 1972 the Nixon White House pressed Burns to keep money easy into the election — the White House tapes and Burns’s own diary later documented the pressure — and the funds rate averaged 4.4 percent across the election year. A central bank that can be leaned on has no promise about inflation left to make.',
     'Burns cut. The funds rate came down from about 7 percent in January 1975 to about 5 percent by December, while unemployment peaked at 9.0 percent in May.',
     'Inflation did fall, to about 5 percent by late 1976 — but mostly because the 1973–74 oil and food shock faded and the recession was deep, not because policy was tight.',
     'With real rates near zero and expectations never anchored, it came straight back: about 7 percent by mid-1977, and 13 percent by the end of 1979.',
@@ -403,6 +405,14 @@ const SCENARIO_1975 = {
   var sequence = null;
   /** @type {Record<string, any>} */ var gauges = {};
 
+  /** Set when a skipped sequence leaves a tap still in flight; see endSequence. */
+  var guardUntil = 0;
+  /** @returns {boolean} true while a spent skip tap could still be arriving */
+  function guarded() { return Date.now() < guardUntil; }
+  /** Wrap a click action so a spent skip tap cannot fire it.
+   *  @param {() => void} action @returns {() => void} */
+  function ignoringSkipTap(action) { return function () { if (!guarded()) action(); }; }
+
   /** @param {number} token @returns {boolean} false once the player has quit or replayed */
   function alive(token) { return token === runToken; }
   /** @returns {any} the state observed at the start of the current quarter */
@@ -515,7 +525,7 @@ const SCENARIO_1975 = {
 
   /** @param {number} step in percentage points */
   function nudge(step) {
-    if (boardLocked) return;
+    if (boardLocked || guarded()) return;
     if (setRate(run.rate + step)) Arcade.sfx.play('card');
   }
 
@@ -531,7 +541,7 @@ const SCENARIO_1975 = {
   }
 
   dialEl.addEventListener('pointerdown', function (ev) {
-    if (boardLocked || dragId !== null) return;
+    if (boardLocked || guarded() || dragId !== null) return;
     dragId = ev.pointerId;
     try { dialEl.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety */ }
     ev.preventDefault();
@@ -671,16 +681,13 @@ const SCENARIO_1975 = {
   function endSequence() {
     document.removeEventListener('pointerdown', skipSequence);
     // The tap that skipped is still in flight: its `click` lands after the whole sequence has
-    // finished in microtasks, on whatever is under the finger by then — the END TURN button it
-    // just re-enabled, or a sheet button that did not exist when the finger went down. Neither
-    // may count, so a skipped sequence deafens the board until the tap is spent.
+    // finished in microtasks, on whatever is under the finger by then — a nudge or the END TURN
+    // button the sequence just re-enabled, the back button (never disabled at all), or a sheet or
+    // end-screen button that did not exist when the finger went down. None of them may count, so
+    // a skipped sequence deafens the whole board until that tap is spent.
     if (sequence && sequence.skip) guardUntil = Date.now() + 350;
     sequence = null;
   }
-
-  /** @returns {boolean} true while a spent skip tap could still be arriving */
-  function guarded() { return Date.now() < guardUntil; }
-  var guardUntil = 0;
 
   /** @param {string} text */
   function slamStamp(text) {
@@ -869,15 +876,15 @@ const SCENARIO_1975 = {
         { label: 'Independence', value: run.integrity ? 'Held' : 'Bent' }
       ],
       buttons: [
-        { label: 'What really happened →', primary: true, variant: 'gold', onClick: showHistory },
-        { label: 'Play again', onClick: startRun },
-        { label: 'Arcade', onClick: function () { window.location.href = '../index.html'; } }
+        { label: 'What really happened →', primary: true, variant: 'gold', onClick: ignoringSkipTap(showHistory) },
+        { label: 'Play again', onClick: ignoringSkipTap(startRun) },
+        { label: 'Arcade', onClick: ignoringSkipTap(function () { window.location.href = '../index.html'; }) }
       ]
     });
     if (result.stamp >= 4) { Arcade.sfx.play('win'); Arcade.confetti(); }
   }
 
-  /* ===== HISTORY — the four true sentences, the chart, and the rubric line ===== */
+  /* ===== HISTORY — the true sentences, the chart, and the rubric line ===== */
 
   var SVG_NS = 'http://www.w3.org/2000/svg';
   /** @param {string} tag @param {Record<string, any>} attrs @param {string} [cls] @returns {any} */
@@ -1030,7 +1037,7 @@ const SCENARIO_1975 = {
   byId('eraBack').addEventListener('click', function () { abandonRun(); show('title'); });
   byId('briefingBack').addEventListener('click', goEra);
   byId('briefingStart').addEventListener('click', startRun);
-  byId('turnBack').addEventListener('click', goEra);
+  byId('turnBack').addEventListener('click', ignoringSkipTap(goEra));
   byId('historyBack').addEventListener('click', function () { show('news'); });
   nudgeDown.addEventListener('click', function () { nudge(-FedModel.RATE_STEP); });
   nudgeUp.addEventListener('click', function () { nudge(FedModel.RATE_STEP); });
