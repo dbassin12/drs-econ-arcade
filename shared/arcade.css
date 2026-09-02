@@ -1,5 +1,5 @@
 /* DRS Econ Arcade — the one stylesheet for the whole arcade.
-   Sections: tokens · base · buttons · layout · game kit · fed kit · hub kit · graph kit · keyframes · reduced motion.
+   Sections: tokens · base · buttons · layout · game kit · fed kit · hub kit · graph kit · engine kit · keyframes · reduced motion.
    Blocks marked "compose with .panel" expect markup like <div class="panel breaking">…</div>. */
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
@@ -385,6 +385,17 @@ html.big-type .podium { display: block; }
 .gauge-label { font: 800 11px var(--font); fill: var(--text2); }
 .gauge-ref { stroke: var(--gold); stroke-width: 2; }
 .gauge.flash-red .gauge-fill { stroke: var(--red); }
+
+/* ===== ENGINE KIT — the few classes shared/arcade.js generates that the kit above lacks.
+   No new colors: every value below is an existing token. ===== */
+.confetti { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
+.flash-overlay { position: fixed; inset: 0; z-index: 200; pointer-events: none; background: var(--gold-glow); }
+.flash-red { background: var(--red-glow); }
+.combo.crack { animation: crack .45s; }
+.end-head { display: flex; gap: 12px; align-items: center; }
+.end-head .ap-stamp { margin-left: auto; }
+.end-score { font-size: 40px; }
+.stat-row { display: flex; gap: 12px; justify-content: space-between; }
 
 /* ===== KEYFRAMES ===== */
 @keyframes shake {
