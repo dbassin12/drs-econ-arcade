@@ -122,7 +122,9 @@ var FedModel = (function () {
   function simulate(rates, options) {
     var o = options || {};
     var params = o.params || PARAMS_1975;
-    var history = [o.initial || INITIAL_1975];
+    // A copy, never the constant itself: `history[0]` is handed straight back to the caller, and
+    // one poke at it would rewrite INITIAL_1975 for every later simulate(), search() and run.
+    var history = [Object.assign({}, o.initial || INITIAL_1975)];
     var peakU = -Infinity;
 
     for (var t = 1; t <= TURNS; t++) {
@@ -163,9 +165,12 @@ var FedModel = (function () {
   function score(run, options) {
     var o = options || {};
     var f = run.final;
+    // clamp() propagates NaN and every threshold below compares false against it, so a run handed in
+    // without a peakU would fall through to a stamp of 1 — a perfect landing graded as a bloodbath.
+    var peak = Number.isFinite(run.peakU) ? run.peakU : 0;
     var raw = 40 * clamp(1 - Math.abs(f.pi - 2) / 9, 0, 1)
       + 30 * clamp(1 - Math.abs(f.u - 6) / 4, 0, 1)
-      + 20 * clamp(1 - Math.max(0, run.peakU - 8) / 4, 0, 1)
+      + 20 * clamp(1 - Math.max(0, peak - 8) / 4, 0, 1)
       + 10 * clamp(1 - Math.abs(f.piExp - 2) / 9, 0, 1)
       + 5 * (o.integrity ? 1 : 0);
     var stamp = raw >= 70 ? 5 : raw >= 65 ? 4 : raw >= 55 ? 3 : raw >= 42 ? 2 : 1;

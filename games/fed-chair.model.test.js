@@ -216,6 +216,23 @@ test('simulate clamps every requested rate and leaves its inputs alone', () => {
     'a point a turn until the ceiling');
 });
 
+test('simulate opens on a copy, so a caller cannot rewrite INITIAL_1975', () => {
+  const r = FedModel.simulate(rep(10, 6.5), {});
+  assert.notEqual(r.history[0], FedModel.INITIAL_1975, 'the opening state is a copy, not the constant');
+  assert.deepEqual(r.history[0], FedModel.INITIAL_1975, 'and it still holds the same numbers');
+  r.history[0].pi = 999;
+  assert.equal(FedModel.INITIAL_1975.pi, 11.0, 'poking the run leaves the module constant alone');
+  assert.equal(FedModel.simulate(rep(10, 6.5), {}).history[0].pi, 11.0, 'so the next run opens clean');
+});
+
+test('simulate copies a caller-supplied opening state too', () => {
+  const mine = { t: 1, pi: 5, u: 7, gap: -2, piExp: 5, rate: 6, cred: 0.5 };
+  const r = FedModel.simulate(rep(10, 6), { initial: mine });
+  assert.notEqual(r.history[0], mine, 'the run does not alias the object it was handed');
+  r.history[0].u = 42;
+  assert.equal(mine.u, 7, 'and the caller keeps their own state intact');
+});
+
 /* ===== the five policies from the tuning simulation ===== */
 
 Object.keys(POLICIES).forEach((name) => {
@@ -314,6 +331,19 @@ function fakeRun(pi, u, piExp, peakU) {
 test('a perfect landing scores every point on the card', () => {
   const s = FedModel.score(fakeRun(2, 6, 2, 8), { integrity: true });
   near(s.raw, 105, 'raw');
+  assert.equal(s.stamp, 5);
+});
+
+test('score treats a run with no peakU as a run that never wrecked the labour market', () => {
+  const s = FedModel.score({ final: { pi: 2, u: 6, piExp: 2 } }, { integrity: true });
+  assert.ok(Number.isFinite(s.raw), 'raw is a number, not NaN: ' + s.raw);
+  near(s.raw, 105, 'raw');
+  assert.equal(s.stamp, 5, 'a perfect landing is not stamped 1 for a missing field');
+});
+
+test('score guards a NaN peakU the same way', () => {
+  const s = FedModel.score({ peakU: NaN, final: { pi: 2, u: 6, piExp: 2 } }, {});
+  near(s.raw, 100, 'raw without the integrity point');
   assert.equal(s.stamp, 5);
 });
 
