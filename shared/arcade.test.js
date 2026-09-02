@@ -435,3 +435,84 @@ test('browser-only members are safe no-ops in Node', () => {
   Arcade.sfx.unlock();
   Arcade.sfx.play('correct');
 });
+
+/* ===== speech priming — the first gesture has to keep trying until the browser really speaks ===== */
+
+/** A stand-in speechSynthesis. `mode` is what `speak()` does: 'refuse' swallows the utterance the way
+ *  a phone does before a real user activation, 'throw' rejects it, 'accept' starts speaking.
+ *  @param {string} mode @returns {any} the stub, with every utterance it was handed in `calls` */
+function stubSpeech(mode) {
+  /** @type {any[]} */ const calls = [];
+  /** @type {any} */ const g = globalThis;
+  g.SpeechSynthesisUtterance = function (/** @type {string} */ text) { this.text = text; };
+  g.speechSynthesis = {
+    speaking: false,
+    pending: false,
+    calls: calls,
+    /** @param {any} u */
+    speak(u) {
+      calls.push(u);
+      if (mode === 'throw') throw new Error('speech not allowed');
+      if (mode === 'accept') this.speaking = true;
+    },
+    cancel() { },
+    getVoices() { return []; },
+    addEventListener() { }
+  };
+  return g.speechSynthesis;
+}
+
+function clearSpeech() {
+  /** @type {any} */ const g = globalThis;
+  delete g.speechSynthesis;
+  delete g.SpeechSynthesisUtterance;
+}
+
+/** A fresh engine, so the sticky primed flag starts false in every test. @returns {any} */
+function freshArcade() {
+  delete require.cache[require.resolve('./arcade.js')];
+  return require('./arcade.js');
+}
+
+test('a refused priming utterance leaves speech unprimed, so the next gesture tries again', () => {
+  const s = stubSpeech('refuse');
+  const A = freshArcade();
+  assert.equal(A.voice.prime(), false);
+  assert.equal(A.voice.prime(), false);
+  assert.equal(s.calls.length, 2);
+  clearSpeech();
+});
+
+test('a priming utterance the browser throws away leaves speech unprimed', () => {
+  const s = stubSpeech('throw');
+  const A = freshArcade();
+  assert.equal(A.voice.prime(), false);
+  assert.equal(A.voice.prime(), false);
+  assert.equal(s.calls.length, 2);
+  clearSpeech();
+});
+
+test('priming stops retrying once an utterance actually speaks', () => {
+  const s = stubSpeech('accept');
+  const A = freshArcade();
+  assert.equal(A.voice.prime(), true);
+  assert.equal(A.voice.prime(), true);
+  assert.equal(s.calls.length, 1);
+  clearSpeech();
+});
+
+test('an utterance that starts late still counts as primed', () => {
+  const s = stubSpeech('refuse');
+  const A = freshArcade();
+  assert.equal(A.voice.prime(), false);
+  s.calls[0].onstart();
+  assert.equal(A.voice.prime(), true);
+  assert.equal(s.calls.length, 1);
+  clearSpeech();
+});
+
+test('priming is a no-op without a speech synthesiser', () => {
+  const A = freshArcade();
+  assert.equal(typeof speechSynthesis, 'undefined');
+  assert.equal(A.voice.prime(), false);
+});

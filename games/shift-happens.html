@@ -606,6 +606,12 @@ const LEVELS = [
     /** @param {any} payload */
     function onRelease(payload) {
       dragging = false;
+      // A tap with no drag is not an answer. The gesture is "tap the curve you think moves, then
+      // drag it": the tap alone only lights the curve, and the engine has already sprung it back.
+      // Costing a heart for it would punish the first half of the gesture the game asked for. The
+      // clock is untouched, so it is not free thinking time either — the round waits for a real
+      // release or the timeout. Bosses take their releases from here too, so they agree.
+      if (payload && payload.kind === 'none') return;
       if (!expired) handOver(payload);
     }
     graph.on('dragstart', onDragStart);
@@ -787,6 +793,7 @@ const LEVELS = [
     var frozen = [];                             // the curves already marked green
     var accepted = 0;
     var outOfTime = false;
+    var dead = false;                            // the last heart went on a boss move
 
     paintCard(card, done);
     while (accepted < card.moves.length && !outOfTime) {
@@ -806,6 +813,9 @@ const LEVELS = [
         await sheetAsk('✗ ' + truthOf(missed), missed.why);
         if (!alive(token)) return;
         hideSheet();
+        // The WHY still plays — that is the move they missed — but a run with no hearts left is over.
+        // Solving the rest of the boss for a win fanfare and +300 before LEVEL FAILED is a lie.
+        if (run.hearts.get() === 0) { dead = true; break; }
         graph.unlock();
         run.clock.resume();
         continue;
@@ -840,6 +850,7 @@ const LEVELS = [
     var left = run.clock.remaining();
     run.clock.stop();
     graph.lock();
+    if (dead) return;                              // playLevel's hearts check routes straight to FAIL
     if (accepted === card.moves.length) {
       Arcade.sfx.play('win');
       award(Math.round((300 + speedBonus(left, card.time, 100)) * run.streak.mult));

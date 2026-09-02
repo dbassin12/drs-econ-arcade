@@ -439,6 +439,16 @@
   renderBests();
   renderReadiness();
   renderPodium();
+
+  // A back-gesture out of a game restores this page from the bfcache, which replays no script: the
+  // hub would still show the bests, medals, title and heat map it drew before the level was played.
+  // The listeners wireControls() bound are restored with the page, so only the reads are repeated.
+  window.addEventListener('pageshow', function (ev) {
+    if (!ev.persisted) return;
+    renderBests();
+    renderReadiness();
+    renderPodium();
+  });
 }());
 </script>
 

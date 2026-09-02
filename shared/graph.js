@@ -642,6 +642,7 @@ var ArcadeGraph = (function () {
     }
 
     function onMove(ev) {
+      if (locked) return;                                     // the round is over; the springs own the curve now
       if (!drag || ev.pointerId !== drag.pointerId) return;   // a second finger is not this drag
       ev.preventDefault();
       var p = toUnits(ev);
@@ -695,7 +696,20 @@ var ArcadeGraph = (function () {
       settle = landed ? null : handle;
     }
 
+    /** End an in-flight drag with no verdict. lock() and setCard() cut a round short while a finger
+     *  is still down, and that finger must stop writing shifts the snapBack/animateTo springs are
+     *  already animating — otherwise the eventual pointerup springs the curve to startShift ± SNAP
+     *  under the WHY sheet. No `release` is emitted: nothing was answered. */
+    function endDrag() {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      try { hit.releasePointerCapture(d.pointerId); } catch (err) { /* already gone */ }
+      if (d.curve && parts[d.curve]) parts[d.curve].g.classList.remove('grabbed');
+    }
+
     function onUp(ev) {
+      if (locked) return;                                     // the drag it would have ended is already over
       if (!drag || ev.pointerId !== drag.pointerId) return;   // only the finger that started it ends it
       var d = drag;
       drag = null;
@@ -839,7 +853,7 @@ var ArcadeGraph = (function () {
     function setCard(card) {
       var c = card || {};
       stopAnims();
-      drag = null;
+      endDrag();
       names.forEach(function (n) {
         shifts[n] = c.start && typeof c.start[n] === 'number' ? c.start[n] : 0;
         cardStart[n] = shifts[n];
@@ -907,7 +921,7 @@ var ArcadeGraph = (function () {
       on: on, off: off, once: once,
       setCard: setCard, animateTo: animateTo, snapBack: snapBack,
       accept: accept,
-      lock: function () { locked = true; },
+      lock: function () { locked = true; endDrag(); },
       unlock: function () { locked = false; },
       askGap: askGap, markGap: markGap, setVisible: setVisible,
       state: state, setLabels: setLabels, reset: reset, destroy: destroy

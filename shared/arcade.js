@@ -267,12 +267,22 @@ var Arcade = (function () {
     return cachedVoice;
   }
 
-  /** Speak an empty utterance on the first gesture so later lines are not swallowed. */
+  /** Speak an empty utterance on the first gesture so later lines are not swallowed. A phone can
+   *  refuse it outright — the utterance is dropped and nothing speaks — so the flag is only set once
+   *  one really takes (it is speaking or queued, or it reports onstart), and every later gesture
+   *  tries again until one does. Priming once on a refusal is how the first cue goes missing.
+   *  @returns {boolean} whether speech is primed */
   function primeSpeech() {
-    if (speechPrimed) return;
+    if (speechPrimed) return true;
     var s = synth();
-    if (!s) return;
-    try { s.speak(new SpeechSynthesisUtterance('')); speechPrimed = true; } catch (err) { /* no voices */ }
+    if (!s) return false;
+    try {
+      var u = new SpeechSynthesisUtterance('');
+      u.onstart = function () { speechPrimed = true; };
+      s.speak(u);
+      if (s.speaking || s.pending) speechPrimed = true;
+    } catch (err) { /* no voices yet — the next gesture tries again */ }
+    return speechPrimed;
   }
 
   /** @param {string} text @param {{who?:string, interrupt?:boolean}} [opts] persona; interrupt defaults true
@@ -323,7 +333,10 @@ var Arcade = (function () {
       var s = synth();
       if (!s) return;
       try { s.cancel(); } catch (err) { /* already quiet */ }
-    }
+    },
+    /** Open the speech channel from inside a user gesture. Safe to call on every gesture: it stops
+     *  speaking once one utterance has actually taken. @returns {boolean} whether speech is primed */
+    prime: function () { return primeSpeech(); }
   };
 
   /* ===== TRACKER — every scored answer, aggregated into AP readiness ===== */
@@ -979,7 +992,9 @@ var Arcade = (function () {
     if (o.sub) panel.appendChild(make('muted', o.sub));
 
     var head = make('end-head');
-    head.appendChild(make('medal ' + (o.medal || 'none'), o.medal ? o.medal.charAt(0).toUpperCase() : '—'));
+    // No medal, no slot. A dashed empty circle reads as a medal the run failed to fill, which is not
+    // what a Fed term (graded by the AP stamp) or a sub-bronze clear is saying.
+    if (o.medal) head.appendChild(make('medal ' + o.medal, o.medal.charAt(0).toUpperCase()));
     var figures = make('');
     figures.appendChild(make('score end-score mono', String(o.score === undefined ? 0 : o.score)));
     if (o.accuracy !== undefined) figures.appendChild(make('muted', Math.round(o.accuracy * 100) + '% correct'));
@@ -1109,20 +1124,27 @@ var Arcade = (function () {
 
   /* ===== FIRST GESTURE — the one DOM touch at load: unlock audio, prime speech ===== */
 
+  /** Every activation-triggering event a student can produce here. A touch `pointerdown` is NOT one
+   *  of them — the HTML spec only counts `pointerup`, `click`, `keydown` and a mouse `pointerdown` —
+   *  so a phone's first tap would have its resume() refused and the first cue would be lost if the
+   *  unlock hung on `pointerdown` alone. Pointer events only, no touch or mouse handlers.
+   *  @type {string[]} */
+  var GESTURE_EVENTS = ['pointerdown', 'pointerup', 'click', 'keydown'];
+
   function onFirstGesture() { unlock(); primeSpeech(); }
 
+  /** Only once the context is really running: a refused resume leaves the listeners in place so the
+   *  next gesture — and the next priming attempt, which rides the same activation — tries again. */
   function detachFirstGesture() {
     if (!gestureBound || typeof document === 'undefined') return;
     if (!ctx || ctx.state !== 'running') return;
     gestureBound = false;
-    document.removeEventListener('pointerdown', onFirstGesture);
-    document.removeEventListener('keydown', onFirstGesture);
+    GESTURE_EVENTS.forEach(function (name) { document.removeEventListener(name, onFirstGesture); });
   }
 
   if (typeof document !== 'undefined') {
     gestureBound = true;
-    document.addEventListener('pointerdown', onFirstGesture);
-    document.addEventListener('keydown', onFirstGesture);
+    GESTURE_EVENTS.forEach(function (name) { document.addEventListener(name, onFirstGesture); });
   }
 
   return {

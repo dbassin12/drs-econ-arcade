@@ -38,7 +38,9 @@
 
 /* ===== BASE ===== */
 * { box-sizing: border-box; }
-html { color-scheme: dark; }
+/* No pull-to-refresh. A drag that starts on the headline card — above the graph, outside its
+   touch-action:none surface — would otherwise reload the page and throw the run away mid-round. */
+html { color-scheme: dark; overscroll-behavior-y: contain; }
 /* One focus ring for the whole arcade: the tiles, dial and heat cells are all real controls now,
    and a Chromebook keyboard has to be able to see where it is. */
 :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
@@ -48,6 +50,7 @@ body {
   color: var(--text);
   font-family: var(--font);
   min-height: 100svh;
+  overscroll-behavior-y: contain;
   -webkit-tap-highlight-color: transparent;
 }
 
