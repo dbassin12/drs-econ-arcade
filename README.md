@@ -1,10 +1,10 @@
 # DRS Econ Arcade
 
-A hub of browser games for AP Macroeconomics, built by David Bassin (DRS) for 18 seniors playing on
-phones, Chromebooks, and home laptops. Every game trains a skill the exam actually grades — graph
-manipulation, cause→effect chains, calculations, and policy judgment — and every scored interaction
-is tagged with its CED topic, so the hub can grow a "My AP Readiness" heat map that turns play into a
-diagnostic. Plain HTML/CSS/JS: no frameworks, no build step, no accounts, no backend. Scores live in
+A hub of browser games for AP Macroeconomics, built by David Bassin for his AP Macro students,
+playing on phones, Chromebooks, and home laptops. Every game trains a skill the exam actually
+grades — graph manipulation, cause→effect chains, calculations, and policy judgment — and every
+scored interaction is tagged with its CED topic, so the hub can grow a "My AP Readiness" heat map
+that turns play into a diagnostic. Plain HTML/CSS/JS: no frameworks, no build step, no accounts, no backend. Scores live in
 `localStorage` on the student's own device.
 
 ## File tree
@@ -24,6 +24,7 @@ diagnostic. Plain HTML/CSS/JS: no frameworks, no build step, no accounts, no bac
 │   ├── graph.js                  # the SVG graph engine — markets are data
 │   └── graph.test.js
 ├── .gitignore
+├── vercel.json                   # security headers for the static deploy — no build settings
 ├── CLAUDE.md                     # the build contract
 ├── GAME_PLAN.md                  # the full spec
 └── README.md

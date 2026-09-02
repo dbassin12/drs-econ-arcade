@@ -969,6 +969,15 @@ var Arcade = (function () {
     };
   }
 
+  /** The three real medals. Anything else that reaches a className came out of localStorage, which
+   *  is a text file the student owns, so it is checked against this list before it is concatenated
+   *  into one. Not an XSS — className is not a parser — but a stored string should never be able to
+   *  put a class of its choosing on an element. */
+  var MEDALS = ['gold', 'silver', 'bronze'];
+
+  /** @param {*} m a stored medal name @returns {string} it, or 'none' */
+  function safeMedal(m) { return MEDALS.indexOf(/** @type {any} */ (m)) < 0 ? 'none' : String(m); }
+
   /** @param {number} acc 0–1 @param {{examPassed?:boolean}} [opts] gold is gated on the Exit Exam
    *  @returns {string|null} */
   function medalFor(acc, opts) {
@@ -1067,7 +1076,7 @@ var Arcade = (function () {
     var head = make('end-head');
     // No medal, no slot. A dashed empty circle reads as a medal the run failed to fill, which is not
     // what a Fed term (graded by the AP stamp) or a sub-bronze clear is saying.
-    if (o.medal) head.appendChild(make('medal ' + o.medal, o.medal.charAt(0).toUpperCase()));
+    if (o.medal) head.appendChild(make('medal ' + safeMedal(o.medal), String(o.medal).charAt(0).toUpperCase()));
     var figures = make('');
     figures.appendChild(make('score end-score mono', String(o.score === undefined ? 0 : o.score)));
     // Labelled, not bare: "0" over "0% correct" on a zero-score fail scans as one number, "00%".
@@ -1310,7 +1319,7 @@ var Arcade = (function () {
     guardTaps: guardTaps, guarded: guarded, ignoringSkipTap: ignoringSkipTap,
     focusScreen: focusScreen, trapFocus: trapFocus,
     hearts: hearts, streak: streak, timerBar: timerBar, endScreen: endScreen,
-    medalFor: medalFor, stampFor: stampFor, titleFor: titleFor, initialsEntry: initialsEntry,
+    medalFor: medalFor, safeMedal: safeMedal, stampFor: stampFor, titleFor: titleFor, initialsEntry: initialsEntry,
     bigType: bigType, mountBigTypeButton: mountBigTypeButton, toast: toast
   };
 }());

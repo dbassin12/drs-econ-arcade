@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fed Chair — DRS Econ Arcade</title>
+<!-- The arcade is three static pages that talk to nobody. The policy says so out loud:
+     nothing loads that is not this origin's own script and stylesheet, the two Google Fonts
+     hosts, or a data: favicon, and connect-src 'none' means no page here can ever send a
+     student's play anywhere. Inline game scripts are why 'unsafe-inline' is in script-src.
+     frame-ancestors is ignored in a meta tag, so the frame-buster below and vercel.json's
+     real headers cover clickjacking. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +23,8 @@
 <body>
 
 <script>
+/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. */
+if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
 /* ================================================================================
    CONTENT — everything the 1975 game says, in one block. No logic lives here.
 

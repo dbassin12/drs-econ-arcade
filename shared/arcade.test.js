@@ -354,6 +354,16 @@ test('a code with no digest at all is rejected', () => {
 
 /* ===== medals and stamps ===== */
 
+test('safeMedal passes the three real medals and rejects everything else', () => {
+  assert.equal(Arcade.safeMedal('gold'), 'gold');
+  assert.equal(Arcade.safeMedal('silver'), 'silver');
+  assert.equal(Arcade.safeMedal('bronze'), 'bronze');
+  // Anything else reaching a className is a stored string this device did not write.
+  for (const junk of ['none', '', 'GOLD', 'gold silver', 'x" onload="alert(1)', null, undefined, 7, {}]) {
+    assert.equal(Arcade.safeMedal(junk), 'none', JSON.stringify(junk));
+  }
+});
+
 test('medalFor gates gold on the exit exam', () => {
   assert.equal(Arcade.medalFor(0.95, { examPassed: true }), 'gold');
   assert.equal(Arcade.medalFor(1, { examPassed: true }), 'gold');
