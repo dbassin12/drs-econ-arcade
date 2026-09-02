@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DRS Econ Arcade</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="shared/arcade.css">
+</head>
+<body>
+
+<main class="app">
+
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-inner">SHIFT HAPPENS · FED CHAIR · THE INVESTOR · CRISIS COUNTRY · SORT CIRCUIT · CALC BLITZ · GRAPH DOCTOR · SHIFT HAPPENS · FED CHAIR · THE INVESTOR · CRISIS COUNTRY · SORT CIRCUIT · CALC BLITZ · GRAPH DOCTOR · </div>
+  </div>
+
+  <header class="stack">
+    <h1 class="h1">DRS ECON ARCADE</h1>
+    <p class="muted">AP Macro · train the skills the exam grades</p>
+  </header>
+
+  <div class="row">
+    <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+    <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+    <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+    <button type="button" class="btn btn-ghost" id="bigTypeBtn" aria-label="Arcade Night big-type mode" aria-pressed="false">📺</button>
+  </div>
+
+  <div class="stack">
+
+    <a class="panel game-card" href="games/shift-happens.html">
+      <div class="game-emoji" aria-hidden="true">🧠</div>
+      <div class="game-info">
+        <div class="game-title">Shift Happens</div>
+        <div class="game-blurb">You are a graph surgeon under time pressure</div>
+        <div class="row">
+          <span class="game-best" id="bestShift">No score yet</span>
+          <span class="row" id="medalsShift"></span>
+        </div>
+      </div>
+    </a>
+
+    <a class="panel game-card" href="games/fed-chair.html">
+      <div class="game-emoji" aria-hidden="true">🏦</div>
+      <div class="game-info">
+        <div class="game-title">Fed Chair</div>
+        <div class="game-blurb">You are the Fed chair in 1975</div>
+        <div class="row">
+          <span class="game-best" id="bestFed">No score yet</span>
+          <span class="tag">1975 preview</span>
+        </div>
+      </div>
+    </a>
+
+    <div class="panel game-card soon" aria-disabled="true">
+      <div class="game-emoji" aria-hidden="true">📈</div>
+      <div class="game-info">
+        <div class="game-title">The Investor</div>
+        <div class="game-blurb">You are an investor reacting to the Fed</div>
+        <div class="row"><span class="tag">Coming soon</span></div>
+      </div>
+    </div>
+
+    <div class="panel game-card soon" aria-disabled="true">
+      <div class="game-emoji" aria-hidden="true">🌍</div>
+      <div class="game-info">
+        <div class="game-title">Crisis Country</div>
+        <div class="game-blurb">You are the finance minister of a country in trouble</div>
+        <div class="row"><span class="tag">Coming soon</span></div>
+      </div>
+    </div>
+
+    <div class="panel game-card soon" aria-disabled="true">
+      <div class="game-emoji" aria-hidden="true">🔀</div>
+      <div class="game-info">
+        <div class="game-title">Sort Circuit</div>
+        <div class="game-blurb">You are a speed-sorter</div>
+        <div class="row"><span class="tag">Coming soon</span></div>
+      </div>
+    </div>
+
+    <div class="panel game-card soon" aria-disabled="true">
+      <div class="game-emoji" aria-hidden="true">🧮</div>
+      <div class="game-info">
+        <div class="game-title">Calc Blitz</div>
+        <div class="game-blurb">You are a human calculator</div>
+        <div class="row"><span class="tag">Coming soon</span></div>
+      </div>
+    </div>
+
+    <div class="panel game-card soon" aria-disabled="true">
+      <div class="game-emoji" aria-hidden="true">🩺</div>
+      <div class="game-info">
+        <div class="game-title">Graph Doctor</div>
+        <div class="game-blurb">You are an FRQ grader</div>
+        <div class="row"><span class="tag">Coming soon</span></div>
+      </div>
+    </div>
+
+    <section class="panel readiness">
+      <h2 class="panel-title">My AP Readiness</h2>
+      <div class="muted" id="readinessBody">Play a level to see your heat map</div>
+    </section>
+
+    <section class="panel podium" id="podium" hidden>
+      <h2 class="panel-title">Arcade Night</h2>
+      <div class="muted">Top scores on this device.</div>
+    </section>
+
+    <footer class="muted">No accounts. Scores live on this device.</footer>
+
+  </div>
+
+</main>
+
+<script src="shared/arcade.js"></script>
+<script>
+/* Hub shell. shared/arcade.js arrives in Task 2 and may 404 until then, so every use of
+   Arcade is guarded. Task 6 completes the wiring: initials entry, mute, voice, Arcade
+   Night persistence, per-game bests + medals, and the readiness heat map. */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined') return;
+}());
+</script>
+
+</body>
+</html>
