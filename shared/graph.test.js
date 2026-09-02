@@ -12,6 +12,8 @@ const MARKETS = ArcadeGraph.MARKETS;
 const intersect = ArcadeGraph.intersect;
 const outputs = ArcadeGraph.outputs;
 const classify = ArcadeGraph.classify;
+const pickTarget = ArcadeGraph.pickTarget;
+const GEOM = ArcadeGraph.GEOM;
 
 /** Graph units carry float noise (0.8 * 6 !== 4.8), so equality is to a tolerance.
  *  @param {number} actual @param {number} expected @param {string} [what] */
@@ -21,6 +23,11 @@ function near(actual, expected, what) {
 
 /** The drag deadzone the engine classifies against, in graph units. */
 const DEAD = 8;
+
+/** The graph svg's rendered width in css px in the phone column at 360 x 740. Its 360-unit
+ *  viewBox holds a 290-unit plot, so one graph unit is (336/360) * 2.9 ≈ 2.71 css px. */
+const RENDER_PX = 336;
+const PX_PER_UNIT = (RENDER_PX / 360) * (290 / 100);
 
 /* ===== the module itself ===== */
 
@@ -199,4 +206,54 @@ test('a dot nudge inside the deadzone is not a movement', () => {
 
 test('a drag with no target classifies as nothing at all', () => {
   assert.deepEqual(classify({}), { kind: 'none', curve: null, dir: null, magnitude: 0 });
+});
+
+/* ===== pickTarget — what a finger landing on the plot grabs =====
+   The equilibrium dot used to be a 13 px target that fell through to a 24 px curve radius on a
+   miss, so on a trick card — where the answer is "nothing shifts, the dot moves along" — a thumb
+   15 px off the dot shifted AD instead: the single wrong answer the card exists to catch. */
+
+test('the geometry the engine hit-tests with is exported', () => {
+  assert.equal(GEOM.VB, 360);
+  assert.equal(GEOM.PLOT, 290);
+  assert.equal(GEOM.DEAD, DEAD);
+  assert.equal(typeof GEOM.DOT_HIT, 'number');
+  assert.equal(typeof GEOM.HIT, 'number');
+});
+
+test('the equilibrium dot is at least a 48 px target at the 336 px render', () => {
+  const across = GEOM.DOT_HIT * 2 * PX_PER_UNIT;
+  assert.ok(across >= 48, 'the dot is ' + across.toFixed(1) + ' px across, under the house 48 px rule');
+});
+
+test('the dot outranks the curves that cross under it', () => {
+  assert.ok(GEOM.DOT_HIT > GEOM.HIT,
+    'a finger inside the dot target must not be closer to a curve than to the dot it landed on');
+});
+
+test('a near miss on the dot grabs the dot, not the curve running under it', () => {
+  // 20 css px out — comfortably inside the target, and squarely inside the old curve radius.
+  const off = 20 / PX_PER_UNIT;
+  assert.deepEqual(pickTarget({ x: 50 + off, y: 50 }, { x: 50, y: 50 }, { slideable: true, curve: 'AD' }),
+    { kind: 'dot', curve: null });
+});
+
+test('a tap inside the dot target grabs nothing when there is nothing to slide along', () => {
+  assert.deepEqual(pickTarget({ x: 52, y: 50 }, { x: 50, y: 50 }, { slideable: false, curve: 'AD' }),
+    { kind: 'none', curve: null }, 'inside the target it is the dot or nothing — never a curve');
+});
+
+test('the dot target ends where it says it does', () => {
+  const dot = { x: 50, y: 50 };
+  const at = (d) => pickTarget({ x: 50 + d, y: 50 }, dot, { slideable: true, curve: 'AD' }).kind;
+  assert.equal(at(GEOM.DOT_HIT), 'dot', 'the edge is inside');
+  assert.equal(at(GEOM.DOT_HIT + 0.01), 'curve', 'a hair outside falls through to the curve');
+});
+
+test('outside the dot target the nearest grabbable curve wins, and nothing wins nothing', () => {
+  const far = { x: 90, y: 20 };
+  assert.deepEqual(pickTarget(far, { x: 50, y: 50 }, { slideable: true, curve: 'SRAS' }),
+    { kind: 'curve', curve: 'SRAS' });
+  assert.deepEqual(pickTarget(far, { x: 50, y: 50 }, { slideable: true, curve: null }),
+    { kind: 'none', curve: null });
 });

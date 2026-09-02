@@ -576,6 +576,10 @@ html.big-type .podium { display: block; order: -1; }
 .curve[data-curve=LRAS] .ghost, .curve[data-curve=LRPC] .ghost { stroke: var(--purple); }
 .eq { fill: var(--text); stroke: var(--bg); stroke-width: 3; }
 .eq-ghost { fill: var(--text2); opacity: .5; }
+/* The dot's "you can grab me" ring. Present only while the dot is actually draggable — the engine
+   puts .grabbable on the group — and never in the way of a finger. */
+.eq-halo { fill: none; stroke: var(--text2); stroke-width: 1.5; opacity: 0; pointer-events: none; }
+.dot.grabbable .eq-halo { animation: eqPulse 2.4s ease-in-out infinite; }
 .guides line { stroke: var(--text3); stroke-dasharray: 4 4; }
 .gap-shade { fill: #fff; opacity: 0; }
 .gap-shade.on { opacity: .08; }
@@ -635,6 +639,10 @@ html.big-type .podium { display: block; order: -1; }
   0%, 100% { box-shadow: 0 0 12px var(--green-glow); }
   50% { box-shadow: 0 0 26px var(--green-glow), 0 0 48px rgba(88,204,2,0.15); }
 }
+@keyframes eqPulse {
+  0%, 100% { r: 11px; opacity: .18; }
+  50% { r: 17px; opacity: .42; }
+}
 @keyframes crack {
   0% { transform: rotate(0) scale(1.3); }
   30% { transform: rotate(-12deg) scale(1.3); }
@@ -661,6 +669,8 @@ html.big-type .podium { display: block; order: -1; }
     animation-iteration-count: 1 !important;
     transition-duration: .001s !important;
   }
+  /* The ring stays — it is the affordance, not the decoration — it just stops breathing. */
+  .dot.grabbable .eq-halo { animation: none; opacity: .3; }
 }
 
 /* ===== KEYBOARD LAYER — the way onto the graph that is not a finger =====

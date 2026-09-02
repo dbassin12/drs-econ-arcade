@@ -13,7 +13,9 @@ var ArcadeGraph = (function () {
   var CLAMP = 25;     // how far a curve may travel from its market position
   var DEAD = 8;       // a drag shorter than this meant nothing
   var HIT = 8.3;      // how near a finger must pass a curve to grab it (24 px)
-  var DOT_HIT = 7;    // how near a finger must land on the equilibrium dot to grab it
+  var DOT_HIT = 14;   // how near a finger must land on the equilibrium dot to grab it: 14 graph
+                      // units is ~76 css px across at the 336 px render, well over the house 48 px
+                      // rule, and wider than HIT so the dot wins over the curves crossing under it
   var ZONE_BAND = 60;   // the "at full employment" tap band, in svg units, when `none` is the right
                         // answer: ~48 css px, so the intended target obeys the mobile tap rule.
   var ZONE_WITH_GAP = 0;// ...and nothing at all once a gap is on screen: `none` is never the right
@@ -145,6 +147,23 @@ var ArcadeGraph = (function () {
       return { kind: 'move', curve: curve, dir: (d.y || 0) > (d.y0 || 0) ? 'up' : 'down', magnitude: Math.abs(slid) };
     }
     return { kind: 'none', curve: null, dir: null, magnitude: 0 };
+  }
+
+  /** What a finger landing on the plot grabs. Inside DOT_HIT the dot is the only thing that can be
+   *  grabbed: it is the dot or it is nothing, never the curve running underneath. That fall-through
+   *  was the trick card's undoing — on a card whose answer is "nothing shifts, the dot moves along
+   *  the curve", a thumb landing a few px off the 13 px dot grabbed AD and shifted it, which is
+   *  precisely the wrong answer the card exists to catch, and it cost a heart for it.
+   *  @param {{x:number, y:number}} p where the finger landed, in graph units
+   *  @param {{x:number, y:number}} dot where the equilibrium dot is
+   *  @param {{slideable:boolean, curve:string|null}} avail whether anything can be slid along at
+   *    all, and the nearest grabbable curve
+   *  @returns {{kind:string, curve:string|null}} 'dot', 'curve' or 'none' */
+  function pickTarget(p, dot, avail) {
+    if (Math.hypot(p.x - dot.x, p.y - dot.y) <= DOT_HIT) {
+      return avail.slideable ? { kind: 'dot', curve: null } : { kind: 'none', curve: null };
+    }
+    return avail.curve ? { kind: 'curve', curve: avail.curve } : { kind: 'none', curve: null };
   }
 
   /** Perpendicular distance from a point to a curve, in graph units — the whole hit test.
@@ -409,8 +428,12 @@ var ArcadeGraph = (function () {
     var dotG = el('g', {}, 'dot');
     plot.appendChild(dotG);
     var eqGhost = el('circle', { r: 6 }, 'eq-ghost');
+    // The handle's affordance. Nothing else on the plot says "this is grabbable", and the trick
+    // cards are answered by grabbing it. It rides on .dot.grabbable, so it is only there while the
+    // dot can actually be moved, and reduced motion stops it pulsing.
+    var eqHalo = el('circle', { r: 13 }, 'eq-halo');
     var eqDot = el('circle', { r: 7 }, 'eq');
-    dotG.appendChild(eqGhost); dotG.appendChild(eqDot);
+    dotG.appendChild(eqGhost); dotG.appendChild(eqHalo); dotG.appendChild(eqDot);
 
     var zonesG = el('g', {}, 'gap-zones');
     zonesG.style.pointerEvents = 'none';
@@ -569,6 +592,8 @@ var ArcadeGraph = (function () {
       var dot = dotPos();
       var dx = gx(dot.x), dy = gy(dot.y);
       attr(eqDot, 'cx', n2(dx)); attr(eqDot, 'cy', n2(dy));
+      attr(eqHalo, 'cx', n2(dx)); attr(eqHalo, 'cy', n2(dy));
+      dotG.classList.toggle('grabbable', !locked && !gapMode && !!alongCurve(1, 0));
       var eq = intersect(market, shifts);
       var displaced = !!eq && Math.abs(eq.x - dot.x) > 0.01;
       eqGhost.style.display = displaced ? '' : 'none';
@@ -676,13 +701,13 @@ var ArcadeGraph = (function () {
       var p = toUnits(ev);
       var dot = dotPos();
       // alongCurve() here only asks whether anything is slideable at all; the drag picks the curve.
-      if (Math.hypot(p.x - dot.x, p.y - dot.y) <= DOT_HIT && alongCurve(1, 0)) {
+      var target = pickTarget(p, dot, { slideable: !!alongCurve(1, 0), curve: curveUnder(p) });
+      if (target.kind === 'none') return;
+      if (target.kind === 'dot') {
         drag = { kind: 'dot', pointerId: ev.pointerId, curve: null, startX: p.x, startY: p.y, dotX: dot.x, dotY: dot.y, hadPoint: !!point };
       } else {
-        var name = curveUnder(p);
-        if (!name) return;
-        drag = { kind: 'curve', pointerId: ev.pointerId, curve: name, startX: p.x, startShift: shifts[name] };
-        parts[name].g.classList.add('grabbed');
+        drag = { kind: 'curve', pointerId: ev.pointerId, curve: target.curve, startX: p.x, startShift: shifts[target.curve] };
+        parts[target.curve].g.classList.add('grabbed');
       }
       try { hit.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety, not a need */ }
       var A = engine();
@@ -1030,9 +1055,12 @@ var ArcadeGraph = (function () {
     };
   }
 
+  /** The hit-test geometry, in graph units, so a test can hold it against the house 48 px rule. */
+  var GEOM = { VB: VB, PLOT: PLOT, DOT_HIT: DOT_HIT, HIT: HIT, DEAD: DEAD, SNAP: SNAP, SLIDE: SLIDE, CLAMP: CLAMP };
+
   return {
-    create: create, Gauge: Gauge, MARKETS: MARKETS,
-    intersect: intersect, outputs: outputs, classify: classify
+    create: create, Gauge: Gauge, MARKETS: MARKETS, GEOM: GEOM,
+    intersect: intersect, outputs: outputs, classify: classify, pickTarget: pickTarget
   };
 }());
 
