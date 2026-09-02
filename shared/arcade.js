@@ -1013,7 +1013,8 @@ var Arcade = (function () {
     if (o.medal) head.appendChild(make('medal ' + o.medal, o.medal.charAt(0).toUpperCase()));
     var figures = make('');
     figures.appendChild(make('score end-score mono', String(o.score === undefined ? 0 : o.score)));
-    if (o.accuracy !== undefined) figures.appendChild(make('muted', Math.round(o.accuracy * 100) + '% correct'));
+    // Labelled, not bare: "0" over "0% correct" on a zero-score fail scans as one number, "00%".
+    if (o.accuracy !== undefined) figures.appendChild(make('muted', 'Accuracy ' + Math.round(o.accuracy * 100) + '%'));
     head.appendChild(figures);
     if (typeof o.stamp === 'number') head.appendChild(make('ap-stamp slam', String(o.stamp)));
     panel.appendChild(head);

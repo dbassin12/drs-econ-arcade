@@ -1088,7 +1088,10 @@ const HOWTO = [
 
   /* ===== HOW TO PLAY — once between the briefing and the first quarter, and from every ? ===== */
 
+  /** What "Got it" does, and what ← does: the rules shown on the way into a term go on into it,
+   *  but backing out of them returns to the briefing rather than taking the chair. */
   /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {(() => void)|null} */ var howtoBackTo = null;
 
   /** @returns {boolean} */
   function howtoSeen() {
@@ -1113,24 +1116,27 @@ const HOWTO = [
     });
   }
 
-  /** @param {() => void} after what closing the screen does */
-  function openHowto(after) {
+  /** @param {() => void} after what "Got it" does @param {() => void} [back] what ← does */
+  function openHowto(after, back) {
     howtoAfter = after;
+    howtoBackTo = back || after;
     paintHowto();
     show('howto');
   }
 
-  function closeHowto() {
-    var after = howtoAfter;
+  /** @param {boolean} [backwards] true when ← was the way out */
+  function closeHowto(backwards) {
+    var go = backwards === true ? howtoBackTo : howtoAfter;
     howtoAfter = null;
-    if (after) after();
+    howtoBackTo = null;
+    if (go) go();
   }
 
   /** The briefing's own button: the rules the first time, then straight to the chair. */
   function takeTheGavel() {
     if (howtoSeen()) { startRun(); return; }
     markHowtoSeen();
-    openHowto(startRun);
+    openHowto(startRun, function () { show('briefing'); });
   }
 
   /* ===== ERA AND BRIEFING ===== */
@@ -1196,8 +1202,8 @@ const HOWTO = [
   byId('eraBack').addEventListener('click', function () { abandonRun(); show('title'); });
   byId('briefingBack').addEventListener('click', goEra);
   byId('briefingStart').addEventListener('click', takeTheGavel);
-  byId('howtoBack').addEventListener('click', closeHowto);
-  byId('howtoGo').addEventListener('click', closeHowto);
+  byId('howtoBack').addEventListener('click', function () { closeHowto(true); });
+  byId('howtoGo').addEventListener('click', function () { closeHowto(false); });
   byId('turnHowto').addEventListener('click', ignoringSkipTap(function () {
     // Turn-based: there is no clock to pause, so the board is simply where it was left.
     openHowto(function () { show('turn'); });

@@ -840,7 +840,11 @@ const HOWTO = [
      Opened from the play screen it pauses the round clock, because reading the rules is not a
      speed test; the demo above the cards is the one thing a still card cannot show. */
 
+  /** What the "Got it" button does, and what ← does — which are not always the same thing: the
+   *  rules shown automatically on the way into a level go on into the level, but backing out of
+   *  them cancels the level instead of starting it. */
   /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {(() => void)|null} */ var howtoBackTo = null;
   /** @type {any} */ var demo = null;
   var demoTimer = 0, demoOn = false, demoRight = true;
 
@@ -906,19 +910,23 @@ const HOWTO = [
     });
   }
 
-  /** @param {number} level @param {() => void} after what closing the screen does */
-  function openHowto(level, after) {
+  /** @param {number} level @param {() => void} after what "Got it" does
+   *  @param {() => void} [back] what ← does; the same thing unless it is given */
+  function openHowto(level, after, back) {
     howtoAfter = after;
+    howtoBackTo = back || after;
     paintHowto(level);
     show('howto');
     startDemo();
   }
 
-  function closeHowto() {
+  /** @param {boolean} [backwards] true when ← was the way out */
+  function closeHowto(backwards) {
     stopDemo();
-    var after = howtoAfter;
+    var go = backwards === true ? howtoBackTo : howtoAfter;
     howtoAfter = null;
-    if (after) after();
+    howtoBackTo = null;
+    if (go) go();
   }
 
   /* ===== ROUND LOOP ===== */
@@ -1225,7 +1233,7 @@ const HOWTO = [
     abortRun();
     if (!howtoSeen(n)) {                 // the first run of a level opens on the rules
       markHowtoSeen(n);
-      openHowto(n, function () { beginLevel(L); });
+      openHowto(n, function () { beginLevel(L); }, goSelect);
       return;
     }
     beginLevel(L);
@@ -1391,8 +1399,8 @@ const HOWTO = [
   byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
   byId('playBack').addEventListener('click', goSelect);
   byId('examBack').addEventListener('click', goSelect);
-  byId('howtoBack').addEventListener('click', closeHowto);
-  byId('howtoGo').addEventListener('click', closeHowto);
+  byId('howtoBack').addEventListener('click', function () { closeHowto(true); });
+  byId('howtoGo').addEventListener('click', function () { closeHowto(false); });
   byId('selectHowto').addEventListener('click', function () {
     openHowto(0, function () { show('select'); });        // no level is being started: show them all
   });
