@@ -250,6 +250,14 @@
     return box;
   }
 
+  /** The count chip under a heat cell. A unit the estimate is not allowed to listen to yet says
+   *  how far off it is — "3/8 items" — rather than pretending its percentage means something.
+   *  @param {any} unit @returns {string} */
+  function heatCount(unit) {
+    if (unit.total > 0 && !unit.counted) return unit.total + '/' + Arcade.MIN_UNIT_ITEMS + ' items';
+    return items(unit.total);
+  }
+
   /** One heat cell: a button that opens its unit's topics in the row beneath it.
    *  @param {any} unit @param {any} grid the .heat grid the cell lives in @returns {any} */
   function heatCell(unit, grid) {
@@ -258,10 +266,13 @@
     cell.className = 'panel heat-cell ' + heatState(unit.acc);
     cell.setAttribute('aria-expanded', 'false');
     cell.setAttribute('aria-label', 'Unit ' + unit.unit + ' ' + unit.name + ', '
-      + (unit.acc === null ? 'no items yet' : pct(unit.acc) + ' of ' + items(unit.total)));
+      + (unit.acc === null ? 'no items yet' : pct(unit.acc) + ' of ' + items(unit.total))
+      + (unit.total > 0 && !unit.counted
+        ? ', ' + unit.total + ' of ' + Arcade.MIN_UNIT_ITEMS + ' items needed before it counts towards the estimate'
+        : ''));
     cell.appendChild(chip('heat-unit', 'U' + unit.unit));
     cell.appendChild(chip('heat-acc mono', unit.acc === null ? '—' : pct(unit.acc)));
-    cell.appendChild(chip('heat-count', items(unit.total)));
+    cell.appendChild(chip('heat-count', heatCount(unit)));
     cell.addEventListener('click', function () {
       var open = cell.getAttribute('aria-expanded') === 'true';
       var showing = grid.querySelector('.heat-detail');
@@ -315,11 +326,15 @@
       ? 'Weakest: ' + r.weakest.ced + ' ' + r.weakest.name + ' · ' + pct(r.weakest.acc)
       : 'Weakest: — · needs 3 items on one topic'));
 
+    var counted = r.units.filter(function (u) { return u.counted; });
     var band = fill('');
     band.appendChild(fill('band', 'Estimated score band: ' + (r.band ? r.band.score : '—')));
     band.appendChild(fill('muted band-note', r.band
-      ? 'A rough estimate, weighted by unit, from ' + items(r.answered) + ' answered.'
-      : 'Play 10 items to see an estimate' + (r.answered ? ' · ' + items(r.answered) + ' answered' : '')));
+      ? 'A rough estimate, weighted by unit, from the '
+        + (counted.length === 1 ? 'one unit' : counted.length + ' units')
+        + ' with ' + Arcade.MIN_UNIT_ITEMS + ' items or more. Thinner units are shown above but not counted.'
+      : 'Play ' + Arcade.MIN_UNIT_ITEMS + ' items in one unit to see an estimate'
+        + (r.answered ? ' · ' + items(r.answered) + ' answered so far' : '')));
     readinessBody.appendChild(band);
 
     var next = document.createElement('a');

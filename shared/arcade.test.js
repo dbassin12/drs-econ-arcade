@@ -110,19 +110,55 @@ test('readiness lists the tracked topics of each unit with their CED names', () 
   assert.equal(r.units[0].topics[0].name, 'Demand');
 });
 
-test('band weights unit accuracy by CED midpoints over units with data only', () => {
+test('band weights unit accuracy by CED midpoints over counted units only', () => {
   const r = Arcade.readiness(MASTERY);
-  // (7.5*0.8 + 14.5*0 + 22*(12/22) + 20.5*1) / (7.5+14.5+22+20.5)
-  assert.equal(r.band.weightedAcc, 38.5 / 64.5);
+  // units 1 (10 items) and 3 (22) are counted; 2 and 4 have two items each and are not.
+  // (7.5*0.8 + 22*(12/22)) / (7.5+22)
+  assert.equal(r.band.weightedAcc, 18 / 29.5);
   assert.equal(r.band.label, 'estimate');
   assert.equal(r.band.n, 36);
   assert.equal(r.band.score, 3);
 });
 
-test('band is null until ten questions are answered', () => {
-  assert.equal(Arcade.readiness(only({ '1.1': { right: 4, total: 9 } })).band, null);
-  assert.equal(Arcade.readiness(only({ '1.1': { right: 4, total: 10 } })).band.n, 10);
+/* ===== MIN_UNIT_ITEMS — a unit has to be measured before it may be projected ===== */
+
+test('MIN_UNIT_ITEMS is exported and is eight', () => {
+  assert.equal(Arcade.MIN_UNIT_ITEMS, 8);
+});
+
+test('a unit is counted only once it has MIN_UNIT_ITEMS answered', () => {
+  const at = (total) => Arcade.readiness(only({ '1.1': { right: total, total } })).units[0];
+  assert.equal(at(7).counted, false);
+  assert.equal(at(8).counted, true);
+  assert.equal(Arcade.readiness({}).units[0].counted, false, 'an empty unit is not counted either');
+  const r = Arcade.readiness(MASTERY);
+  assert.deepEqual(r.units.map((u) => u.counted), [true, false, true, false, false, false]);
+});
+
+test('an uncounted unit still shows its accuracy in the heat map', () => {
+  const u = Arcade.readiness(only({ '2.3': { right: 1, total: 4 } })).units[1];
+  assert.equal(u.counted, false);
+  assert.equal(u.acc, 0.25, 'the cell has a number to show; it just does not steer the estimate');
+  assert.equal(u.total, 4);
+});
+
+test('band is null until at least one unit is counted', () => {
+  assert.equal(Arcade.readiness(only({ '1.1': { right: 4, total: 7 } })).band, null);
+  assert.equal(Arcade.readiness(only({ '1.1': { right: 4, total: 8 } })).band.n, 8);
   assert.equal(Arcade.readiness({}).band, null);
+  // 12 items spread thin across three units is still nothing anyone should project a score from
+  assert.equal(Arcade.readiness(only({
+    '1.1': { right: 4, total: 4 }, '2.3': { right: 4, total: 4 }, '3.1': { right: 4, total: 4 }
+  })).band, null);
+});
+
+test('weightedAcc leaves the thin units out', () => {
+  // Unit 6 rides one net-export card. Before MIN_UNIT_ITEMS that single item carried 11.5 of the
+  // 33.5 weight on a Shift-only player — about a third of the estimated band, off n = 1.
+  const r = Arcade.readiness(only({ '3.1': { right: 6, total: 12 }, '6.5': { right: 1, total: 1 } }));
+  assert.equal(r.units[5].acc, 1, 'the 1/1 still shows');
+  assert.equal(r.units[5].counted, false);
+  assert.equal(r.band.weightedAcc, 0.5, 'and contributes nothing to the estimate');
 });
 
 test('a tampered mastery record cannot push accuracy above 100 %', () => {

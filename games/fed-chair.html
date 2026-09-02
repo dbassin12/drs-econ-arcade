@@ -883,15 +883,17 @@ const HOWTO = [
       }
 
       if (event.kind === 'call') {
+        // Neither branch calls Arcade.track. Taking or refusing the call is a values choice, not a
+        // Monetary Policy item, and recording it as one put a right/wrong answer on CED 4.6 into
+        // the topic diagnostic a teacher pastes into a gradebook. It still costs the run its
+        // Integrity point and still feeds the shock schedule — it is just not a measurement.
         addButton(event.accept, 'btn btn-ghost btn-block', function () {
           run.acceptedCall = true;
           run.integrity = false;
-          Arcade.track('4.6', 1, false);
         });
         addButton(event.refuse, 'btn btn-block', function () {
           run.acceptedCall = false;
           run.integrity = true;
-          Arcade.track('4.6', 1, true);
           Arcade.toast('\u{1F3C5} Integrity');
         });
       } else {
@@ -967,7 +969,9 @@ const HOWTO = [
 
     var beforeTitle = Arcade.titleFor();      // the rank as it stood before this term was banked
     Arcade.saveBest('fed', { score: result.stamp, initials: Arcade.initials() });
-    Arcade.track('5.2', 2, result.stamp >= 3);
+    // No track('5.2') here either: a whole ten-quarter run is not one Phillips-curve item, and the
+    // student never saw a Phillips curve. The per-quarter judgeMove track on 4.6 is the run's only
+    // measurement, and it is a real one.
 
     show('news');
     var panel = Arcade.endScreen(newsEnd, {

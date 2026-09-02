@@ -418,6 +418,14 @@ var Arcade = (function () {
   /** Midpoints of the CED exam weights; they weight the score estimate. @type {Record<number, number>} */
   var UNIT_WEIGHTS = { 1: 7.5, 2: 14.5, 3: 22, 4: 20.5, 5: 25, 6: 11.5 };
 
+  /** How many answered items a unit needs before its accuracy is allowed to steer the estimated
+   *  band. Below it the unit still shows its accuracy in the heat map — the student earned that
+   *  number and should see it — but it is labelled "n/8 items" and left out of `weightedAcc`.
+   *  Eight is the floor at which a percentage stops being an anecdote: Unit 6 rides a single
+   *  net-export card, and unweighted that one item used to carry about a third of the projected
+   *  score for anyone who had only played Shift Happens. */
+  var MIN_UNIT_ITEMS = 8;
+
   /** Which level drills which topic. @type {Record<string, {game:string, level:number}>} */
   var CED_TO_LEVEL = {
     '3.1': { game: 'shift', level: 1 }, '3.2': { game: 'shift', level: 1 }, '3.8': { game: 'shift', level: 1 },
@@ -486,7 +494,7 @@ var Arcade = (function () {
     var units = [];
     var u;
     for (u = 1; u <= 6; u += 1) {
-      units.push({ unit: u, name: UNIT_NAMES[u], weight: UNIT_WEIGHTS[u], right: 0, total: 0, acc: null, topics: [] });
+      units.push({ unit: u, name: UNIT_NAMES[u], weight: UNIT_WEIGHTS[u], right: 0, total: 0, acc: null, counted: false, topics: [] });
     }
 
     var answered = 0;
@@ -514,8 +522,13 @@ var Arcade = (function () {
     for (u = 0; u < 6; u += 1) {
       if (units[u].total > 0) {
         units[u].acc = clamp01(units[u].right / units[u].total);
-        num += units[u].weight * units[u].acc;
-        den += units[u].weight;
+        // The heat cell shows that accuracy whatever the count. The estimate only listens to a
+        // unit once there is enough of it to listen to.
+        units[u].counted = units[u].total >= MIN_UNIT_ITEMS;
+        if (units[u].counted) {
+          num += units[u].weight * units[u].acc;
+          den += units[u].weight;
+        }
       }
       var topics = units[u].topics;
       for (var k = 0; k < topics.length; k += 1) {
@@ -523,8 +536,11 @@ var Arcade = (function () {
       }
     }
 
+    // `den > 0` is now the whole gate: it takes one unit with MIN_UNIT_ITEMS behind it to open the
+    // estimate, and the old flat "ten answered anywhere" floor let twelve items spread across three
+    // units project a score off four apiece.
     var band = null;
-    if (answered >= 10 && den > 0) {
+    if (den > 0) {
       band = { score: bandScore(num / den), weightedAcc: num / den, label: 'estimate', n: answered };
     }
     return { answered: answered, units: units, weakest: weakest, band: band, playNext: playNext(weakest ? weakest.ced : null) };
@@ -1287,6 +1303,7 @@ var Arcade = (function () {
     store: store, initials: initials, setInitials: setInitials, bests: bests, saveBest: saveBest, qs: qs,
     sfx: sfx, voice: voice, say: say,
     track: track, readiness: readiness, readinessCode: readinessCode, decodeReadinessCode: decodeReadinessCode,
+    MIN_UNIT_ITEMS: MIN_UNIT_ITEMS,
     copyText: copyText, CED_NAMES: CED_NAMES, UNIT_NAMES: UNIT_NAMES, CED_TO_LEVEL: CED_TO_LEVEL,
     SPRING: SPRING, prefersReducedMotion: prefersReducedMotion, spring: spring,
     confetti: confetti, shake: shake, flash: flash,
