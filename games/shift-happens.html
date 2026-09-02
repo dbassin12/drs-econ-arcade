@@ -16,20 +16,21 @@
    CONTENT — every card, boss and exam question in the game, one entry per line.
    Nothing here is logic; the game reads this and nothing else for its content.
 
-   Level: { n, name, blurb, ready, time (ms per card), draggable (curves the student
-            may touch), showLRAS, pool[], boss, exam[] }.  A level with ready:false is
-            a stub: its tile is locked and inert until the task that fills it lands.
+   Level: { n, name, blurb, ready, draggable (curves the student may touch), showLRAS,
+            pool[], boss, exam[] }.  A level with ready:false is a stub: its tile is
+            locked and inert until the task that fills it lands.  Every clock a level
+            runs on lives in TIMING below, not here.
    Card:  { id, kind:'shift'|'move'|'boss', head, sub, emoji, graph, start:{AD,SRAS},
             curve:'AD'|'SRAS'|'any', dir:'L'|'R' (shift) | 'up'|'down' (move),
             gap:null|'recessionary'|'inflationary'|'none', trick, why, ced, skill }.
-            A boss adds moves:[{curve, dir, head, why}, …] and its own time (ms).
+            A boss adds moves:[{curve, dir, head, why}, …].
    Exam:  { stem, choices[4], answer (index), why, ced, skill }.
    `why` is always the sentence that would earn the FRQ point.
    ================================================================================ */
 const LEVELS = [
   {
     n: 1, name: 'Demand Rookie', blurb: 'AD only — the C, I, G and Xn stories', ready: true,
-    time: 10000, draggable: ['AD'], showLRAS: false,
+    draggable: ['AD'], showLRAS: false,
     pool: [
       { id: 'l1-c-confidence', kind: 'shift', head: 'CONSUMER CONFIDENCE CRASHES', sub: 'Cedarhurst merchants say the wallets snapped shut overnight.', emoji: '😟', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Falling consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
       { id: 'l1-c-wealth', kind: 'shift', head: 'STOCKS HIT A RECORD HIGH', sub: 'Retirement accounts in Lawrence are suddenly worth a lot more than they were Friday.', emoji: '📈', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'An increase in household wealth increases consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 },
@@ -44,7 +45,7 @@ const LEVELS = [
       { id: 'l1-x-dollar', kind: 'shift', head: 'THE DOLLAR SOARS', sub: 'Great for a Lawrence family booking a summer trip; brutal for the exporter next door.', emoji: '💵', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'An appreciation of the dollar makes United States exports more expensive and imports cheaper, so net exports fall and aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '6.5', skill: 4 },
       { id: 'l1-x-boom', kind: 'shift', head: 'FOREIGN INCOMES SURGE', sub: 'Asia is booming and the Inwood freight yards are humming past midnight.', emoji: '🚢', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'Rising foreign income increases foreign demand for United States exports, so net exports rise and aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 }
     ],
-    boss: { id: 'l1-boss', kind: 'boss', head: 'Stock market crashes — then Congress passes an emergency stimulus', sub: 'Two shocks, one afternoon. Handle them in the order they break.', emoji: '🚨', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, time: 15000, ced: '3.8', skill: 4,
+    boss: { id: 'l1-boss', kind: 'boss', head: 'Stock market crashes — then Congress passes an emergency stimulus', sub: 'Two shocks, one afternoon. Handle them in the order they break.', emoji: '🚨', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, ced: '3.8', skill: 4,
       moves: [
         { curve: 'AD', dir: 'L', head: 'MARKETS CRASH', why: 'The loss of household wealth decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.' },
         { curve: 'AD', dir: 'R', head: 'EMERGENCY STIMULUS PASSES', why: 'Expansionary fiscal policy increases government purchases, so aggregate demand shifts right; the price level rises and real GDP increases.' }
@@ -58,7 +59,7 @@ const LEVELS = [
   },
   {
     n: 2, name: 'Supply Side', blurb: 'SRAS joins AD — costs, expectations and the price-level trap', ready: true,
-    time: 9000, draggable: ['AD', 'SRAS'], showLRAS: false,
+    draggable: ['AD', 'SRAS'], showLRAS: false,
     pool: [
       { id: 'l2-s-oil', kind: 'shift', head: 'OIL PRICES SPIKE', sub: 'Every delivery van on Rockaway Turnpike just got more expensive to run.', emoji: '🛢️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: null, trick: false, why: 'A rise in the price of a key input raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.3', skill: 4 },
       { id: 'l2-s-minwage', kind: 'shift', head: 'MINIMUM WAGE JUMPS', sub: 'Cedarhurst bagel shops are rewriting payroll before the Sunday rush.', emoji: '💵', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: null, trick: false, why: 'A higher minimum wage raises nominal wages and per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.3', skill: 4 },
@@ -73,7 +74,7 @@ const LEVELS = [
       { id: 'l2-t-plup', kind: 'move', head: 'THE PRICE LEVEL RISES', sub: 'The CPI report lands. Nothing else in the economy changed this morning.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'any', dir: 'up', gap: null, trick: true, why: 'A change in the price level does not shift AD or SRAS; it is a movement along the curves (the wealth, interest-rate, and exchange-rate effects change the quantity of real output demanded).', ced: '3.5', skill: 4 },
       { id: 'l2-t-pldown', kind: 'move', head: 'THE PRICE LEVEL FALLS', sub: 'Prices slipped across the board — no new policy, no new costs, no new orders.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'any', dir: 'down', gap: null, trick: true, why: 'A change in the price level does not shift AD or SRAS; it is a movement along the curves (the wealth, interest-rate, and exchange-rate effects change the quantity of real output demanded).', ced: '3.5', skill: 4 }
     ],
-    boss: { id: 'l2-boss', kind: 'boss', head: 'Oil prices spike — and consumers panic', sub: 'Two shocks in one afternoon. Either order — just get both.', emoji: '🚨', graph: 'adas', start: { AD: 0, SRAS: 0 }, gap: null, trick: false, time: 12000, anyOrder: true, ced: '3.6', skill: 4,
+    boss: { id: 'l2-boss', kind: 'boss', head: 'Oil prices spike — and consumers panic', sub: 'Two shocks in one afternoon. Either order — just get both.', emoji: '🚨', graph: 'adas', start: { AD: 0, SRAS: 0 }, gap: null, trick: false, anyOrder: true, ced: '3.6', skill: 4,
       moves: [
         { curve: 'SRAS', dir: 'L', head: 'OIL PRICES SPIKE', why: 'The oil shock raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.' },
         { curve: 'AD', dir: 'L', head: 'CONSUMERS PANIC', why: 'Collapsing consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.' }
@@ -87,7 +88,7 @@ const LEVELS = [
   },
   {
     n: 3, name: 'Gap Attack', blurb: 'LRAS is on — shift it, then name the gap you left behind', ready: true,
-    time: 8000, draggable: ['AD', 'SRAS'], showLRAS: true,
+    draggable: ['AD', 'SRAS'], showLRAS: true,
     pool: [
       { id: 'l3-f-infra', kind: 'shift', head: 'INFRASTRUCTURE BILL PASSES', sub: 'The LIRR viaduct at Lawrence finally gets its rebuild, and the crews need the work.', emoji: '🚧', graph: 'adas', start: { AD: -12, SRAS: 0 }, curve: 'AD', dir: 'R', gap: 'none', trick: false, why: 'An increase in government purchases increases aggregate demand, shifting it right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
       { id: 'l3-f-taxup', kind: 'shift', head: 'INCOME TAXES GO UP', sub: 'With the economy running hot, every Five Towns paycheck loses a little.', emoji: '💸', graph: 'adas', start: { AD: 12, SRAS: 0 }, curve: 'AD', dir: 'L', gap: 'none', trick: false, why: 'Higher personal income taxes reduce disposable income and consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.8', skill: 4 },
@@ -102,7 +103,7 @@ const LEVELS = [
       { id: 'l3-t-wealth', kind: 'move', head: 'PRICES CLIMB, CASH SHRINKS', sub: 'The same dollars in a Hewlett checking account buy less than they did last month.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'up', gap: null, trick: true, why: 'A change in the price level never shifts aggregate demand; the wealth effect is one of the reasons AD slopes downward, so a higher price level is a movement up along AD to a smaller quantity of real output demanded.', ced: '3.5', skill: 4 },
       { id: 'l3-t-balances', kind: 'move', head: 'DOLLARS GO FURTHER', sub: 'Prices slipped this quarter, so the same balances buy more in Cedarhurst.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'down', gap: null, trick: true, why: 'A change in the price level never shifts aggregate demand; the wealth effect is one of the reasons AD slopes downward, so a lower price level is a movement down along AD to a larger quantity of real output demanded.', ced: '3.5', skill: 4 }
     ],
-    boss: { id: 'l3-boss', kind: 'boss', head: 'OPEC slashes output — and Congress rushes an emergency tax cut', sub: 'Already running hot. Take both, either order, then name the gap.', emoji: '🚨', graph: 'adas', start: { AD: 12, SRAS: 0 }, gap: 'inflationary', trick: false, time: 14000, anyOrder: true, ced: '3.6', skill: 4,
+    boss: { id: 'l3-boss', kind: 'boss', head: 'OPEC slashes output — and Congress rushes an emergency tax cut', sub: 'Already running hot. Take both, either order, then name the gap.', emoji: '🚨', graph: 'adas', start: { AD: 12, SRAS: 0 }, gap: 'inflationary', trick: false, anyOrder: true, ced: '3.6', skill: 4,
       moves: [
         { curve: 'SRAS', dir: 'L', head: 'OPEC SLASHES OUTPUT', why: 'The oil shock raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.' },
         { curve: 'AD', dir: 'R', head: 'EMERGENCY TAX CUT', why: 'A cut in personal income taxes raises disposable income and consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.' }
@@ -119,6 +120,40 @@ const LEVELS = [
   { n: 6, name: 'FOREX Floor', ready: false },
   { n: 7, name: 'Phillips Finale', ready: false }
 ];
+
+/* ================================================================================
+   TIMING — Teacher-tunable: seconds students get.  Every clock in the game is set
+   from here and nowhere else, so raising a number here raises it everywhere it is
+   used, including the speed bonus, which is always measured against the level's own
+   total.  Numbers are seconds.
+   ================================================================================ */
+const TIMING = {
+  cardSeconds: { 1: 20, 2: 18, 3: 16 },   // one BREAKING card, per level
+  bossSeconds: { 1: 30, 2: 28, 3: 30 },   // the whole boss — both headlines on one clock
+  gapSeconds: 12,                         // the Level 3 "name the gap" tap
+  extendSeconds: 3,                       // the one grace period a drag still in flight at zero earns
+  warnSeconds: 5,                         // when the bar turns red and the tick/tock starts
+  examSeconds: 70                         // the Exam Sprint stays at the real exam's Section I pace
+};
+
+/* ================================================================================
+   HOW TO PLAY — the cards the first run of a level opens on, and what the ? button
+   shows.  `levels` lists the levels a card belongs to; a card with no `levels` is
+   shown on every one of them.  Content, like everything else in this block: one
+   emoji, one bold line, one sentence.
+   ================================================================================ */
+const HOWTO = [
+  { emoji: '\u{1F4F0}', head: 'Read the headline, move the graph', body: 'A BREAKING card lands. Make the graph do what that news really does to the economy — not what you wish it did.' },
+  { emoji: '\u{1F446}', head: 'Drag the curve that moves', body: 'Grab the curve the headline pushes and drag it left or right. Let go and it snaps into place.' },
+  { emoji: '\u{1F3A3}', head: 'Sometimes nothing shifts', body: 'If only the price level changed, no curve moves at all. Slide the dot along the curve instead — that is the trick card.', levels: [2, 3] },
+  { emoji: '\u{23F1}\uFE0F', head: 'The bar at the top is the clock', body: 'It empties while you think, turns red near the end and starts ticking. Still dragging when it hits zero? You get one short extension, once.' },
+  { emoji: '\u2764\uFE0F', head: 'Three hearts, and a streak', body: 'A wrong answer costs a heart, and three lost ends the level. Three right in a row starts a multiplier that climbs to \u00D75.' },
+  { emoji: '\u{1F449}', head: 'Tap the graph to skip ahead', body: 'After every answer the graph plays what really happened. One tap on it jumps straight to the end of that animation.' },
+  { emoji: '\u{1F4C8}', head: 'SRAS joins AD', body: 'Two curves are live now, and the headline decides which one moves. This is also where the trick cards start.', levels: [2] },
+  { emoji: '\u{1F4CF}', head: 'LRAS appears, then you name the gap', body: 'The purple line is full-employment output, Yf. After every shift you tap the gap: left of Yf is recessionary, right of Yf is inflationary, and the line itself means no gap at all.', levels: [3] },
+  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, both curves, one clock. Find both before it runs out.' },
+  { emoji: '\u{1F4DD}', head: 'Then the Exam Sprint', body: 'Three questions in the exam\u2019s own voice at the exam\u2019s own pace. It is optional \u2014 but a gold medal needs it.' }
+];
 </script>
 
 <main class="app" id="app">
@@ -126,7 +161,7 @@ const LEVELS = [
   <!-- TITLE -->
   <section class="screen active" id="screen-title">
     <div class="stack">
-      <h1 class="h1">SHIFT HAPPENS</h1>
+      <h1 class="h1" tabindex="-1" data-focus>SHIFT HAPPENS</h1>
       <p class="muted">You are a graph surgeon under time pressure.</p>
       <div class="row">
         <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
@@ -144,9 +179,27 @@ const LEVELS = [
     <div class="stack">
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
-        <h2 class="panel-title">Levels</h2>
+        <h2 class="panel-title" tabindex="-1" data-focus>Levels</h2>
+        <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
       </header>
       <div class="stack" id="levelList"></div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY — the cards for the level being started, opened once per level and from every ?.
+       A screen, not a sheet: it takes the focus and the tap guard every other screen change gets. -->
+  <section class="screen" id="screen-howto">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
+        <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
+      </header>
+      <div class="panel stack">
+        <div class="howto-demo" id="howtoDemo"></div>
+        <div class="muted howto-caption">drag →</div>
+      </div>
+      <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
     </div>
   </section>
 
@@ -160,9 +213,10 @@ const LEVELS = [
           <span class="combo" id="combo"></span>
           <span class="score" id="score">0</span>
         </div>
+        <button type="button" class="btn btn-ghost howto-btn" id="playHowto" aria-label="How to play">?</button>
       </header>
       <div class="timer-bar" id="timer"></div>
-      <div class="panel breaking" id="breaking">
+      <div class="panel breaking" id="breaking" tabindex="-1" data-focus>
         <div class="row">
           <div class="breaking-emoji" id="breakingEmoji" aria-hidden="true">📰</div>
           <div id="breakingBody"></div>
@@ -172,6 +226,11 @@ const LEVELS = [
       <!-- a div, not a <p>: the play column has to fit a 740 px phone whole, and a paragraph's two
            default 16 px margins are exactly what pushed the hint below the fold -->
       <div class="muted" id="hint">Drag the curve that moves</div>
+      <!-- The keyboard's way onto the graph. Out of the way until a Tab reaches it, and then a real
+           row of 48 px buttons that answer exactly what a drag answers. The line under it is what
+           the graph is showing, in words, for a student who cannot see it. -->
+      <div class="row wrap kbd-answers" id="kbdRow" role="group" aria-label="Answer with the keyboard"></div>
+      <div class="sr-only" id="graphRead" role="status" aria-live="polite"></div>
     </div>
   </section>
 
@@ -180,7 +239,7 @@ const LEVELS = [
     <div class="stack">
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the level list">←</button>
-        <h2 class="panel-title">Exam Sprint</h2>
+        <h2 class="panel-title" tabindex="-1" data-focus>Exam Sprint</h2>
         <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
       </header>
       <div class="timer-bar" id="examTimer"></div>
@@ -226,11 +285,14 @@ const LEVELS = [
 
   var SHIFT_UNITS = 12;   // where a recognised drag lands — SNAP in shared/graph.js
   var SLIDE_UNITS = 10;   // how far a movement along a curve travels — the engine's dot step
-  var EXTEND_MS = 2000;   // the one grace period a drag still in flight at zero may earn
-  var GAP_MS = 5000;      // the Level 3 "name the gap" tap
-  var GAP_POINTS = 50;    // …and what it is worth, before the streak multiplier
-  var EXAM_MS = 70000;    // one Exam Sprint question, matching the real exam's pace
-  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, 70 s each';
+  // Every clock below is TIMING, at the top of this file, turned into milliseconds. Nothing here
+  // is a number to edit: edit TIMING.
+  var EXTEND_MS = TIMING.extendSeconds * 1000;
+  var GAP_MS = TIMING.gapSeconds * 1000;
+  var WARN_MS = TIMING.warnSeconds * 1000;
+  var EXAM_MS = TIMING.examSeconds * 1000;
+  var GAP_POINTS = 50;    // what naming the gap is worth, before the streak multiplier
+  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
   var HEARTS = 3;
   var ROUNDS = 8;         // cards drawn from the pool before the boss
   var KEYS = 'ABCD';
@@ -265,8 +327,8 @@ const LEVELS = [
   }
 
   var screens = {
-    title: byId('screen-title'), select: byId('screen-select'), play: byId('screen-play'),
-    exam: byId('screen-exam'), end: byId('screen-end')
+    title: byId('screen-title'), select: byId('screen-select'), howto: byId('screen-howto'),
+    play: byId('screen-play'), exam: byId('screen-exam'), end: byId('screen-end')
   };
   var levelList = byId('levelList');
   var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
@@ -276,8 +338,10 @@ const LEVELS = [
   var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
   var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
   var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+  var kbdRow = byId('kbdRow'), graphRead = byId('graphRead');
+  var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), howtoDemoEl = byId('howtoDemo');
 
-  var graph = ArcadeGraph.create(graphWrap, { market: 'adas', gauges: true });
+  var graph = ArcadeGraph.create(graphWrap, { market: 'adas', gauges: true, readout: graphRead });
 
   /** The run in progress. `token` is what tells an awaiting round it has been abandoned. */
   var run = null;
@@ -292,9 +356,16 @@ const LEVELS = [
 
   /* ===== SCREENS ===== */
 
-  /** @param {string} name a key of `screens` */
+  /** Swap screens, deafen the page for a moment, and take the keyboard with you.
+   *  The guard is what stops a double tap doing two things: the second `click` of a double tap is
+   *  delivered after the swap, on whatever now occupies that coordinate — the next screen's back
+   *  button in the identical 48 px box, or a freshly rendered exam choice. The focus move is what
+   *  stops a keyboard restarting at the top of the document on every navigation.
+   *  @param {string} name a key of `screens` */
   function show(name) {
     Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+    Arcade.guardTaps();
+    Arcade.focusScreen(screens[name]);
   }
 
   /** Abandon whatever round, gap tap or sprint question is awaiting an answer, and leave the graph
@@ -307,6 +378,7 @@ const LEVELS = [
     if (exam && exam.stop) exam.stop();
     ackNow();
     hideSheet();
+    showKbdGap(false);
     graph.lock();
     Arcade.voice.stop();
   }
@@ -317,9 +389,18 @@ const LEVELS = [
   function loadProgress() {
     var p = Arcade.store.get('arcade.shift.progress', null);
     if (!p || typeof p !== 'object') p = {};
+    // Every record is checked, not just the map that holds them. A hand-edited or half-written
+    // `{"levels":{"1":5}}` used to reach `rec.cleared = true` on a number, which throws under
+    // 'use strict' out of an un-caught async chain: no CLEAR screen, the play screen frozen with
+    // the graph locked, and only a reload to get out. A junk record is simply not a record.
+    var levels = {};
+    var raw = p.levels && typeof p.levels === 'object' ? p.levels : {};
+    Object.keys(raw).forEach(function (key) {
+      if (raw[key] && typeof raw[key] === 'object') levels[key] = raw[key];
+    });
     return {
       unlocked: typeof p.unlocked === 'number' && p.unlocked >= 1 ? p.unlocked : 1,
-      levels: p.levels && typeof p.levels === 'object' ? p.levels : {}
+      levels: levels
     };
   }
 
@@ -548,7 +629,10 @@ const LEVELS = [
     sheet.className = 'sheet ' + kind + ' open';
   }
 
-  function hideSheet() { sheet.classList.remove('open'); }
+  // The sheet is `position: fixed` below the viewport when it is closed, so a button left displayed
+  // inside it stays tabbable off screen for the rest of the session: a keyboard user on the level
+  // list tabs into a control they cannot see or scroll to.
+  function hideSheet() { sheet.classList.remove('open'); sheetBtn.style.display = 'none'; }
 
   /** @type {(() => void)|null} */ var ackResolve = null;
   function ackNow() {
@@ -583,7 +667,9 @@ const LEVELS = [
   function roundClock(ms) {
     var expired = false, dragging = false, extended = false;
     /** @type {((value:any) => void)|null} */ var waiting = null;
-    var timer = Arcade.timerBar(timerEl, ms, { onEnd: atZero, onTick: function (left) { if (left <= 0) atZero(); } });
+    var timer = Arcade.timerBar(timerEl, ms, {
+      warnAt: WARN_MS, onEnd: atZero, onTick: function (left) { if (left <= 0) atZero(); }
+    });
 
     /** @param {any} value */
     function handOver(value) {
@@ -643,7 +729,7 @@ const LEVELS = [
     /** @type {(value:any) => void} */ var settle = function () { };
     var answer = new Promise(function (resolve) { settle = resolve; });
     var done = false;
-    var timer = Arcade.timerBar(timerEl, ms, { onEnd: function () { finish(null); } });
+    var timer = Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: function () { finish(null); } });
     /** @param {any} value */
     function finish(value) {
       if (done) return;
@@ -654,7 +740,22 @@ const LEVELS = [
     }
     graph.on('gap', finish);
     timer.start();
-    return { answer: answer, stop: function () { finish(null); } };
+    return {
+      answer: answer,
+      pause: function () { if (!done) timer.pause(); },
+      resume: function () { if (!done) timer.resume(); },
+      stop: function () { finish(null); }
+    };
+  }
+
+  /** HOW TO PLAY is allowed to be opened mid-round, and reading the rules is not a speed test. */
+  function pauseClocks() {
+    if (run && run.clock) run.clock.pause();
+    if (run && run.gapClock) run.gapClock.pause();
+  }
+  function resumeClocks() {
+    if (run && run.clock) run.clock.resume();
+    if (run && run.gapClock) run.gapClock.resume();
   }
 
   /** Everything a wrong answer costs, before the WHY line. */
@@ -679,6 +780,147 @@ const LEVELS = [
     return bonus;
   }
 
+  /* ===== KEYBOARD ANSWERS — the same releases a drag makes, from a row of real buttons =====
+     The graph is a hit plane and three svg rects: a Chromebook driven by keyboard, or any student
+     on a screen reader, could reach every menu in the game and answer not one card. These buttons
+     call straight into the engine, which springs the curve exactly where a drag would have snapped
+     it and emits the identical `release` payload, so nothing downstream can tell them apart. */
+
+  /** @type {any} */ var kbdGap = null;
+
+  /** @param {string} label @param {string} aria @param {() => void} onClick @returns {any} */
+  function kbdBtn(label, aria, onClick) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn btn-ghost';
+    b.textContent = label;
+    b.setAttribute('aria-label', aria);
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  /** One pair of buttons per curve this level lets the student touch, plus the movement-along pair
+   *  on the levels whose pool hides trick cards. @param {any} L */
+  function buildKbdRow(L) {
+    showKbdGap(false);
+    kbdRow.textContent = '';
+    L.draggable.forEach(function (curve) {
+      kbdRow.appendChild(kbdBtn(curve + ' ←', curve + ' shifts left', function () { graph.answer('shift', curve, 'L'); }));
+      kbdRow.appendChild(kbdBtn(curve + ' →', curve + ' shifts right', function () { graph.answer('shift', curve, 'R'); }));
+    });
+    if (L.pool.some(function (card) { return card.kind === 'move'; })) {
+      var along = L.draggable[0];
+      kbdRow.appendChild(kbdBtn('along ↑', 'Movement along the curve, up', function () { graph.answer('move', along, 'up'); }));
+      kbdRow.appendChild(kbdBtn('along ↓', 'Movement along the curve, down', function () { graph.answer('move', along, 'down'); }));
+    }
+  }
+
+  /** The three gap buttons, up only while the graph is asking. @param {boolean} on */
+  function showKbdGap(on) {
+    if (kbdGap) {
+      var hadFocus = kbdGap.contains(document.activeElement);
+      if (kbdGap.parentNode) kbdGap.parentNode.removeChild(kbdGap);
+      kbdGap = null;
+      // Do not drop a keyboard user out of the row just because the beat ended under them.
+      if (hadFocus && kbdRow.firstChild) kbdRow.firstChild.focus();
+    }
+    if (!on) return;
+    kbdGap = document.createElement('span');
+    kbdGap.className = 'row wrap';
+    [['left of Yf', 'recessionary', 'Recessionary gap, left of the full-employment line'],
+      ['on Yf', 'none', 'No gap: output is at full employment'],
+      ['right of Yf', 'inflationary', 'Inflationary gap, right of the full-employment line']
+    ].forEach(function (entry) {
+      kbdGap.appendChild(kbdBtn(entry[0], entry[2], function () { graph.answerGap(entry[1]); }));
+    });
+    kbdRow.appendChild(kbdGap);
+  }
+
+  /* ===== HOW TO PLAY — shown once per level, and from every ? button =====
+     Opened from the play screen it pauses the round clock, because reading the rules is not a
+     speed test; the demo above the cards is the one thing a still card cannot show. */
+
+  /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {any} */ var demo = null;
+  var demoTimer = 0, demoOn = false, demoRight = true;
+
+  /** @param {number} n @returns {boolean} */
+  function howtoSeen(n) {
+    var saved = Arcade.store.get('arcade.shift.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen : [];
+    return seen.indexOf(n) >= 0;
+  }
+
+  /** @param {number} n */
+  function markHowtoSeen(n) {
+    var saved = Arcade.store.get('arcade.shift.howto', null);
+    var seen = saved && Array.isArray(saved.seen)
+      ? saved.seen.filter(function (v) { return typeof v === 'number'; })
+      : [];
+    if (seen.indexOf(n) < 0) seen.push(n);
+    Arcade.store.set('arcade.shift.howto', { seen: seen });
+  }
+
+  function runDemo() {
+    if (!demoOn || !demo) return;
+    demo.animateTo({ shifts: { AD: demoRight ? 12 : 0 } }).then(function () {
+      demoRight = !demoRight;
+      if (!demoOn) return;
+      demoTimer = setTimeout(runDemo, 700);
+    });
+  }
+
+  function startDemo() {
+    if (!demo) {
+      demo = ArcadeGraph.create(howtoDemoEl, { market: 'adas', show: { LRAS: false } });
+      demo.lock();                       // it is a picture that moves, not a second board to play
+    }
+    demoOn = true;
+    demoRight = true;
+    runDemo();
+  }
+
+  function stopDemo() {
+    demoOn = false;
+    if (demoTimer) { clearTimeout(demoTimer); demoTimer = 0; }
+  }
+
+  /** @param {number} level the level being started, or 0 for every card */
+  function paintHowto(level) {
+    howtoTitle.textContent = level ? 'How to play · Level ' + level : 'How to play';
+    howtoCards.textContent = '';
+    HOWTO.forEach(function (card) {
+      if (level && card.levels && card.levels.indexOf(level) < 0) return;
+      var panel = document.createElement('div');
+      panel.className = 'panel howto-card';
+      var emoji = fill('howto-emoji', card.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      panel.appendChild(emoji);
+      var body = fill('', '');
+      var head = fill('howto-head', card.head + ' ');
+      if (card.levels) head.appendChild(chip('tag', 'Level ' + card.levels.join(' & ')));
+      body.appendChild(head);
+      body.appendChild(fill('howto-body', card.body));
+      panel.appendChild(body);
+      howtoCards.appendChild(panel);
+    });
+  }
+
+  /** @param {number} level @param {() => void} after what closing the screen does */
+  function openHowto(level, after) {
+    howtoAfter = after;
+    paintHowto(level);
+    show('howto');
+    startDemo();
+  }
+
+  function closeHowto() {
+    stopDemo();
+    var after = howtoAfter;
+    howtoAfter = null;
+    if (after) after();
+  }
+
   /* ===== ROUND LOOP ===== */
 
   /** The Level 3 beat: once the consequence has played, name the gap it left behind. Five seconds,
@@ -689,12 +931,18 @@ const LEVELS = [
     var truth = gapNow();
     hintEl.textContent = 'Tap the gap — left of Yf, right of Yf, or the line itself';
     graph.askGap();
+    showKbdGap(true);
     run.gapClock = gapClock(GAP_MS);
     var ans = await run.gapClock.answer;
     if (!alive(token)) return;
     var ok = !!ans && ans.answer === truth;
     graph.markGap(ok);
     run.asked += 1;
+    // Tracked the moment it is judged, not after the sheet: quitting during the WHY beat used to
+    // drop the answer out of arcade.mastery entirely, and the heat map is the one thing the
+    // teacher actually reads.
+    Arcade.track(card.ced, 2, ok);
+    showKbdGap(false);
     if (ok) {
       Arcade.sfx.play('coin');
       award(Math.round(GAP_POINTS * run.streak.mult));
@@ -709,7 +957,6 @@ const LEVELS = [
     }
     if (!alive(token)) return;
     hideSheet();
-    Arcade.track(card.ced, 2, ok);
   }
 
   /** One card: the headline, the clock, the drag, the verdict, and always the true consequence.
@@ -730,6 +977,7 @@ const LEVELS = [
 
     var ok = judge(ans, card);
     run.asked += 1;
+    Arcade.track(card.ced, card.skill, ok);   // before the sheet and the consequence; see playGap
     if (ok) {
       Arcade.sfx.play('correct');
       award(Math.round((100 + speedBonus(left, L.time, 50)) * run.streak.mult));
@@ -749,7 +997,6 @@ const LEVELS = [
     hideSheet();
     await graph.animateTo(card.result);          // ~1.2 s of true consequence; a tap skips it
     if (!alive(token)) return;
-    Arcade.track(card.ced, card.skill, ok);
     if (card.gap) await playGap(card, token);    // trick cards carry no gap, so they never ask
   }
 
@@ -886,7 +1133,7 @@ const LEVELS = [
 
     var picked = await new Promise(function (resolve) {
       var settled = false;
-      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { onEnd: function () { finish(-1); } });
+      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { warnAt: WARN_MS, onEnd: function () { finish(-1); } });
       /** @param {number} i the choice tapped, or -1 when the clock won */
       function finish(i) {
         if (settled) return;
@@ -920,7 +1167,10 @@ const LEVELS = [
     if (!L || !L.ready || !L.exam || !L.exam.length) return;
     abortRun();
     show('exam');
-    runExam(L);
+    runExam(L).catch(function () {
+      Arcade.toast('Something went wrong — back to the levels');
+      goSelect();
+    });
   }
 
   /** @param {any} L */
@@ -962,6 +1212,7 @@ const LEVELS = [
       ]
     });
     showTitle(panel, beforeTitle);
+    Arcade.focusScreen(screens.end);     // the panel did not exist when show('end') ran
     if (right === total) Arcade.confetti();
   }
 
@@ -972,8 +1223,22 @@ const LEVELS = [
     var L = levelOf(n);
     if (!L || !L.ready) return;
     abortRun();
+    if (!howtoSeen(n)) {                 // the first run of a level opens on the rules
+      markHowtoSeen(n);
+      openHowto(n, function () { beginLevel(L); });
+      return;
+    }
+    beginLevel(L);
+  }
+
+  /** @param {any} L a fire-and-forget async loop needs a catch, or a throw inside it becomes an
+   *  unhandled rejection: the play screen stays up, locked and clockless, until a reload. */
+  function beginLevel(L) {
     show('play');
-    playLevel(L);
+    playLevel(L).catch(function () {
+      Arcade.toast('Something went wrong — back to the levels');
+      goSelect();
+    });
   }
 
   /** @param {any} L */
@@ -987,6 +1252,7 @@ const LEVELS = [
     run.streak.render(comboEl);
     scoreEl.textContent = '0';
     hideSheet();
+    buildKbdRow(L);
     graph.setVisible('LRAS', !!L.showLRAS);
     graph.setCard({ start: { AD: 0, SRAS: 0 }, draggable: L.draggable });
 
@@ -1056,6 +1322,7 @@ const LEVELS = [
       ]
     });
     showTitle(panel, beforeTitle);
+    Arcade.focusScreen(screens.end);
     Arcade.confetti();
   }
 
@@ -1075,6 +1342,7 @@ const LEVELS = [
         { label: 'Levels', onClick: goSelect }
       ]
     });
+    Arcade.focusScreen(screens.end);
   }
 
   function goSelect() {
@@ -1088,6 +1356,8 @@ const LEVELS = [
 
   LEVELS.forEach(function (L) {                  // every card's true outcome, computed once at load
     if (!L.ready) return;
+    L.time = TIMING.cardSeconds[L.n] * 1000;     // the level's clocks, from the one tunable block
+    L.boss.time = TIMING.bossSeconds[L.n] * 1000;
     L.pool.forEach(function (card) { card.result = computeResult(card); });
     L.boss.result = computeResult(L.boss);
     // One hint for every card in a level that hides trick cards in its pool, so the hint itself
@@ -1115,10 +1385,22 @@ const LEVELS = [
     });
   });
 
+  byId('examPace').textContent = TIMING.examSeconds + ' s';
+
   byId('playBtn').addEventListener('click', goSelect);
   byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
   byId('playBack').addEventListener('click', goSelect);
   byId('examBack').addEventListener('click', goSelect);
+  byId('howtoBack').addEventListener('click', closeHowto);
+  byId('howtoGo').addEventListener('click', closeHowto);
+  byId('selectHowto').addEventListener('click', function () {
+    openHowto(0, function () { show('select'); });        // no level is being started: show them all
+  });
+  byId('playHowto').addEventListener('click', function () {
+    if (!run) return;
+    pauseClocks();
+    openHowto(run.L.n, function () { show('play'); resumeClocks(); });
+  });
 
   paintSelect();
   var deepLink = parseInt(String(Arcade.qs('level', '')), 10);

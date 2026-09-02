@@ -1002,6 +1002,7 @@ var Arcade = (function () {
       var h = document.createElement('h2');
       h.className = 'h1';
       h.textContent = o.title;
+      h.tabIndex = -1;          // so focusScreen can land the keyboard on the verdict, not on <body>
       panel.appendChild(h);
     }
     if (o.sub) panel.appendChild(make('muted', o.sub));

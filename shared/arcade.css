@@ -694,4 +694,6 @@ html.big-type .podium { display: block; order: -1; }
 .howto-body { color: var(--text2); font-size: 15px; line-height: 1.4; }
 .howto-demo { max-width: 200px; margin: 0 auto; }
 .howto-caption { text-align: center; }
-.topbar .howto-btn { width: 48px; height: 48px; flex: 0 0 48px; padding: 0; margin-left: auto; }
+.topbar .howto-btn { width: 48px; height: 48px; flex: 0 0 48px; padding: 0; }
+/* A topbar title takes the slack, so the ? beside it lands on the right edge and not on its heels. */
+.topbar .panel-title { flex: 1 1 auto; min-width: 0; }
