@@ -13,6 +13,9 @@ var ArcadeGraph = (function () {
   var DEAD = 8;       // a drag shorter than this meant nothing
   var HIT = 8.3;      // how near a finger must pass a curve to grab it (24 px)
   var DOT_HIT = 7;    // how near a finger must land on the equilibrium dot to grab it
+  var ZONE_BAND = 50; // the invisible "at full employment" tap band, in svg units (~48 css px at
+                      // portrait 360). The mobile 48 px rule beats the LRAS line's own width; the
+                      // visible line is untouched.
 
   var VB = 360;                   // the graph svg is a 360-unit square
   var PLOT_X = 48, PLOT_Y = 16;   // the plot's top-left corner inside it
@@ -397,7 +400,7 @@ var ArcadeGraph = (function () {
     plot.appendChild(zonesG);
     var zoneL = el('rect', { x: 0, y: 0, width: 0, height: PLOT }, 'zone left');
     var zoneR = el('rect', { x: 0, y: 0, width: 0, height: PLOT }, 'zone right');
-    var zoneM = el('rect', { x: 0, y: 0, width: 12, height: PLOT }, 'zone lras');
+    var zoneM = el('rect', { x: 0, y: 0, width: ZONE_BAND, height: PLOT }, 'zone lras');
     zonesG.appendChild(zoneL); zonesG.appendChild(zoneR); zonesG.appendChild(zoneM);
 
     var hit = el('rect', { x: 0, y: 0, width: PLOT, height: PLOT }, 'hit-plane');
@@ -510,9 +513,10 @@ var ArcadeGraph = (function () {
 
       if (market.ref) {
         var rx = gx(refX());
-        attr(zoneL, 'width', n2(Math.max(0, rx - 6)));
-        attr(zoneR, 'x', n2(rx + 6)); attr(zoneR, 'width', n2(Math.max(0, PLOT - rx - 6)));
-        attr(zoneM, 'x', n2(rx - 6));
+        var band = ZONE_BAND / 2;
+        attr(zoneL, 'width', n2(Math.max(0, rx - band)));
+        attr(zoneR, 'x', n2(rx + band)); attr(zoneR, 'width', n2(Math.max(0, PLOT - rx - band)));
+        attr(zoneM, 'x', n2(rx - band));
         if (tickText) attr(tickText, 'x', n2(PLOT_X + rx));
         if (shadeOn) {
           attr(shade, 'x', n2(Math.min(dx, rx))); attr(shade, 'width', n2(Math.abs(dx - rx)));
@@ -590,16 +594,16 @@ var ArcadeGraph = (function () {
       ev.preventDefault();
       if (anim) { anim.finish(); emit('skip', {}); return; }
       if (locked || drag) return;
-      if (settle) { settle.finish(); settle = null; }   // land the last verdict before taking a new one
+      if (settle) { var last = settle; settle = null; last.finish(); }   // land the last verdict first
       var p = toUnits(ev);
       var dot = dotPos();
       // alongCurve() here only asks whether anything is slideable at all; the drag picks the curve.
       if (Math.hypot(p.x - dot.x, p.y - dot.y) <= DOT_HIT && alongCurve(1, 0)) {
-        drag = { kind: 'dot', curve: null, startX: p.x, startY: p.y, dotX: dot.x, dotY: dot.y, hadPoint: !!point };
+        drag = { kind: 'dot', pointerId: ev.pointerId, curve: null, startX: p.x, startY: p.y, dotX: dot.x, dotY: dot.y, hadPoint: !!point };
       } else {
         var name = curveUnder(p);
         if (!name) return;
-        drag = { kind: 'curve', curve: name, startX: p.x, startShift: shifts[name] };
+        drag = { kind: 'curve', pointerId: ev.pointerId, curve: name, startX: p.x, startShift: shifts[name] };
         parts[name].g.classList.add('grabbed');
       }
       try { hit.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety, not a need */ }
@@ -609,7 +613,7 @@ var ArcadeGraph = (function () {
     }
 
     function onMove(ev) {
-      if (!drag) return;
+      if (!drag || ev.pointerId !== drag.pointerId) return;   // a second finger is not this drag
       ev.preventDefault();
       var p = toUnits(ev);
       if (drag.kind === 'curve') {
@@ -663,7 +667,7 @@ var ArcadeGraph = (function () {
     }
 
     function onUp(ev) {
-      if (!drag) return;
+      if (!drag || ev.pointerId !== drag.pointerId) return;   // only the finger that started it ends it
       var d = drag;
       drag = null;
       try { hit.releasePointerCapture(ev.pointerId); } catch (err) { /* already gone */ }
@@ -748,12 +752,14 @@ var ArcadeGraph = (function () {
 
     /* --- animation, cards and the rest of the API --- */
 
-    /** Cutting an animation short still settles its promise, so a game that awaits animateTo()
-     *  is never left hanging by the next setCard(). */
+    /** Cutting motion short never swallows a result: an interrupted animateTo() still settles its
+     *  promise, and an interrupted release spring still lands on its target and emits `release`, so
+     *  a game awaiting either is never left hanging by the next setCard(). Both handles are cleared
+     *  before they fire, because a `release` listener calling setCard() re-enters here. */
     function stopAnims() {
       if (anim) { anim.cancel(); anim = null; }
       if (animResolve) { var pending = animResolve; animResolve = null; pending(); }
-      if (settle) { settle.cancel(); settle = null; }
+      if (settle) { var landing = settle; settle = null; landing.finish(); }
     }
 
     /** Spring every shift, the point and the gauges to a new state in one phase.
@@ -858,10 +864,10 @@ var ArcadeGraph = (function () {
     }
 
     function destroy() {
+      listeners = {};   // before stopAnims(), so a torn-down graph reports nothing to nobody
       stopAnims();
       hit.removeEventListener('pointerdown', onDown); hit.removeEventListener('pointermove', onMove);
       hit.removeEventListener('pointerup', onUp); hit.removeEventListener('pointercancel', onUp);
-      listeners = {};
       if (root.parentNode) root.parentNode.removeChild(root);
       if (strip && strip.parentNode) strip.parentNode.removeChild(strip);
     }
