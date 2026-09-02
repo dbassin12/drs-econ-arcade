@@ -1155,8 +1155,9 @@ const HOWTO = [
   /** The briefing's own button: the rules the first time, then straight to the chair. */
   function takeTheGavel() {
     if (howtoSeen()) { startRun(); return; }
-    markHowtoSeen();
-    openHowto(startRun, function () { show('briefing'); });
+    // Marked by "Got it", not by arriving: backing out with ← leaves the rules unread, and the
+    // next "Take the gavel" should still open on them.
+    openHowto(function () { markHowtoSeen(); startRun(); }, function () { show('briefing'); });
   }
 
   /* ===== ERA AND BRIEFING ===== */
