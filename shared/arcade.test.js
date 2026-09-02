@@ -269,7 +269,7 @@ test('readinessCode is base64 of the pipe-delimited summary', () => {
   Arcade.setInitials('DSB');
   Arcade.store.set('arcade.mastery', MASTERY);
   const code = Arcade.readinessCode();
-  assert.equal(atob(code).split('|').slice(0, 9).join('|'), 'DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36');
+  assert.equal(atob(code).split('|').slice(0, 9).join('|'), 'DSB|2|8/10|0/2|12/22|2/2|0/0|0/0|36');
   Arcade.store.remove('arcade.mastery');
   Arcade.store.remove('arcade.initials');
 });
@@ -280,7 +280,7 @@ test('decodeReadinessCode round-trips a code', () => {
   const decoded = Arcade.decodeReadinessCode(Arcade.readinessCode());
   assert.deepEqual(decoded, {
     initials: 'ZQX',
-    version: 1,
+    version: 2,
     units: [[8, 10], [0, 2], [12, 22], [2, 2], [0, 0], [0, 0]],
     answered: 36
   });
@@ -289,16 +289,16 @@ test('decodeReadinessCode round-trips a code', () => {
 });
 
 test('decodeReadinessCode normalises the initials it hands back', () => {
-  const decoded = Arcade.decodeReadinessCode(signed('d b|1|8/10|0/0|0/0|0/0|0/0|0/0|10'));
+  const decoded = Arcade.decodeReadinessCode(signed('d b|2|8/10|0/0|0/0|0/0|0/0|0/0|10'));
   assert.equal(decoded.initials, 'DB?', 'three A-Z characters, padded, exactly as initials() gives them');
-  assert.equal(Arcade.decodeReadinessCode(signed('|1|0/0|0/0|0/0|0/0|0/0|0/0|0')).initials, '???');
+  assert.equal(Arcade.decodeReadinessCode(signed('|2|0/0|0/0|0/0|0/0|0/0|0/0|0')).initials, '???');
 });
 
 test('decodeReadinessCode returns null on anything malformed', () => {
   assert.equal(Arcade.decodeReadinessCode(''), null);
   assert.equal(Arcade.decodeReadinessCode('not base64 !!'), null);
-  assert.equal(Arcade.decodeReadinessCode(signed('DSB|1|8/10|0/0|0/0')), null);
-  assert.equal(Arcade.decodeReadinessCode(signed('DSB|1|a/b|0/0|0/0|0/0|0/0|0/0|7')), null);
+  assert.equal(Arcade.decodeReadinessCode(signed('DSB|2|8/10|0/0|0/0')), null);
+  assert.equal(Arcade.decodeReadinessCode(signed('DSB|2|a/b|0/0|0/0|0/0|0/0|0/0|7')), null);
   assert.equal(Arcade.decodeReadinessCode(null), null);
 });
 
@@ -334,7 +334,7 @@ test('readinessCode appends a six-character digest as a tenth field', () => {
 });
 
 test('a code whose numerator has been edited no longer decodes', () => {
-  const honest = 'DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36';
+  const honest = 'DSB|2|8/10|0/2|12/22|2/2|0/0|0/0|36';
   assert.ok(Arcade.decodeReadinessCode(signed(honest)), 'the honest code decodes');
   const forged = honest.replace('8/10', '10/10');
   assert.equal(Arcade.decodeReadinessCode(btoa(forged + '|' + digestOf(honest))), null,
@@ -344,12 +344,25 @@ test('a code whose numerator has been edited no longer decodes', () => {
 });
 
 test('a code with no digest at all is rejected', () => {
-  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36')), null,
+  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|2|8/10|0/2|12/22|2/2|0/0|0/0|36')), null,
     'the old nine-field code no longer decodes');
-  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36|')), null,
+  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|2|8/10|0/2|12/22|2/2|0/0|0/0|36|')), null,
     'nor does an empty digest field');
-  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36|zzzzzz')), null,
+  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|2|8/10|0/2|12/22|2/2|0/0|0/0|36|zzzzzz')), null,
     'nor a wrong one');
+});
+
+test('the code is version 2, and a correctly signed version 1 is still refused', () => {
+  Arcade.setInitials('DSB');
+  Arcade.store.set('arcade.mastery', MASTERY);
+  assert.equal(atob(Arcade.readinessCode()).split('|')[1], '2', 'the digest changed the payload shape');
+  Arcade.store.remove('arcade.mastery');
+  Arcade.store.remove('arcade.initials');
+  // A wave-2 code carried a valid digest but still said version 1. The version is what tells a
+  // reader which payload shape it is holding, so it has to move when the shape does.
+  assert.equal(Arcade.decodeReadinessCode(signed('DSB|1|8/10|0/0|0/0|0/0|0/0|0/0|10')), null);
+  assert.equal(Arcade.decodeReadinessCode(signed('DSB|3|8/10|0/0|0/0|0/0|0/0|0/0|10')), null);
+  assert.ok(Arcade.decodeReadinessCode(signed('DSB|2|8/10|0/0|0/0|0/0|0/0|0/0|10')));
 });
 
 /* ===== medals and stamps ===== */

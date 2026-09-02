@@ -568,10 +568,15 @@ var Arcade = (function () {
     return ('00000' + h.toString(36)).slice(-6);
   }
 
+  /** The payload shape's version. It moved to 2 when the digest was added: version 1 is a
+   *  nine-field code with no digest, and nothing that reads a code should have to guess which
+   *  shape it is holding. */
+  var CODE_VERSION = 2;
+
   /** @returns {string} base64 of `initials|version|r/t ×6|answered|digest`, for pasting into Schoology */
   function readinessCode() {
     var r = readiness();
-    var parts = [initials(), '1'];
+    var parts = [initials(), String(CODE_VERSION)];
     for (var i = 0; i < r.units.length; i += 1) parts.push(r.units[i].right + '/' + r.units[i].total);
     parts.push(String(r.answered));
     var payload = parts.join('|');
@@ -579,8 +584,8 @@ var Arcade = (function () {
   }
 
   /** @param {*} code @returns {{initials:string, version:number, units:number[][], answered:number}|null}
-   *    null for anything that is not a code this build signed — including every unsigned
-   *    nine-field code from before the digest existed. */
+   *    null for anything that is not a version 2 code this build signed — including every unsigned
+   *    nine-field code from before the digest existed, and any code still claiming version 1. */
   function decodeReadinessCode(code) {
     if (typeof code !== 'string' || !code) return null;
     var raw;
@@ -591,7 +596,7 @@ var Arcade = (function () {
     if (parts[9] !== codeDigest(payload)) return null;
     var version = Number(parts[1]);
     var answered = Number(parts[8]);
-    if (!Number.isFinite(version) || !Number.isFinite(answered)) return null;
+    if (version !== CODE_VERSION || !Number.isFinite(answered)) return null;
     var units = [];
     for (var i = 2; i <= 7; i += 1) {
       var pair = parts[i].split('/');
@@ -1076,7 +1081,8 @@ var Arcade = (function () {
     var head = make('end-head');
     // No medal, no slot. A dashed empty circle reads as a medal the run failed to fill, which is not
     // what a Fed term (graded by the AP stamp) or a sub-bronze clear is saying.
-    if (o.medal) head.appendChild(make('medal ' + safeMedal(o.medal), String(o.medal).charAt(0).toUpperCase()));
+    var medal = safeMedal(o.medal);
+    if (medal !== 'none') head.appendChild(make('medal ' + medal, medal.charAt(0).toUpperCase()));
     var figures = make('');
     figures.appendChild(make('score end-score mono', String(o.score === undefined ? 0 : o.score)));
     // Labelled, not bare: "0" over "0% correct" on a zero-score fail scans as one number, "00%".

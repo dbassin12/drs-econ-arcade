@@ -217,43 +217,66 @@ test('the geometry the engine hit-tests with is exported', () => {
   assert.equal(GEOM.VB, 360);
   assert.equal(GEOM.PLOT, 290);
   assert.equal(GEOM.DEAD, DEAD);
-  assert.equal(typeof GEOM.DOT_HIT, 'number');
+  assert.equal(typeof GEOM.DOT_HIT_WIDE, 'number');
+  assert.equal(typeof GEOM.DOT_HIT_NARROW, 'number');
   assert.equal(typeof GEOM.HIT, 'number');
 });
 
-test('the equilibrium dot is at least a 48 px target at the 336 px render', () => {
-  const across = GEOM.DOT_HIT * 2 * PX_PER_UNIT;
+test('the wide dot target is at least 48 px across at the 336 px render', () => {
+  const across = GEOM.DOT_HIT_WIDE * 2 * PX_PER_UNIT;
   assert.ok(across >= 48, 'the dot is ' + across.toFixed(1) + ' px across, under the house 48 px rule');
 });
 
-test('the dot outranks the curves that cross under it', () => {
-  assert.ok(GEOM.DOT_HIT > GEOM.HIT,
-    'a finger inside the dot target must not be closer to a curve than to the dot it landed on');
+test('the wide dot outranks the curves crossing under it; the narrow one deliberately does not', () => {
+  assert.ok(GEOM.DOT_HIT_WIDE > GEOM.HIT,
+    'inside the wide target the dot must beat the curve the finger is also near');
+  assert.ok(GEOM.DOT_HIT_NARROW < GEOM.HIT,
+    'the narrow radius stays inside the curve radius, so on a level whose pool has no move card '
+    + 'a drag starting near the equilibrium is still read as the shift the student meant');
 });
 
-test('a near miss on the dot grabs the dot, not the curve running under it', () => {
-  // 20 css px out — comfortably inside the target, and squarely inside the old curve radius.
+test('a 20 px near miss grabs the dot on a wide card', () => {
+  // 20 css px out — comfortably inside the wide target, and squarely inside the curve radius.
   const off = 20 / PX_PER_UNIT;
-  assert.deepEqual(pickTarget({ x: 50 + off, y: 50 }, { x: 50, y: 50 }, { slideable: true, curve: 'AD' }),
+  assert.deepEqual(
+    pickTarget({ x: 50 + off, y: 50 }, { x: 50, y: 50 }, { slideable: true, curve: 'AD', radius: GEOM.DOT_HIT_WIDE }),
     { kind: 'dot', curve: null });
 });
 
+test('the same 20 px near miss grabs the curve on a narrow card', () => {
+  const off = 20 / PX_PER_UNIT;
+  assert.deepEqual(
+    pickTarget({ x: 50 + off, y: 50 }, { x: 50, y: 50 }, { slideable: true, curve: 'AD', radius: GEOM.DOT_HIT_NARROW }),
+    { kind: 'curve', curve: 'AD' });
+});
+
 test('a tap inside the dot target grabs nothing when there is nothing to slide along', () => {
-  assert.deepEqual(pickTarget({ x: 52, y: 50 }, { x: 50, y: 50 }, { slideable: false, curve: 'AD' }),
+  assert.deepEqual(
+    pickTarget({ x: 52, y: 50 }, { x: 50, y: 50 }, { slideable: false, curve: 'AD', radius: GEOM.DOT_HIT_WIDE }),
     { kind: 'none', curve: null }, 'inside the target it is the dot or nothing — never a curve');
 });
 
-test('the dot target ends where it says it does', () => {
+test('each dot target ends where it says it does', () => {
+  const dot = { x: 50, y: 50 };
+  const at = (d, radius) => pickTarget({ x: 50 + d, y: 50 }, dot, { slideable: true, curve: 'AD', radius: radius }).kind;
+  for (const radius of [GEOM.DOT_HIT_WIDE, GEOM.DOT_HIT_NARROW]) {
+    assert.equal(at(radius, radius), 'dot', 'the edge is inside at r=' + radius);
+    assert.equal(at(radius + 0.01, radius), 'curve', 'a hair outside falls through at r=' + radius);
+  }
+});
+
+test('an unspecified radius is the narrow one, the way the engine behaved before', () => {
   const dot = { x: 50, y: 50 };
   const at = (d) => pickTarget({ x: 50 + d, y: 50 }, dot, { slideable: true, curve: 'AD' }).kind;
-  assert.equal(at(GEOM.DOT_HIT), 'dot', 'the edge is inside');
-  assert.equal(at(GEOM.DOT_HIT + 0.01), 'curve', 'a hair outside falls through to the curve');
+  assert.equal(at(GEOM.DOT_HIT_NARROW), 'dot');
+  assert.equal(at(GEOM.DOT_HIT_NARROW + 0.01), 'curve');
 });
 
 test('outside the dot target the nearest grabbable curve wins, and nothing wins nothing', () => {
   const far = { x: 90, y: 20 };
-  assert.deepEqual(pickTarget(far, { x: 50, y: 50 }, { slideable: true, curve: 'SRAS' }),
+  const r = GEOM.DOT_HIT_WIDE;
+  assert.deepEqual(pickTarget(far, { x: 50, y: 50 }, { slideable: true, curve: 'SRAS', radius: r }),
     { kind: 'curve', curve: 'SRAS' });
-  assert.deepEqual(pickTarget(far, { x: 50, y: 50 }, { slideable: true, curve: null }),
+  assert.deepEqual(pickTarget(far, { x: 50, y: 50 }, { slideable: true, curve: null, radius: r }),
     { kind: 'none', curve: null });
 });

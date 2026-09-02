@@ -134,10 +134,15 @@
   </div>
 </div>
 
+<script>
+/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. First
+   statement of the first inline script, ahead of every other script on the page, the same as both
+   games: a frame-buster that runs after the app has loaded has already let the app load. */
+if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
+</script>
+
 <script src="shared/arcade.js"></script>
 <script>
-/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. */
-if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
 /* ================================================================================
    THE HUB — the one page students bookmark. Sections: elements · game cards ·
    readiness · Arcade Night · controls · boot.

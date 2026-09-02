@@ -577,7 +577,9 @@ html.big-type .podium { display: block; order: -1; }
 .eq { fill: var(--text); stroke: var(--bg); stroke-width: 3; }
 .eq-ghost { fill: var(--text2); opacity: .5; }
 /* The dot's "you can grab me" ring. Present only while the dot is actually draggable — the engine
-   puts .grabbable on the group — and never in the way of a finger. */
+   puts .grabbable on the group — and never in the way of a finger. Its radius is written by the
+   engine from the grab radius in force, so the ring IS the zone; only its opacity breathes, because
+   animating the radius would draw a circle that lies about where the target ends. */
 .eq-halo { fill: none; stroke: var(--text2); stroke-width: 1.5; opacity: 0; pointer-events: none; }
 .dot.grabbable .eq-halo { animation: eqPulse 2.4s ease-in-out infinite; }
 .guides line { stroke: var(--text3); stroke-dasharray: 4 4; }
@@ -640,8 +642,8 @@ html.big-type .podium { display: block; order: -1; }
   50% { box-shadow: 0 0 26px var(--green-glow), 0 0 48px rgba(88,204,2,0.15); }
 }
 @keyframes eqPulse {
-  0%, 100% { r: 11px; opacity: .18; }
-  50% { r: 17px; opacity: .42; }
+  0%, 100% { opacity: .16; }
+  50% { opacity: .40; }
 }
 @keyframes crack {
   0% { transform: rotate(0) scale(1.3); }

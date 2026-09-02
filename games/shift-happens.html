@@ -164,7 +164,8 @@ const HOWTO = [
   { emoji: '\u{1F449}', head: 'Tap the graph to skip ahead', body: 'After every answer the graph plays what really happened. One tap on it jumps straight to the end of that animation.' },
   { emoji: '\u{1F4C8}', head: 'SRAS joins AD', body: 'Two curves are live now, and the headline decides which one moves. This is also where the trick cards start.', levels: [2] },
   { emoji: '\u{1F4CF}', head: 'LRAS appears, then you name the gap', body: 'The purple line is full-employment output, Yf. After every shift you tap the gap: left of Yf is recessionary, right of Yf is inflationary, and the line itself means no gap at all.', levels: [3] },
-  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, both curves, one clock. Find both before it runs out.' },
+  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, one after the other: the second lights up when the first is solved. Find both before the clock runs out.', levels: [1] },
+  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, both curves, either order, one clock. Find both before it runs out.', levels: [2, 3] },
   { emoji: '\u{1F4DD}', head: 'Then the Exam Sprint', body: 'Three questions in the exam\u2019s own voice at the exam\u2019s own pace. It is optional \u2014 but a gold medal needs it.' }
 ];
 </script>
@@ -254,6 +255,7 @@ const HOWTO = [
         <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the level list">←</button>
         <h2 class="panel-title" tabindex="-1" data-focus>Exam Sprint</h2>
         <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+        <button type="button" class="btn btn-ghost howto-btn" id="examHowto" aria-label="How to play">?</button>
       </header>
       <div class="timer-bar" id="examTimer"></div>
       <div class="row">
@@ -376,9 +378,11 @@ const HOWTO = [
    *  button in the identical 48 px box, or a freshly rendered exam choice. The focus move is what
    *  stops a keyboard restarting at the top of the document on every navigation.
    *  @param {string} name a key of `screens` */
-  /** True once the page has shown a screen. The very first show() is the boot, not a screen change
-   *  anyone tapped for — a ?level= or ?era= deep link routes straight through it — so arming the
-   *  tap guard there only makes those two routes deaf for 350 ms after load. */
+  /** True once the page is past its boot. Only a ?level= deep link makes the boot call show() at
+   *  all — the title screen is already `active` in the markup — and arming the tap guard on that one
+   *  call would make the deep link deaf for 350 ms after load. Every other load sets this at the end
+   *  of boot, so the student's first tap on PLAY is guarded like any other screen change: it is the
+   *  most likely double tap in the whole app. */
   var booted = false;
 
   function show(name) {
@@ -801,10 +805,12 @@ const HOWTO = [
   function pauseClocks() {
     if (run && run.clock) run.clock.pause();
     if (run && run.gapClock) run.gapClock.pause();
+    if (exam && exam.pause) exam.pause();
   }
   function resumeClocks() {
     if (run && run.clock) run.clock.resume();
     if (run && run.gapClock) run.gapClock.resume();
+    if (exam && exam.resume) exam.resume();
   }
 
   /** Everything a wrong answer costs, before the WHY line. */
@@ -1030,7 +1036,7 @@ const HOWTO = [
   /** One card: the headline, the clock, the drag, the verdict, and always the true consequence.
    *  @param {any} card @param {any} L @param {number} token @returns {Promise<void>} */
   async function playRound(card, L, token) {
-    graph.setCard({ start: card.start, draggable: L.draggable });
+    graph.setCard({ start: card.start, draggable: L.draggable, dotGrab: L.dotGrab });
     paintCard(card, null);
     hintEl.textContent = L.hint;
     Arcade.sfx.play('card');
@@ -1096,7 +1102,7 @@ const HOWTO = [
 
   /** @param {any} card @param {any} L @param {number} token @returns {Promise<void>} */
   async function playBoss(card, L, token) {
-    graph.setCard({ start: card.start, draggable: L.draggable });
+    graph.setCard({ start: card.start, draggable: L.draggable, dotGrab: L.dotGrab });
     hintEl.textContent = card.anyOrder
       ? 'Drag the curve that moves — both headlines, either order'
       : 'Drag the curve that moves — one headline at a time';
@@ -1150,7 +1156,7 @@ const HOWTO = [
         // clears every green, so the solved curves are marked again — all but one the next move has
         // to drag itself, which the game cannot both freeze and ask for (Level 1: AD, then AD).
         var nextCurve = card.moves[firstPending(done)].curve;
-        graph.setCard({ start: graph.state().shifts, draggable: L.draggable });
+        graph.setCard({ start: graph.state().shifts, draggable: L.draggable, dotGrab: L.dotGrab });
         frozen.forEach(function (curve) { if (curve !== nextCurve) graph.accept(curve); });
       }
       paintCard(card, done);
@@ -1211,6 +1217,9 @@ const HOWTO = [
       }
       buttons.forEach(function (b, i) { b.addEventListener('click', function () { finish(i); }); });
       exam.stop = function () { finish(-1); };
+      // The ? button reaches the sprint's clock through these, the same way it reaches a round's.
+      exam.pause = function () { timer.pause(); };
+      exam.resume = function () { if (!settled) timer.resume(); };
       timer.start();
     });
     if (!examAlive(token)) return false;
@@ -1292,8 +1301,9 @@ const HOWTO = [
     if (!L || !L.ready) return;
     abortRun();
     if (!howtoSeen(n)) {                 // the first run of a level opens on the rules
-      markHowtoSeen(n);
-      openHowto(n, function () { beginLevel(L); }, goSelect);
+      // Marked by "Got it", not by arriving: ← means the rules were backed out of unread, and the
+      // next start of this level should still open on them.
+      openHowto(n, function () { markHowtoSeen(n); beginLevel(L); }, goSelect);
       return;
     }
     beginLevel(L);
@@ -1322,7 +1332,7 @@ const HOWTO = [
     hideSheet();
     buildKbdRow(L);
     graph.setVisible('LRAS', !!L.showLRAS);
-    graph.setCard({ start: { AD: 0, SRAS: 0 }, draggable: L.draggable });
+    graph.setCard({ start: { AD: 0, SRAS: 0 }, draggable: L.draggable, dotGrab: L.dotGrab });
 
     var cards = drawCards(L.pool, ROUNDS);
     for (var i = 0; i < cards.length; i += 1) {
@@ -1433,6 +1443,13 @@ const HOWTO = [
     L.hint = L.pool.some(function (card) { return card.trick; })
       ? 'Drag whatever the headline actually moves'
       : 'Drag the curve that moves';
+    // …and one grab radius for the same reason. A wide "dot or nothing" disc over the equilibrium
+    // is what a level needs when "movement along the curve" is one of its answers. On a level whose
+    // pool has no move card the answer is always a shift, so the same disc would only turn a drag
+    // that happened to start near the dot into a movement along — wrong, and a heart.
+    var moves = L.pool.some(function (card) { return kindOf(card) === 'move'; })
+      || L.boss.moves.some(function (m) { return kindOf(m) === 'move'; });
+    L.dotGrab = moves ? 'wide' : 'narrow';
   });
 
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
@@ -1469,6 +1486,11 @@ const HOWTO = [
     pauseClocks();
     openHowto(run.L.n, function () { show('play'); resumeClocks(); });
   });
+  byId('examHowto').addEventListener('click', function () {
+    if (!exam) return;
+    pauseClocks();                                        // the sprint's own clock stops too
+    openHowto(exam.L.n, function () { show('exam'); resumeClocks(); });
+  });
 
   paintSelect();
   var deepLink = parseInt(String(Arcade.qs('level', '')), 10);
@@ -1481,6 +1503,7 @@ const HOWTO = [
       Arcade.toast(target && target.ready ? 'Level ' + deepLink + ' is still locked' : 'Level ' + deepLink + ' is not built yet');
     }
   }
+  booted = true;      // whatever the boot did or did not show, the next one is the student's doing
 }());
 </script>
 

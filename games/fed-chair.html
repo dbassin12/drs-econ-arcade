@@ -426,9 +426,10 @@ const HOWTO = [
   /** Swap screens, deafen the page for a moment so a double tap cannot go two screens deep, and
    *  put the keyboard on the screen that just appeared instead of dropping it on <body>.
    *  @param {string} name a key of `screens` */
-  /** True once the page has shown a screen. The very first show() is the boot, not a screen change
-   *  anyone tapped for — a ?level= or ?era= deep link routes straight through it — so arming the
-   *  tap guard there only makes those two routes deaf for 350 ms after load. */
+  /** True once the page is past its boot. Only an ?era= deep link makes the boot call show() at
+   *  all — the title screen is already `active` in the markup — and arming the tap guard on that one
+   *  call would make the deep link deaf for 350 ms after load. Every other load sets this at the end
+   *  of boot, so the student's first tap on PLAY is guarded like any other screen change. */
   var booted = false;
 
   function show(name) {
@@ -1241,6 +1242,7 @@ const HOWTO = [
     show('era');
     Arcade.toast(era + ' is not built yet');
   }
+  booted = true;      // whatever the boot did or did not show, the next one is the student's doing
 }());
 </script>
 

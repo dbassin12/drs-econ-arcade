@@ -13,9 +13,15 @@ var ArcadeGraph = (function () {
   var CLAMP = 25;     // how far a curve may travel from its market position
   var DEAD = 8;       // a drag shorter than this meant nothing
   var HIT = 8.3;      // how near a finger must pass a curve to grab it (24 px)
-  var DOT_HIT = 14;   // how near a finger must land on the equilibrium dot to grab it: 14 graph
-                      // units is ~76 css px across at the 336 px render, well over the house 48 px
-                      // rule, and wider than HIT so the dot wins over the curves crossing under it
+  // How near a finger must land on the equilibrium dot to grab it — a per-card choice, because the
+  // right answer differs by level. WIDE is 14 graph units, ~76 css px across at the 336 px render:
+  // over the house 48 px rule and wider than HIT, so the dot beats the curves crossing under it.
+  // That is what a level whose pool hides "movement along" cards needs. NARROW is the original 7,
+  // deliberately inside HIT: on a level where the dot is never the answer, a wide disc parked over
+  // the equilibrium would only turn near-dot shift drags into movements along and cost a heart for
+  // each one. setCard({dotGrab:'wide'|'narrow'}) picks; the default is narrow.
+  var DOT_HIT_WIDE = 14;
+  var DOT_HIT_NARROW = 7;
   var ZONE_BAND = 60;   // the "at full employment" tap band, in svg units, when `none` is the right
                         // answer: ~48 css px, so the intended target obeys the mobile tap rule.
   var ZONE_WITH_GAP = 0;// ...and nothing at all once a gap is on screen: `none` is never the right
@@ -149,18 +155,21 @@ var ArcadeGraph = (function () {
     return { kind: 'none', curve: null, dir: null, magnitude: 0 };
   }
 
-  /** What a finger landing on the plot grabs. Inside DOT_HIT the dot is the only thing that can be
+  /** What a finger landing on the plot grabs. Inside `radius` the dot is the only thing that can be
    *  grabbed: it is the dot or it is nothing, never the curve running underneath. That fall-through
    *  was the trick card's undoing — on a card whose answer is "nothing shifts, the dot moves along
    *  the curve", a thumb landing a few px off the 13 px dot grabbed AD and shifted it, which is
-   *  precisely the wrong answer the card exists to catch, and it cost a heart for it.
+   *  precisely the wrong answer the card exists to catch, and it cost a heart for it. The cure is
+   *  wanted only where the disease is, which is why the radius is a parameter and not a constant.
    *  @param {{x:number, y:number}} p where the finger landed, in graph units
    *  @param {{x:number, y:number}} dot where the equilibrium dot is
-   *  @param {{slideable:boolean, curve:string|null}} avail whether anything can be slid along at
-   *    all, and the nearest grabbable curve
+   *  @param {{slideable:boolean, curve:string|null, radius?:number}} avail whether anything can be
+   *    slid along at all, the nearest grabbable curve, and the grab radius in graph units
+   *    (default: the narrow one)
    *  @returns {{kind:string, curve:string|null}} 'dot', 'curve' or 'none' */
   function pickTarget(p, dot, avail) {
-    if (Math.hypot(p.x - dot.x, p.y - dot.y) <= DOT_HIT) {
+    var radius = typeof avail.radius === 'number' ? avail.radius : DOT_HIT_NARROW;
+    if (Math.hypot(p.x - dot.x, p.y - dot.y) <= radius) {
       return avail.slideable ? { kind: 'dot', curve: null } : { kind: 'none', curve: null };
     }
     return avail.curve ? { kind: 'curve', curve: avail.curve } : { kind: 'none', curve: null };
@@ -361,6 +370,7 @@ var ArcadeGraph = (function () {
     /** @type {Object<string, boolean>} */ var accepted = {};
     /** @type {{curve:string, x:number}|null} */ var point = null;
     /** @type {string[]} */ var draggable = [];
+    var dotHit = DOT_HIT_NARROW;   // the grab radius this card asked for; see setCard
     /** @type {Object<string, Function[]>} */ var listeners = {};
     /** @type {any} */ var drag = null;
     /** @type {any} */ var anim = null;
@@ -428,10 +438,10 @@ var ArcadeGraph = (function () {
     var dotG = el('g', {}, 'dot');
     plot.appendChild(dotG);
     var eqGhost = el('circle', { r: 6 }, 'eq-ghost');
-    // The handle's affordance. Nothing else on the plot says "this is grabbable", and the trick
-    // cards are answered by grabbing it. It rides on .dot.grabbable, so it is only there while the
-    // dot can actually be moved, and reduced motion stops it pulsing.
-    var eqHalo = el('circle', { r: 13 }, 'eq-halo');
+    // The handle's affordance, drawn at the grab radius actually in force so the ring *is* the
+    // zone rather than a decoration near it. It rides on .dot.grabbable, so it is only there while
+    // the dot can really be moved, and reduced motion stops it pulsing.
+    var eqHalo = el('circle', { r: n2(DOT_HIT_NARROW * K) }, 'eq-halo');
     var eqDot = el('circle', { r: 7 }, 'eq');
     dotG.appendChild(eqGhost); dotG.appendChild(eqHalo); dotG.appendChild(eqDot);
 
@@ -592,7 +602,7 @@ var ArcadeGraph = (function () {
       var dot = dotPos();
       var dx = gx(dot.x), dy = gy(dot.y);
       attr(eqDot, 'cx', n2(dx)); attr(eqDot, 'cy', n2(dy));
-      attr(eqHalo, 'cx', n2(dx)); attr(eqHalo, 'cy', n2(dy));
+      attr(eqHalo, 'cx', n2(dx)); attr(eqHalo, 'cy', n2(dy)); attr(eqHalo, 'r', n2(dotHit * K));
       dotG.classList.toggle('grabbable', !locked && !gapMode && !!alongCurve(1, 0));
       var eq = intersect(market, shifts);
       var displaced = !!eq && Math.abs(eq.x - dot.x) > 0.01;
@@ -701,7 +711,7 @@ var ArcadeGraph = (function () {
       var p = toUnits(ev);
       var dot = dotPos();
       // alongCurve() here only asks whether anything is slideable at all; the drag picks the curve.
-      var target = pickTarget(p, dot, { slideable: !!alongCurve(1, 0), curve: curveUnder(p) });
+      var target = pickTarget(p, dot, { slideable: !!alongCurve(1, 0), curve: curveUnder(p), radius: dotHit });
       if (target.kind === 'none') return;
       if (target.kind === 'dot') {
         drag = { kind: 'dot', pointerId: ev.pointerId, curve: null, startX: p.x, startY: p.y, dotX: dot.x, dotY: dot.y, hadPoint: !!point };
@@ -979,12 +989,17 @@ var ArcadeGraph = (function () {
       return animateTo({ shifts: cardStart }, { preset: opts && opts.jolt ? 'jolt' : 'snap' });
     }
 
-    /** @param {{start?:Object<string, number>, draggable?:string[], moves?:number}} [card]
+    /** @param {{start?:Object<string, number>, draggable?:string[], moves?:number,
+     *           dotGrab?:string}} [card]
      *    `start`: shifts to open on, missing curves at 0. `draggable`: the curves this card lets
-     *    the student touch. `moves`: the game's business — the graph keeps taking releases until
-     *    it is told to lock(). */
+     *    the student touch. `dotGrab`: 'wide' where a movement along the curve is a possible
+     *    answer, otherwise (and by default) 'narrow'. `moves`: the game's business — the graph
+     *    keeps taking releases until it is told to lock(). */
     function setCard(card) {
       var c = card || {};
+      // The dot's grab radius is the card's business, not the engine's: 'wide' only where a
+      // movement along the curve is one of the answers this level can ask for.
+      dotHit = c.dotGrab === 'wide' ? DOT_HIT_WIDE : DOT_HIT_NARROW;
       stopAnims();
       endDrag();
       names.forEach(function (n) {
@@ -1064,7 +1079,10 @@ var ArcadeGraph = (function () {
   }
 
   /** The hit-test geometry, in graph units, so a test can hold it against the house 48 px rule. */
-  var GEOM = { VB: VB, PLOT: PLOT, DOT_HIT: DOT_HIT, HIT: HIT, DEAD: DEAD, SNAP: SNAP, SLIDE: SLIDE, CLAMP: CLAMP };
+  var GEOM = {
+    VB: VB, PLOT: PLOT, HIT: HIT, DEAD: DEAD, SNAP: SNAP, SLIDE: SLIDE, CLAMP: CLAMP,
+    DOT_HIT_WIDE: DOT_HIT_WIDE, DOT_HIT_NARROW: DOT_HIT_NARROW
+  };
 
   return {
     create: create, Gauge: Gauge, MARKETS: MARKETS, GEOM: GEOM,
