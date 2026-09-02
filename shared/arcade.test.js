@@ -125,6 +125,22 @@ test('band is null until ten questions are answered', () => {
   assert.equal(Arcade.readiness({}).band, null);
 });
 
+test('a tampered mastery record cannot push accuracy above 100 %', () => {
+  const r = Arcade.readiness(only({ '3.1': { right: 50, total: 20 } }));
+  assert.equal(r.units[2].acc, 1, 'unit accuracy clamps at 1');
+  assert.equal(r.units[2].topics[0].acc, 1, 'and so does the topic row behind it');
+  assert.equal(r.band.weightedAcc, 1, 'so the estimate cannot be built on 250 %');
+  assert.equal(r.band.score, 5);
+});
+
+test('a negative count reads as zero, not as negative accuracy', () => {
+  const r = Arcade.readiness(only({ '3.1': { right: -5, total: 3 } }));
+  assert.equal(r.units[2].acc, 0, 'unit accuracy floors at 0');
+  assert.equal(r.units[2].topics[0].acc, 0);
+  assert.equal(r.units[2].right, 0, 'the negative count itself is dropped');
+  assert.equal(r.units[2].total, 3);
+});
+
 test('band score uses the exact 0.85 / 0.72 / 0.58 / 0.45 thresholds', () => {
   const score = (right) => Arcade.readiness(only({ '1.1': { right, total: 100 } })).band.score;
   assert.equal(score(85), 5);
@@ -217,7 +233,7 @@ test('readinessCode is base64 of the pipe-delimited summary', () => {
   Arcade.setInitials('DSB');
   Arcade.store.set('arcade.mastery', MASTERY);
   const code = Arcade.readinessCode();
-  assert.equal(atob(code), 'DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36');
+  assert.equal(atob(code).split('|').slice(0, 9).join('|'), 'DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36');
   Arcade.store.remove('arcade.mastery');
   Arcade.store.remove('arcade.initials');
 });
@@ -236,12 +252,68 @@ test('decodeReadinessCode round-trips a code', () => {
   Arcade.store.remove('arcade.initials');
 });
 
+test('decodeReadinessCode normalises the initials it hands back', () => {
+  const decoded = Arcade.decodeReadinessCode(signed('d b|1|8/10|0/0|0/0|0/0|0/0|0/0|10'));
+  assert.equal(decoded.initials, 'DB?', 'three A-Z characters, padded, exactly as initials() gives them');
+  assert.equal(Arcade.decodeReadinessCode(signed('|1|0/0|0/0|0/0|0/0|0/0|0/0|0')).initials, '???');
+});
+
 test('decodeReadinessCode returns null on anything malformed', () => {
   assert.equal(Arcade.decodeReadinessCode(''), null);
   assert.equal(Arcade.decodeReadinessCode('not base64 !!'), null);
-  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|8/10|0/0|0/0')), null);
-  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|a/b|0/0|0/0|0/0|0/0|0/0|7')), null);
+  assert.equal(Arcade.decodeReadinessCode(signed('DSB|1|8/10|0/0|0/0')), null);
+  assert.equal(Arcade.decodeReadinessCode(signed('DSB|1|a/b|0/0|0/0|0/0|0/0|0/0|7')), null);
   assert.equal(Arcade.decodeReadinessCode(null), null);
+});
+
+/* ===== the readiness code's tamper-evident digest =====
+   Not a secret and not meant to be: the salt is in the source. The bar is that a student who
+   edits a number in a decoded code cannot re-encode it without also recomputing the digest. */
+
+/** FNV-1a over `payload + SALT`, six base36 characters — the reference implementation the
+ *  production code has to agree with, written here first.
+ *  @param {string} payload @returns {string} */
+function digestOf(payload) {
+  let h = 0x811c9dc5;
+  const s = payload + 'drs-arcade-2026';
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return ('00000' + h.toString(36)).slice(-6);
+}
+
+/** @param {string} payload @returns {string} a code carrying a correct digest */
+function signed(payload) { return btoa(payload + '|' + digestOf(payload)); }
+
+test('readinessCode appends a six-character digest as a tenth field', () => {
+  Arcade.setInitials('DSB');
+  Arcade.store.set('arcade.mastery', MASTERY);
+  const parts = atob(Arcade.readinessCode()).split('|');
+  assert.equal(parts.length, 10, 'nine fields plus the digest');
+  assert.match(parts[9], /^[0-9a-z]{6}$/);
+  assert.equal(parts[9], digestOf(parts.slice(0, 9).join('|')));
+  Arcade.store.remove('arcade.mastery');
+  Arcade.store.remove('arcade.initials');
+});
+
+test('a code whose numerator has been edited no longer decodes', () => {
+  const honest = 'DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36';
+  assert.ok(Arcade.decodeReadinessCode(signed(honest)), 'the honest code decodes');
+  const forged = honest.replace('8/10', '10/10');
+  assert.equal(Arcade.decodeReadinessCode(btoa(forged + '|' + digestOf(honest))), null,
+    'the old digest does not cover the new numbers');
+  assert.deepEqual(Arcade.decodeReadinessCode(signed(forged)).units[0], [10, 10],
+    're-signing is the only way through, and that is the whole bar');
+});
+
+test('a code with no digest at all is rejected', () => {
+  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36')), null,
+    'the old nine-field code no longer decodes');
+  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36|')), null,
+    'nor does an empty digest field');
+  assert.equal(Arcade.decodeReadinessCode(btoa('DSB|1|8/10|0/2|12/22|2/2|0/0|0/0|36|zzzzzz')), null,
+    'nor a wrong one');
 });
 
 /* ===== medals and stamps ===== */
@@ -340,6 +412,16 @@ test('next names the rung above and the points still owed', () => {
   assert.deepEqual(Arcade.titleFor(progressOf({ medals: GOLD3, perfect: 3, stamp: 3 })).next, { name: 'MAESTRO', need: 1 });
   assert.equal(Arcade.titleFor(progressOf({ medals: GOLD3, perfect: 3, stamp: 4 })).next, null);
   assert.equal(Arcade.titleFor(progressOf({ medals: GOLD3, perfect: 3, stamp: 5 })).next, null);
+});
+
+test('a stored medal that names an Object.prototype method is worth nothing', () => {
+  // A hand-edited arcade.shift.progress with `medal: "toString"` used to resolve through the
+  // prototype chain to a truthy function, so `|| 0` never fired and the hub printed "NaN pts".
+  const t = Arcade.titleFor({ shift: { levels: { 1: { medal: 'toString' } } }, fed: null });
+  assert.deepEqual(t, { rank: 0, name: 'Intern', emoji: '\u{1F9FE}', next: { name: 'Analyst', need: 3 } });
+  for (const key of ['constructor', 'valueOf', 'hasOwnProperty', '__proto__']) {
+    assert.equal(Arcade.titleFor({ shift: { levels: { 1: { medal: key } } }, fed: null }).next.need, 3, key);
+  }
 });
 
 test('titleFor scores an empty progress object as Intern', () => {

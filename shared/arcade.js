@@ -96,20 +96,28 @@ var Arcade = (function () {
 
   /** Create (once) and resume the AudioContext. The only `new AudioContext` in the arcade. */
   function unlock() {
-    try {
-      if (!ctx) {
+    // Two try blocks, not one. Only construction may null the references: a throw out of resume()
+    // on a context that already exists means "still locked", not "there is no context" — and
+    // discarding a live one there leaked it and left audio dead for the session, because the
+    // first-gesture listeners had already been detached.
+    if (!ctx) {
+      try {
         var w = /** @type {any} */ (typeof window !== 'undefined' ? window : null);
         var Ctor = w && (w.AudioContext || w.webkitAudioContext);
         if (!Ctor) return;
-        ctx = new Ctor();
-        master = ctx.createGain();
-        master.gain.value = 0.9;
-        master.connect(ctx.destination);
-      }
+        var c = new Ctor();
+        var m = c.createGain();
+        m.gain.value = 0.9;
+        m.connect(c.destination);
+        ctx = c;
+        master = m;
+      } catch (err) { ctx = null; master = null; return; }
+    }
+    try {
       if (ctx.state === 'running') { detachFirstGesture(); return; }
       var p = ctx.resume();
       if (p && typeof p.then === 'function') p.then(detachFirstGesture, function () { /* stays locked */ });
-    } catch (err) { ctx = null; master = null; }
+    } catch (err) { /* stays locked, and the context survives for the next gesture */ }
   }
 
   /** One oscillator with an exponential gain envelope. `end` sweeps the pitch, `to` swaps the
@@ -443,6 +451,9 @@ var Arcade = (function () {
     return entry;
   }
 
+  /** @param {number} v @returns {number} v held inside 0-1; NaN reads as 0 */
+  function clamp01(v) { return v > 1 ? 1 : v > 0 ? v : 0; }
+
   /** @param {number} weightedAcc @returns {number} the 1–5 estimate */
   function bandScore(weightedAcc) {
     if (weightedAcc >= 0.85) return 5;
@@ -485,12 +496,15 @@ var Arcade = (function () {
       var entry = m[ced];
       var unit = parseInt(ced, 10);
       if (!entry || !(unit >= 1 && unit <= 6)) continue;
-      var total = Number(entry.total) || 0;
-      var right = Number(entry.right) || 0;
+      // Counts are floored at 0 and accuracy clamped to 0-1 all the way down: arcade.mastery is a
+      // localStorage object a student can edit, and an unclamped {right:50,total:20} rendered a
+      // "250 %" heat cell and a confident 5 estimate built on it.
+      var total = Math.max(0, Number(entry.total) || 0);
+      var right = Math.max(0, Number(entry.right) || 0);
       if (total <= 0) continue;
       units[unit - 1].right += right;
       units[unit - 1].total += total;
-      units[unit - 1].topics.push({ ced: ced, name: CED_NAMES[ced] || ced, right: right, total: total, acc: right / total });
+      units[unit - 1].topics.push({ ced: ced, name: CED_NAMES[ced] || ced, right: right, total: total, acc: clamp01(right / total) });
       answered += total;
     }
 
@@ -499,7 +513,7 @@ var Arcade = (function () {
     var weakest = null;
     for (u = 0; u < 6; u += 1) {
       if (units[u].total > 0) {
-        units[u].acc = units[u].right / units[u].total;
+        units[u].acc = clamp01(units[u].right / units[u].total);
         num += units[u].weight * units[u].acc;
         den += units[u].weight;
       }
@@ -521,22 +535,44 @@ var Arcade = (function () {
   /** @param {string} s */
   function b64decode(s) { return typeof atob === 'function' ? atob(s) : s; }
 
-  /** @returns {string} base64 of `initials|version|r/t ×6|answered`, for pasting into Schoology */
+  /** The digest's salt. Deliberately not a secret — it is right here in the source, and the code
+   *  is a summary of the student's own play, not a credential. The bar it sets is that decoding a
+   *  code, editing a numerator and re-encoding it produces something that will not decode. */
+  var CODE_SALT = 'drs-arcade-2026';
+
+  /** FNV-1a 32-bit over `payload + CODE_SALT`, six base36 characters.
+   *  @param {string} payload @returns {string} */
+  function codeDigest(payload) {
+    var h = 0x811c9dc5;
+    var s = payload + CODE_SALT;
+    for (var i = 0; i < s.length; i += 1) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return ('00000' + h.toString(36)).slice(-6);
+  }
+
+  /** @returns {string} base64 of `initials|version|r/t ×6|answered|digest`, for pasting into Schoology */
   function readinessCode() {
     var r = readiness();
     var parts = [initials(), '1'];
     for (var i = 0; i < r.units.length; i += 1) parts.push(r.units[i].right + '/' + r.units[i].total);
     parts.push(String(r.answered));
-    return b64encode(parts.join('|'));
+    var payload = parts.join('|');
+    return b64encode(payload + '|' + codeDigest(payload));
   }
 
-  /** @param {*} code @returns {{initials:string, version:number, units:number[][], answered:number}|null} */
+  /** @param {*} code @returns {{initials:string, version:number, units:number[][], answered:number}|null}
+   *    null for anything that is not a code this build signed — including every unsigned
+   *    nine-field code from before the digest existed. */
   function decodeReadinessCode(code) {
     if (typeof code !== 'string' || !code) return null;
     var raw;
     try { raw = b64decode(code); } catch (err) { return null; }
     var parts = String(raw).split('|');
-    if (parts.length !== 9) return null;
+    if (parts.length !== 10) return null;
+    var payload = parts.slice(0, 9).join('|');
+    if (parts[9] !== codeDigest(payload)) return null;
     var version = Number(parts[1]);
     var answered = Number(parts[8]);
     if (!Number.isFinite(version) || !Number.isFinite(answered)) return null;
@@ -547,7 +583,9 @@ var Arcade = (function () {
       if (!Number.isFinite(Number(pair[0])) || !Number.isFinite(Number(pair[1]))) return null;
       units.push([Number(pair[0]), Number(pair[1])]);
     }
-    return { initials: parts[0], version: version, units: units, answered: answered };
+    // Through normalizeInitials, so a decoded code's tag is the same three A-Z characters
+    // initials() would have produced — the podium and the hub compare them.
+    return { initials: normalizeInitials(parts[0]), version: version, units: units, answered: answered };
   }
 
   /** @param {string} s @returns {boolean} the pre-clipboard-API path: a hidden textarea */
@@ -959,7 +997,10 @@ var Arcade = (function () {
     for (var n = 1; n <= 3; n += 1) {
       var rec = levels[String(n)];
       if (!rec || typeof rec !== 'object') continue;
-      points += TITLE_MEDAL_POINTS[String(rec.medal)] || 0;
+      // Own properties only: a stored medal of "toString" resolved through Object.prototype to a
+      // truthy function, so `|| 0` never fired and the hub's title chip printed "NaN pts".
+      var medal = String(rec.medal);
+      if (Object.prototype.hasOwnProperty.call(TITLE_MEDAL_POINTS, medal)) points += TITLE_MEDAL_POINTS[medal];
       if (rec.examPerfect) points += 2;
     }
     var stamp = Number(p.fed && p.fed.score);
