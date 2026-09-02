@@ -34,7 +34,8 @@ var FedModel = (function () {
 
   /** What actually happened, ten quarterly averages from 1975Q1 (inflation, unemployment, fed funds).
    *  Drawn against the player's run so the class can compare their Fed with Burns's.
-   *  // TODO verify vs FRED CPIAUCSL/UNRATE/FEDFUNDS */
+   *  Checked against FRED CPIAUCSL (year-over-year, averaged per quarter), UNRATE and FEDFUNDS
+   *  (quarterly means) for 1975Q1-1977Q2: every value agrees to within 0.2. */
   var HISTORY_1975 = {
     pi: [11.0, 9.6, 8.7, 7.2, 6.4, 6.1, 5.5, 5.1, 5.8, 6.9],
     u: [8.3, 8.9, 8.5, 8.3, 7.7, 7.6, 7.7, 7.8, 7.5, 7.1],

@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fed Chair — DRS Econ Arcade</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Nunito and JetBrains Mono arrive with the stylesheet; the newspaper is the one screen that
+     needs a serif, so Playfair Display 900 is loaded here and nowhere else in the arcade. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&display=swap">
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+
+<script>
+/* ================================================================================
+   CONTENT — everything the 1975 game says, in one block. No logic lives here.
+
+   briefing  the January 1975 desk memo, one paragraph per line
+   ERAS      the four crises; only 1975 is built
+   HEADLINES the ticker's scripted line for each of the ten quarters
+   TICKER    the conditional lines, added to the headline when the economy earns them
+   QUIPS     advisor pairs, first match wins, so the list runs most urgent first
+   EVENTS    the four beats, keyed by the quarter they OPEN (so the t4 call is answered
+             before quarter 4 is stepped, which is what lets it change quarter 4's shock)
+   NEWS      the newspaper: masthead, the outcome-keyed headline table, the sentences
+   HISTORY   what really happened, plus the FRQ rubric line for the move the player made
+   ================================================================================ */
+const SCENARIO_1975 = {
+
+  briefing: [
+    'It is January 1975 and you are Arthur Burns, Chairman of the Federal Reserve. Consumer prices are 11 percent higher than a year ago. Unemployment is 8 percent and climbing. The oil embargo that started all of this ended three months ago; the prices it set did not.',
+    'Nixon resigned last August. President Ford is handing out lapel buttons that say WIN — Whip Inflation Now — and asking the country to plant victory gardens. Three years ago a President leaned on this office to keep money cheap through an election, and everyone at this table remembers how that went.',
+    'Your job is one number: the federal funds rate. Drag the dial, then gavel the quarter. You get ten of them, 1975 Q1 through 1977 Q2.',
+    'The lag is the whole game. The rate you set today moves output NEXT quarter, and inflation the quarter AFTER that. Nothing you do today can change today’s inflation print — so stop steering by it.',
+    'What good looks like: inflation near 2 percent with unemployment near the natural rate, u* = 6 percent. What the dial actually controls is the REAL rate — your rate minus inflation — which is why 6.50 percent today is not tight at all.',
+    'One note on plumbing. In 1975 the Fed works with limited reserves: the desk buys and sells bonds to make a scarce supply of reserves meet demand at the funds rate it wants. Today reserves are ample, and the Fed simply administers the rate it pays on reserve balances — IORB — and the funds rate follows it. Same goal, different machinery.'
+  ],
+
+  ERAS: [
+    { year: '1975', chair: 'Chair Burns', blurb: 'Stagflation. Eleven percent inflation, eight percent unemployment, an oil shock still ringing.', ready: true },
+    { year: '1980', chair: 'Chair Volcker', blurb: 'The squeeze. Whatever it takes, and it takes a lot.', ready: false },
+    { year: '2008', chair: 'Chair Bernanke', blurb: 'The floor gives way. Rates hit zero and stay there.', ready: false },
+    { year: '2021', chair: 'Chair Powell', blurb: 'Reopening, stimulus, and the fastest hiking cycle in forty years.', ready: false }
+  ],
+
+  HEADLINES: [
+    'FIRST FOMC OF 1975 — Chair Burns takes the gavel with prices up 11 percent on the year',
+    'OIL BACK ON THE DOCKS, BUT NOT CHEAP — Rockaway Turnpike stations still posting record signs',
+    'LAWRENCE HIGH FREEZES SPRING HIRING — the district blames payroll costs, not enrollment',
+    'WASHINGTON WANTS A WORD — House resolution tells the Fed to lower rates and grow money faster',
+    'BAGEL BOARD REPAINTED AGAIN — a Central Avenue shop says that is the fourth sign this year',
+    'LIRR RAISES THE BRANCH FARE — Woodmere commuters do the arithmetic out loud on the platform',
+    'HELP WANTED SIGNS RETURN TO CEDARHURST — two storefronts hiring for the first time since 1973',
+    'INWOOD WAREHOUSE ADDS A SECOND SHIFT — freight is moving again, slowly',
+    'HEWLETT ASSESSORS REPORT HIGHER HOME VALUES — and the tax bills to match',
+    'LAST MEETING OF THE TERM — the Ledger asks what Chair Burns leaves behind'
+  ],
+
+  TICKER: {
+    hotPrices: 'Bagel prices spike across the Five Towns',
+    emptyPlatforms: 'LIRR platforms empty at rush hour',
+    negativeReal: 'Bond market asks: is anyone home at the Fed?',
+    bigHike: 'Wall Street gasps'
+  },
+
+  /* Each quip reads the numbers the player is looking at: pi, u, gap, piExp, cred, rate,
+     real (= rate - pi) and t. The first `when` that answers true wins, so the list runs from
+     the most specific diagnosis down to the fallback. */
+  QUIPS: [
+    { when: (s) => s.pi > 10 && s.u > 8.5, hawk: 'Double-digit prices, and you are worried about the jobs number?', dove: 'Eight and a half percent unemployment is not a rounding error.' },
+    { when: (s) => s.u > 9.5, hawk: 'Disinflation costs output. Flinch now and we pay for it twice.', dove: 'We are three points past the natural rate. Cut. Today.' },
+    { when: (s) => s.real < -3, hawk: 'A negative real rate is not policy. It is a subsidy for borrowing.', dove: 'That negative real rate is the only thing holding up investment.' },
+    { when: (s) => s.real > 3, hawk: 'Now that is a real rate. Hold it and expectations will follow.', dove: 'A three-point real rate guts investment long before it touches prices.' },
+    { when: (s) => s.pi > 8 && s.gap > -1, hawk: 'The gap is nearly closed and prices are still climbing. Hike.', dove: 'Nearly closed is not closed. Give me one more quarter of proof.' },
+    { when: (s) => s.gap > 1, hawk: 'We are above full employment at 1970s prices. Tighten.', dove: 'Let it run a quarter. Wages have not caught up yet.' },
+    { when: (s) => s.gap < -5, hawk: 'A deep output gap is what pulls inflation down. That is the mechanism.', dove: 'A five-point output gap is a recession, not a mechanism.' },
+    { when: (s) => s.pi < 4 && s.u > 7, hawk: 'Four is not two. Finish it while expectations are still falling.', dove: 'Inflation is beaten. The labour market is not. Ease.' },
+    { when: (s) => s.pi < 4, hawk: 'Close. Do not celebrate by cutting into it.', dove: 'Both numbers are landing. Steady hands, Chairman.' },
+    { when: (s) => s.u < 5.5, hawk: 'Below the natural rate is an inflationary gap forming.', dove: 'Nobody in Lawrence has ever complained about too many jobs.' },
+    { when: (s) => s.cred < 0.2 && s.pi > 6, hawk: 'Nobody believes us. Credibility is bought with real rates, not speeches.', dove: 'Credibility bought at the cost of a recession is a scar, not an asset.' },
+    { when: (s) => s.piExp > 9, hawk: 'Expected inflation is still nine. Every point of it costs us output.', dove: 'Expectations follow the pump price, and the pump price is falling.' },
+    { when: (s) => s.pi > 6 && s.u > 7.5, hawk: 'Half that fall was oil. Oil can turn. Do not bank it.', dove: 'Prices down, people out of work. Take the win and ease.' },
+    { when: (s) => s.t >= 9, hawk: 'Two meetings left. What you leave in the pipeline is your record.', dove: 'Two meetings left. Nothing you cannot explain to a family in Hewlett.' }
+  ],
+
+  QUIP_FALLBACK: {
+    hawk: 'Watch the real rate, not the headline. That is what borrowers actually face.',
+    dove: 'Watch the unemployment rate. That is what the Ledger prints.'
+  },
+
+  /* Keyed by the quarter each beat OPENS. EVENTS[4] is answered at the end of quarter 3,
+     which is why the Chair's answer can still change what quarter 4 does. */
+  EVENTS: {
+    2: { kind: 'card', sfx: 'card', emoji: '\u{1F6E2}️',
+      head: 'OPEC RAISES THE POSTED PRICE',
+      sub: 'The embargo is over. The price is not. Every delivery on Rockaway Turnpike costs more this quarter than last.',
+      note: 'A negative supply shock: short-run aggregate supply shifts left, so the price level rises and real output falls at the same time. Your dial cannot undo it. It can only decide what happens next.',
+      button: 'Brace for it' },
+    4: { kind: 'call', sfx: 'boss', emoji: '☎️',
+      head: 'WASHINGTON IS ON LINE ONE',
+      sub: 'Congress has passed House Concurrent Resolution 133. It instructs the Federal Reserve to lower long-term interest rates and to expand the money supply faster. A staffer would like your answer this afternoon.',
+      note: 'Congress can direct, ask, and haul you in to testify. It cannot vote at your table. An independent central bank is the reason a promise about inflation is worth anything.',
+      accept: 'Do what they ask',
+      refuse: 'The Fed is independent' },
+    6: { kind: 'card', sfx: 'card', firesWhen: 'spiral', emoji: '\u{1F300}',
+      head: 'WAGE TALKS REOPEN ACROSS THE ISLAND',
+      sub: 'Three years of double-digit prices are being written straight into the contracts. People are bargaining for the inflation they expect, not the inflation they have had.',
+      note: 'Expected inflation has come unanchored. The short-run Phillips curve shifts up, so every unemployment rate now comes with higher inflation than it used to.',
+      button: 'Understood' },
+    8: { kind: 'card', sfx: 'card', emoji: '\u{1F4C9}',
+      head: 'ORDER BOOKS THIN OUT AGAIN',
+      sub: 'Two Cedarhurst suppliers cancel their fall orders, and a Woodmere builder stops a job mid-foundation.',
+      note: 'A negative demand shock: aggregate demand shifts left, so real output falls and unemployment rises. Inflation follows a quarter behind, as always.',
+      button: 'Noted' }
+  },
+
+  NEWS: {
+    masthead: 'The Five Towns Ledger',
+    dateline: 'Cedarhurst, New York · June 1977',
+    /* The two specials override the stamp table: a run that let prices roar back has not
+       "cooled" anything, and a run that put one worker in ten out of a job did not do it
+       without a bloodbath. Inflation is checked first, because it contradicts more of them. */
+    roaredBack: 'WIN Buttons For Everyone: Inflation Roars Back',
+    bloodbath: 'Fed Crushes Inflation — and One Worker in Ten',
+    byStamp: {
+      5: 'MAESTRO! Fed Tames Inflation Without a Bloodbath',
+      4: 'Steady Hand at the Fed as Prices Cool',
+      3: 'Fed Muddles Through; Inflation Lingers'
+    },
+    fallbackHead: 'Two Years On, the Board Has Little to Show For It',
+    acceptedSub: 'Chair’s independence questioned after White House “chat”',
+    refusedSidebar: 'FED CHAIR TELLS WASHINGTON: NO'
+  },
+
+  HISTORY: [
+    'Burns cut. The funds rate came down from about 7 percent in January 1975 to about 5 percent by December, while unemployment peaked at 9.0 percent in May.',
+    'Inflation did fall, to about 5 percent by late 1976 — but mostly because the 1973–74 oil and food shock faded and the recession was deep, not because policy was tight.',
+    'With real rates near zero and expectations never anchored, it came straight back: about 7 percent by mid-1977, and 13 percent by the end of 1979.',
+    'It took Volcker’s 1980–82 squeeze, and 10.8 percent unemployment, to break it. Lags plus expectations: that is the whole lesson.'
+  ],
+
+  HISTORY_NOTE: 'Burns hit his rate the hard way, trading bonds against a scarce supply of reserves. Today the Fed does not have to: reserves are ample, so it administers the rate it pays on reserve balances (IORB) and the federal funds rate follows.',
+
+  FRQ: {
+    hike: 'Raising the federal funds rate raises the real interest rate, which decreases interest-sensitive consumption and investment spending, so aggregate demand shifts left; the price level and real output fall, and inflation comes down with a lag.',
+    cut: 'Lowering the federal funds rate lowers the real interest rate, which increases interest-sensitive consumption and investment spending, so aggregate demand shifts right; the price level rises and real output increases.',
+    hold: 'Holding the nominal federal funds rate while inflation falls raises the real interest rate on its own, which decreases interest-sensitive spending and shifts aggregate demand left even though the Fed never moved.'
+  }
+};
+</script>
+
+<main class="app" id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div class="stack">
+      <div class="row" style="justify-content:center">
+        <div class="coin" aria-hidden="true"><span class="coin-face">$</span></div>
+      </div>
+      <h1 class="h1">FED CHAIR</h1>
+      <p class="muted">You are the Fed chair. The economy is on fire.</p>
+      <div class="row">
+        <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+        <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+        <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      </div>
+      <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
+      <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+  <!-- ERA -->
+  <section class="screen" id="screen-era">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="eraBack" aria-label="Back to the title screen">←</button>
+        <h2 class="panel-title">Pick your crisis</h2>
+      </header>
+      <div class="stack" id="eraList"></div>
+    </div>
+  </section>
+
+  <!-- BRIEFING — the one screen that is allowed to scroll on purpose -->
+  <section class="screen" id="screen-briefing">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="briefingBack" aria-label="Back to the era list">←</button>
+        <h2 class="panel-title">Your desk, January 1975</h2>
+      </header>
+      <div class="panel stack" id="briefingText"></div>
+      <button type="button" class="btn btn-block" id="briefingStart">Take the gavel</button>
+    </div>
+  </section>
+
+  <!-- TURN — the only screen that must fit a 740 px phone whole -->
+  <section class="screen" id="screen-turn">
+    <div class="stack tight">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="turnBack" aria-label="Quit to the era list">←</button>
+        <div class="turn-when" id="turnLabel">1975 · Q1 · Chair Burns</div>
+        <div class="topbar-stats"><div class="pips" id="credPips" role="img" aria-label="Credibility"></div></div>
+      </header>
+      <div id="gaugeStrip"></div>
+      <div class="mono muted" id="realLine"></div>
+      <div class="pipeline" id="pipeline"></div>
+      <div class="ticker" id="ticker"></div>
+      <div class="panel advisor hawk">
+        <div class="advisor-avatar" aria-hidden="true">🦅</div>
+        <div>
+          <div class="advisor-name">Dr. Hawk</div>
+          <div class="advisor-line" id="hawkLine"></div>
+        </div>
+      </div>
+      <div class="panel advisor dove">
+        <div class="advisor-avatar" aria-hidden="true">🕊</div>
+        <div>
+          <div class="advisor-name">Prof. Dove</div>
+          <div class="advisor-line" id="doveLine"></div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="score" id="rateOut">6.50 %</span>
+        <span class="tag" id="deltaChip">no change</span>
+      </div>
+      <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Federal funds rate"
+           aria-valuemin="2" aria-valuemax="14" aria-valuenow="6.5" aria-valuetext="6.50 percent">
+        <div class="dial-track"></div>
+        <div class="dial-window" id="dialWindow"></div>
+        <div class="dial-thumb" id="dialThumb"></div>
+      </div>
+      <div class="row">
+        <button type="button" class="btn btn-ghost btn-block" id="nudgeDown">−25 bps</button>
+        <button type="button" class="btn btn-ghost btn-block" id="nudgeUp">+25 bps</button>
+      </div>
+      <button type="button" class="btn btn-block" id="endTurn">End turn</button>
+    </div>
+  </section>
+
+  <!-- NEWSPAPER — the front page, then the run's report card underneath it -->
+  <section class="screen" id="screen-news">
+    <div class="stack">
+      <div class="newspaper stack" id="newspaper"></div>
+      <div id="newsEnd"></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="screen" id="screen-history">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="historyBack" aria-label="Back to the front page">←</button>
+        <h2 class="panel-title">What really happened</h2>
+      </header>
+      <div class="panel stack" id="historyText"></div>
+      <div class="panel stack">
+        <div id="chartMount"></div>
+        <div class="row" id="chartLegend"></div>
+        <button type="button" class="btn btn-ghost btn-block" id="chartToggle">Show unemployment</button>
+      </div>
+      <div class="panel stack">
+        <span class="tag">Say it like the FRQ</span>
+        <div id="frqLine"></div>
+      </div>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+</main>
+
+<!-- The FOMC decision slams down over the board, then gets out of the way -->
+<div class="fomc-mount" id="fomcMount" hidden aria-hidden="true"><div class="fomc-stamp" id="fomcStamp"></div></div>
+
+<!-- The four beats all arrive in this one sheet -->
+<div class="sheet" id="eventSheet" role="dialog" aria-modal="true" aria-labelledby="eventHead" aria-hidden="true">
+  <div class="stack">
+    <div class="panel breaking">
+      <div class="row">
+        <div class="breaking-emoji" id="eventEmoji" aria-hidden="true">📰</div>
+        <div>
+          <div class="breaking-head" id="eventHead"></div>
+          <div class="breaking-sub" id="eventSub"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sheet-why" id="eventNote"></div>
+    <div class="stack" id="eventButtons"></div>
+  </div>
+</div>
+
+<script src="../shared/arcade.js"></script>
+<script src="../shared/graph.js"></script>
+<script src="fed-chair.model.js"></script>
+
+<script>
+/* ================================================================================
+   FED CHAIR — the game. Sections: boot helpers · screens · turn state · dial ·
+   gauges and pipeline · ticker and advisors · END TURN sequence · events ·
+   newspaper · history chart.
+
+   The whole game is one loop: read the board, set one number, gavel the quarter.
+   FedModel owns the economy; this file only draws it, and drives it one
+   FedModel.step per END TURN so the lag the model builds in is the lag the player
+   watches happen.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined' || typeof FedModel === 'undefined') return;
+  if (Arcade.qs('debug') === 'sim') return;   // the harness at the foot of the file owns the page
+
+  var TURNS = FedModel.HISTORY_1975.pi.length;   // ten quarters, 1975 Q1 through 1977 Q2
+  var THUMB = 48;                                // the dial thumb's width, and the axis inset
+  var BEAT = 400;                                // one step of the END TURN sequence
+
+  /* ===== BOOT HELPERS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {string} cls @param {string} [text] @returns {any} */
+  function fill(cls, text) {
+    var node = document.createElement('div');
+    node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  /** @param {string} cls @param {string} [text] @returns {any} */
+  function chip(cls, text) {
+    var node = document.createElement('span');
+    node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  /** @param {string} name a :root custom property @returns {string} */
+  function token(name) {
+    try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch (err) { return ''; }
+  }
+  /** A real minus sign, so "−4.5 %" lines up in the mono column.
+   *  @param {number} v @param {number} [places] @returns {string} */
+  function num(v, places) {
+    var s = Math.abs(v).toFixed(places === undefined ? 1 : places);
+    return (v < 0 ? '−' : '') + s;
+  }
+  /** @param {number} t 1-based quarter @returns {{year:number, q:number}} */
+  function quarterOf(t) { return { year: 1975 + Math.floor((t - 1) / 4), q: ((t - 1) % 4) + 1 }; }
+  /** @param {number} t @returns {string} e.g. "1976 Q2" */
+  function quarterLabel(t) { var qq = quarterOf(t); return qq.year + ' Q' + qq.q; }
+
+  var screens = {
+    title: byId('screen-title'), era: byId('screen-era'), briefing: byId('screen-briefing'),
+    turn: byId('screen-turn'), news: byId('screen-news'), history: byId('screen-history')
+  };
+  var eraList = byId('eraList'), briefingText = byId('briefingText');
+  var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
+  var turnLabel = byId('turnLabel'), credPips = byId('credPips');
+  var gaugeStrip = byId('gaugeStrip'), realLine = byId('realLine'), pipelineEl = byId('pipeline'), tickerEl = byId('ticker');
+  var hawkLine = byId('hawkLine'), doveLine = byId('doveLine');
+  var rateOut = byId('rateOut'), deltaChip = byId('deltaChip');
+  var dialEl = byId('dial'), dialWindow = byId('dialWindow'), dialThumb = byId('dialThumb');
+  var nudgeDown = byId('nudgeDown'), nudgeUp = byId('nudgeUp'), endTurnBtn = byId('endTurn');
+  var fomcMount = byId('fomcMount'), fomcStamp = byId('fomcStamp');
+  var eventSheet = byId('eventSheet'), eventEmoji = byId('eventEmoji'), eventHead = byId('eventHead');
+  var eventSub = byId('eventSub'), eventNote = byId('eventNote'), eventButtons = byId('eventButtons');
+  var newspaperEl = byId('newspaper'), newsEnd = byId('newsEnd');
+  var historyText = byId('historyText'), chartMount = byId('chartMount'), chartLegend = byId('chartLegend');
+  var chartToggle = byId('chartToggle'), frqLine = byId('frqLine');
+
+  /* ===== SCREENS ===== */
+
+  /** @param {string} name a key of `screens` */
+  function show(name) {
+    Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+    window.scrollTo(0, 0);
+  }
+
+  /** Abandon whatever sequence or sheet is in flight and leave the board inert. */
+  function abandonRun() {
+    runToken += 1;
+    skipSequence();
+    closeSheet();
+    fomcMount.hidden = true;      // a sequence cut off mid-gavel must not leave the stamp behind
+    lockBoard(true);
+    Arcade.voice.stop();
+  }
+
+  function goEra() {
+    abandonRun();
+    paintEras();
+    show('era');
+  }
+
+  /* ===== TURN STATE ===== */
+
+  /** The run in progress: the ten-quarter history it is building, the rate on the dial, and the
+   *  two facts the ending needs — whether the White House call was taken, and the worst
+   *  unemployment the run touched.
+   *  @type {any} */
+  var run = null;
+  var runToken = 0;
+  /** The END TURN sequence in flight, or null. `wakes` are the waiters a tap can cut short. */
+  var sequence = null;
+  /** @type {Record<string, any>} */ var gauges = {};
+
+  /** @param {number} token @returns {boolean} false once the player has quit or replayed */
+  function alive(token) { return token === runToken; }
+  /** @returns {any} the state observed at the start of the current quarter */
+  function current() { return run.history[run.t - 1]; }
+
+  function startRun() {
+    runToken += 1;
+    // history[0] from the model is the exported constant itself, so the run gets its own copy
+    run = {
+      t: 1,
+      history: [Object.assign({}, FedModel.INITIAL_1975)],
+      rate: FedModel.INITIAL_1975.rate,
+      moves: [],
+      lastMove: 0,
+      acceptedCall: false,
+      integrity: false,
+      peakU: -Infinity,
+      busy: false
+    };
+    show('turn');
+    paintTurn({ fresh: true });
+  }
+
+  var boardLocked = false;
+
+  /** @param {boolean} locked */
+  function lockBoard(locked) {
+    nudgeDown.disabled = locked;
+    nudgeUp.disabled = locked;
+    endTurnBtn.disabled = locked;
+    dialEl.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    boardLocked = locked;
+  }
+
+  /** Draw the board for the quarter the player is now looking at. The END TURN sequence has
+   *  already swung the gauges and slid the ticker by the time it calls this, so only a `fresh`
+   *  paint — the first quarter of a run — touches those two.
+   *  @param {{fresh?:boolean}} [opts] */
+  function paintTurn(opts) {
+    var o = opts || {};
+    var state = current();
+    var when = quarterOf(run.t);
+    run.rate = state.rate;                 // the dial opens where last quarter left it
+    turnLabel.textContent = when.year + ' · Q' + when.q + ' · Chair Burns';
+    paintPips(state.cred);
+    paintPipeline(0);
+    paintAdvisors(state);
+    paintDial();
+    if (o.fresh) { setGauges(state, false); paintTicker(state); }
+    lockBoard(false);
+    endTurnBtn.textContent = run.t === TURNS ? 'End turn · final' : 'End turn';
+  }
+
+  /** @param {number} cred 0–1 */
+  function paintPips(cred) {
+    var lit = Math.max(0, Math.min(5, Math.round(cred * 5)));
+    credPips.textContent = '';
+    for (var i = 0; i < 5; i += 1) credPips.appendChild(chip('pip' + (i < lit ? ' on' : '')));
+    credPips.setAttribute('aria-label', 'Credibility ' + lit + ' of 5');
+  }
+
+  /* ===== DIAL — one finger, 2 to 14 percent, a quarter point at a time ===== */
+
+  /** @returns {number} the pixels the thumb's centre may travel across */
+  function dialSpan() { return Math.max(1, dialEl.getBoundingClientRect().width - THUMB); }
+  /** @param {number} v @returns {number} the thumb's centre, in px from the dial's left edge */
+  function dialX(v) {
+    return THUMB / 2 + (v - FedModel.RATE_MIN) / (FedModel.RATE_MAX - FedModel.RATE_MIN) * dialSpan();
+  }
+  /** @returns {{lo:number, hi:number}} the rates this quarter's move limit allows */
+  function legalWindow() {
+    var prev = current().rate;
+    return {
+      lo: Math.max(FedModel.RATE_MIN, prev - FedModel.MAX_MOVE),
+      hi: Math.min(FedModel.RATE_MAX, prev + FedModel.MAX_MOVE)
+    };
+  }
+
+  function paintDial() {
+    var win = legalWindow();
+    // the highlight is the thumb's legal FOOTPRINT, not the bare value band: two points of rate is
+    // exactly one thumb wide, so a band drawn edge to edge would sit under the thumb and never show
+    var left = dialX(win.lo) - THUMB / 2;
+    dialWindow.style.left = left + 'px';
+    dialWindow.style.width = Math.max(0, dialX(win.hi) + THUMB / 2 - left) + 'px';
+    dialThumb.style.left = dialX(run.rate) + 'px';
+
+    var bps = Math.round((run.rate - current().rate) * 100);
+    rateOut.textContent = run.rate.toFixed(2) + ' %';
+    deltaChip.textContent = bps === 0 ? 'no change' : (bps > 0 ? '+' : '−') + Math.abs(bps) + ' bps';
+    dialEl.setAttribute('aria-valuenow', String(run.rate));
+    dialEl.setAttribute('aria-valuetext', run.rate.toFixed(2) + ' percent');
+    if (pipelineEl.firstChild) pipelineEl.firstChild.textContent = pipeNowLabel();
+    paintRealLine();
+  }
+
+  function paintRealLine() {
+    var pi = current().pi;
+    realLine.textContent = 'Real rate = ' + run.rate.toFixed(2) + ' − ' + num(pi) + ' = ' + num(run.rate - pi) + ' %';
+  }
+
+  /** @param {number} requested @returns {boolean} true when the dial actually moved */
+  function setRate(requested) {
+    var next = FedModel.clampRate(requested, current().rate);
+    if (next === run.rate) return false;
+    run.rate = next;
+    paintDial();
+    return true;
+  }
+
+  /** @param {number} step in percentage points */
+  function nudge(step) {
+    if (boardLocked) return;
+    if (setRate(run.rate + step)) Arcade.sfx.play('card');
+  }
+
+  /** @type {number|null} the one pointer that owns the drag; a second finger is ignored */
+  var dragId = null;
+
+  /** @param {number} clientX */
+  function dragTo(clientX) {
+    var rect = dialEl.getBoundingClientRect();
+    var frac = (clientX - rect.left - THUMB / 2) / dialSpan();
+    frac = Math.min(1, Math.max(0, frac));
+    setRate(FedModel.RATE_MIN + frac * (FedModel.RATE_MAX - FedModel.RATE_MIN));
+  }
+
+  dialEl.addEventListener('pointerdown', function (ev) {
+    if (boardLocked || dragId !== null) return;
+    dragId = ev.pointerId;
+    try { dialEl.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety */ }
+    ev.preventDefault();
+    dragTo(ev.clientX);
+  });
+  dialEl.addEventListener('pointermove', function (ev) {
+    if (ev.pointerId !== dragId) return;
+    dragTo(ev.clientX);
+  });
+  function endDrag(ev) {
+    if (ev.pointerId !== dragId) return;
+    try { dialEl.releasePointerCapture(ev.pointerId); } catch (err) { /* already gone */ }
+    dragId = null;
+  }
+  dialEl.addEventListener('pointerup', endDrag);
+  dialEl.addEventListener('pointercancel', endDrag);
+  // Chromebooks get the same dial from the keyboard the nudge buttons give a phone.
+  dialEl.addEventListener('keydown', function (ev) {
+    var step = (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') ? -FedModel.RATE_STEP
+      : (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') ? FedModel.RATE_STEP : 0;
+    if (!step) return;
+    ev.preventDefault();
+    nudge(step);
+  });
+  window.addEventListener('resize', function () { if (run) paintDial(); });
+
+  /* ===== GAUGES AND PIPELINE ===== */
+
+  var GAUGE_SPECS = [
+    { id: 'pi', label: 'Inflation π', min: 0, max: 15, unit: '%', decimals: 1,
+      zones: [{ from: 1, to: 3, color: token('--green') }, { from: 8, to: 15, color: token('--red') }] },
+    { id: 'u', label: 'Unemployment u', min: 0, max: 12, unit: '%', decimals: 1, ref: 6, refLabel: 'u* = 6' },
+    { id: 'gap', label: 'Output gap', min: -8, max: 6, unit: '%', decimals: 1, ref: 0, refLabel: 'full employment' }
+  ];
+
+  function buildGauges() {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + (120 * GAUGE_SPECS.length) + ' 90');
+    svg.setAttribute('class', 'gauge-strip');
+    svg.style.height = 'auto';
+    GAUGE_SPECS.forEach(function (spec, i) {
+      var cell = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      cell.setAttribute('class', 'gauge');
+      cell.setAttribute('transform', 'translate(' + (i * 120) + ',0)');
+      svg.appendChild(cell);
+      gauges[spec.id] = new ArcadeGraph.Gauge(cell, spec);
+    });
+    gaugeStrip.appendChild(svg);
+  }
+
+  /** @param {any} state @param {boolean} animate */
+  function setGauges(state, animate) {
+    gauges.pi.set(state.pi, { animate: animate, preset: 'consequence' });
+    gauges.u.set(state.u, { animate: animate, preset: 'consequence' });
+    gauges.gap.set(state.gap, { animate: animate, preset: 'consequence' });
+  }
+
+  /** @returns {string} the first chip's label, which tracks the dial as it moves */
+  function pipeNowLabel() { return run.rate.toFixed(2) + ' % now'; }
+
+  /** The three chips are the lag drawn out: what you set now, where it lands, and when.
+   *  @param {number} stage 0 the decision, 1 output, 2 inflation */
+  function paintPipeline(stage) {
+    var labels = [pipeNowLabel(), '→ Q+1 output', '→ Q+2 inflation'];
+    pipelineEl.textContent = '';
+    labels.forEach(function (text, i) {
+      pipelineEl.appendChild(chip('panel pipe-chip' + (i === stage ? ' now' : ''), text));
+    });
+  }
+
+  /* ===== TICKER AND ADVISORS ===== */
+
+  /** The quarter's scripted headline plus whatever the economy has earned.
+   *  @param {any} state */
+  function paintTicker(state) {
+    var lines = [SCENARIO_1975.HEADLINES[run.t - 1]];
+    var T = SCENARIO_1975.TICKER;
+    if (state.pi > 10) lines.push(T.hotPrices);
+    if (state.u > 9) lines.push(T.emptyPlatforms);
+    if (state.rate - state.pi < -3) lines.push(T.negativeReal);
+    if (run.lastMove >= FedModel.MAX_MOVE - 1e-9) lines.push(T.bigHike);
+    var text = lines.join('   ·   ') + '   ·   ';
+    // a fresh node restarts the marquee, which is what makes the ticker "slide" each quarter
+    tickerEl.textContent = '';
+    var inner = fill('ticker-inner', text + text);
+    tickerEl.appendChild(inner);
+  }
+
+  /** @param {any} state @returns {{hawk:string, dove:string}} */
+  function quipsFor(state) {
+    var view = {
+      pi: state.pi, u: state.u, gap: state.gap, piExp: state.piExp, cred: state.cred,
+      rate: state.rate, real: state.rate - state.pi, t: run.t
+    };
+    for (var i = 0; i < SCENARIO_1975.QUIPS.length; i += 1) {
+      if (SCENARIO_1975.QUIPS[i].when(view)) return SCENARIO_1975.QUIPS[i];
+    }
+    return SCENARIO_1975.QUIP_FALLBACK;
+  }
+
+  /** Hawk speaks first and Dove answers, queued behind him, whenever the voice is on.
+   *  @param {any} state */
+  function paintAdvisors(state) {
+    var pair = quipsFor(state);
+    hawkLine.textContent = pair.hawk;
+    doveLine.textContent = pair.dove;
+    Arcade.say(pair.hawk, { who: 'hawk' });
+    Arcade.say(pair.dove, { who: 'dove', interrupt: false });
+  }
+
+  /* ===== END TURN SEQUENCE — the gavel, the lag, the consequence ===== */
+
+  /** A wait a tap can cut short. Every pending wait resolves the moment the player skips.
+   *  @param {number} ms @returns {Promise<void>} */
+  function beat(ms) {
+    return new Promise(function (resolve) {
+      if (!sequence || sequence.skip) { resolve(); return; }
+      var timer = setTimeout(wake, ms);
+      function wake() { clearTimeout(timer); resolve(); }
+      sequence.wakes.push(wake);
+    });
+  }
+
+  function skipSequence() {
+    if (!sequence || sequence.skip) return;
+    sequence.skip = true;
+    var pending = sequence.wakes;
+    sequence.wakes = [];
+    pending.forEach(function (wake) { wake(); });
+  }
+
+  function beginSequence() {
+    sequence = { skip: false, wakes: [] };
+    document.addEventListener('pointerdown', skipSequence);
+  }
+
+  function endSequence() {
+    document.removeEventListener('pointerdown', skipSequence);
+    // The tap that skipped is still in flight: its `click` lands after the whole sequence has
+    // finished in microtasks, on whatever is under the finger by then — the END TURN button it
+    // just re-enabled, or a sheet button that did not exist when the finger went down. Neither
+    // may count, so a skipped sequence deafens the board until the tap is spent.
+    if (sequence && sequence.skip) guardUntil = Date.now() + 350;
+    sequence = null;
+  }
+
+  /** @returns {boolean} true while a spent skip tap could still be arriving */
+  function guarded() { return Date.now() < guardUntil; }
+  var guardUntil = 0;
+
+  /** @param {string} text */
+  function slamStamp(text) {
+    fomcStamp.textContent = text;
+    fomcStamp.classList.remove('slam');
+    fomcMount.hidden = false;
+    void fomcStamp.offsetWidth;           // restart the slam on a stamp that is already mounted
+    fomcStamp.classList.add('slam');
+    Arcade.sfx.play('stamp');
+  }
+
+  async function endTurn() {
+    if (!run || run.busy || guarded()) return;
+    run.busy = true;
+    var token = runToken;
+    var state = current();
+    var rate = run.rate;
+    var prev = state.rate;
+    lockBoard(true);
+    beginSequence();
+
+    // the gavel
+    slamStamp('FOMC ' + rate.toFixed(2) + ' %');
+    await beat(BEAT);
+    if (!alive(token)) { endSequence(); return; }
+
+    // the pipeline walks: this quarter's rate leaves the room and starts moving output
+    paintPipeline(1);
+    await beat(BEAT / 2);
+    if (!alive(token)) { endSequence(); return; }
+    paintPipeline(2);
+    await beat(BEAT / 2);
+    if (!alive(token)) { endSequence(); return; }
+
+    // the quarter actually happens
+    var shocks = FedModel.shocksFor(run.t, { acceptedCall: run.acceptedCall, history: run.history });
+    var next = FedModel.step(state, rate, shocks);
+    run.history.push(next);
+    run.moves.push({ t: run.t, rate: rate, prev: prev });
+    run.lastMove = rate - prev;
+    if (next.u > run.peakU) run.peakU = next.u;
+    var verdict = FedModel.judgeMove(state, rate, prev);
+    if (verdict !== null) Arcade.track('4.6', 3, verdict);
+    run.t += 1;
+
+    setGauges(next, !sequence.skip);
+    if (next.pi < state.pi) Arcade.sfx.play('coin');
+    if (next.u > 9 && next.u > state.u) { Arcade.sfx.play('wrong'); gauges.u.flash('red'); }
+    paintPips(next.cred);
+    await beat(BEAT);
+    if (!alive(token)) { endSequence(); return; }
+
+    fomcMount.hidden = true;
+    if (run.t <= TURNS) {
+      paintTicker(next);
+      await beat(BEAT / 2);
+    }
+    endSequence();
+    if (!alive(token)) return;
+
+    if (run.t > TURNS) { run.busy = false; showNewspaper(); return; }
+
+    var event = SCENARIO_1975.EVENTS[run.t];
+    if (event) await playEvent(event, token);
+    if (!alive(token)) return;
+
+    run.busy = false;
+    paintTurn();
+  }
+
+  /* ===== EVENTS — the four beats, each one opening its quarter ===== */
+
+  function closeSheet() {
+    eventSheet.classList.remove('open');
+    eventSheet.setAttribute('aria-hidden', 'true');
+    eventButtons.textContent = '';
+  }
+
+  /** Raise the sheet and wait for a button. A card has one; the call has two.
+   *  @param {any} event @param {number} token @returns {Promise<void>} */
+  function playEvent(event, token) {
+    // the spiral notice only makes the papers in a run where the spiral actually fires
+    if (event.firesWhen === 'spiral'
+      && FedModel.shocksFor(run.t, { acceptedCall: run.acceptedCall, history: run.history }).supply <= 0) {
+      return Promise.resolve();
+    }
+    eventEmoji.textContent = event.emoji;
+    eventHead.textContent = event.head;
+    eventSub.textContent = event.sub;
+    eventNote.textContent = event.note;
+    eventButtons.textContent = '';
+    Arcade.sfx.play(event.sfx);
+    Arcade.say(event.head, { who: 'anchor' });
+
+    return new Promise(function (resolve) {
+      /** @param {string} label @param {string} cls @param {() => void} onPick */
+      function addButton(label, cls, onPick) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = cls;
+        btn.textContent = label;
+        btn.addEventListener('click', function () {
+          if (guarded()) return;
+          if (!alive(token)) { closeSheet(); resolve(); return; }
+          onPick();
+          closeSheet();
+          resolve();
+        });
+        eventButtons.appendChild(btn);
+      }
+
+      if (event.kind === 'call') {
+        addButton(event.accept, 'btn btn-ghost btn-block', function () {
+          run.acceptedCall = true;
+          run.integrity = false;
+          Arcade.track('4.6', 1, false);
+        });
+        addButton(event.refuse, 'btn btn-block', function () {
+          run.acceptedCall = false;
+          run.integrity = true;
+          Arcade.track('4.6', 1, true);
+          Arcade.toast('\u{1F3C5} Integrity');
+        });
+      } else {
+        addButton(event.button, 'btn btn-block', function () { /* the card is a warning, not a choice */ });
+      }
+      eventSheet.setAttribute('aria-hidden', 'false');
+      eventSheet.classList.add('open');
+    });
+  }
+
+  /* ===== NEWSPAPER ===== */
+
+  /** @returns {{raw:number, stamp:number}} */
+  function scoreRun() {
+    return FedModel.score({ peakU: run.peakU, final: run.history[TURNS] }, { integrity: run.integrity });
+  }
+
+  /** @param {number} stamp @returns {string} */
+  function headlineFor(stamp) {
+    var N = SCENARIO_1975.NEWS;
+    var final = run.history[TURNS];
+    if (final.pi >= 9) return N.roaredBack;
+    if (run.peakU >= 10) return N.bloodbath;
+    return N.byStamp[stamp] || N.fallbackHead;
+  }
+
+  /** Three sentences, all of them read off the run. @returns {string} */
+  function newspaperBody() {
+    var final = run.history[TURNS];
+    var offBy = Math.abs(final.u - 6);
+    var side = offBy < 0.25 ? 'right at the 6 percent economists call the natural rate'
+      : num(offBy) + ' points ' + (final.u > 6 ? 'above' : 'below') + ' the 6 percent economists call the natural rate';
+    return 'Inflation leaves the Board at ' + num(final.pi) + ' percent, against the 2 percent this newspaper is told counts as price stability. '
+      + 'Unemployment finishes at ' + num(final.u) + ' percent, ' + side + '. '
+      + 'At its worst the jobless rate touched ' + num(run.peakU) + ' percent on the Chairman’s watch.';
+  }
+
+  function showNewspaper() {
+    runToken += 1;                       // the run is over; nothing still in flight may touch it
+    Arcade.voice.stop();
+    var result = scoreRun();
+    var final = run.history[TURNS];
+    var N = SCENARIO_1975.NEWS;
+
+    newspaperEl.textContent = '';
+    newspaperEl.appendChild(fill('np-masthead', N.masthead));
+    newspaperEl.appendChild(fill('np-dateline', N.dateline));
+    newspaperEl.appendChild(fill('np-head', headlineFor(result.stamp)));
+    if (run.acceptedCall) newspaperEl.appendChild(fill('np-sub', N.acceptedSub));
+    newspaperEl.appendChild(fill('np-body', newspaperBody()));
+    if (run.integrity) newspaperEl.appendChild(fill('np-sidebar', N.refusedSidebar));
+
+    Arcade.saveBest('fed', { score: result.stamp, initials: Arcade.initials() });
+    Arcade.track('5.2', 2, result.stamp >= 3);
+
+    show('news');
+    Arcade.endScreen(newsEnd, {
+      title: 'THE RECORD', sub: 'Ten quarters, one number a quarter.',
+      // the Fed game grades with the AP stamp, not a medal, so the medal slot stays empty
+      score: Math.round(result.raw), stamp: result.stamp, medal: null,
+      stats: [
+        { label: 'Inflation, end of term', value: num(final.pi) + ' %' },
+        { label: 'Unemployment, end of term', value: num(final.u) + ' %' },
+        { label: 'Worst unemployment', value: num(run.peakU) + ' %' },
+        { label: 'Independence', value: run.integrity ? 'Held' : 'Bent' }
+      ],
+      buttons: [
+        { label: 'What really happened →', primary: true, variant: 'gold', onClick: showHistory },
+        { label: 'Play again', onClick: startRun },
+        { label: 'Arcade', onClick: function () { window.location.href = '../index.html'; } }
+      ]
+    });
+    if (result.stamp >= 4) { Arcade.sfx.play('win'); Arcade.confetti(); }
+  }
+
+  /* ===== HISTORY — the four true sentences, the chart, and the rubric line ===== */
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  /** @param {string} tag @param {Record<string, any>} attrs @param {string} [cls] @returns {any} */
+  function svgEl(tag, attrs, cls) {
+    var node = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(function (key) { node.setAttribute(key, String(attrs[key])); });
+    if (cls) node.setAttribute('class', cls);
+    return node;
+  }
+
+  var CH = { w: 360, h: 200, left: 30, right: 8, top: 12, bottom: 26, yMax: 14 };
+  /** @param {number} i 0–9 @returns {number} */
+  function chartX(i) { return CH.left + (CH.w - CH.right - CH.left) * (i / (TURNS - 1)); }
+  /** @param {number} v @returns {number} */
+  function chartY(v) {
+    var clamped = Math.min(CH.yMax, Math.max(0, v));
+    return (CH.h - CH.bottom) - ((CH.h - CH.bottom) - CH.top) * (clamped / CH.yMax);
+  }
+  /** @param {number[]} series @returns {string} */
+  function chartPoints(series) {
+    return series.map(function (v, i) { return chartX(i).toFixed(1) + ',' + chartY(v).toFixed(1); }).join(' ');
+  }
+
+  var chartSeries = 'pi';
+
+  /** The player's ten quarters against the ten that happened. history[k] is the state observed at
+   *  the start of quarter k + 1, which is exactly what HISTORY_1975[k] measures. */
+  function paintChart() {
+    var mine = [], theirs = FedModel.HISTORY_1975[chartSeries];
+    for (var k = 0; k < TURNS; k += 1) mine.push(run.history[k][chartSeries]);
+
+    var svg = svgEl('svg', { viewBox: '0 0 ' + CH.w + ' ' + CH.h }, 'hist-chart');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', (chartSeries === 'pi' ? 'Inflation' : 'Unemployment')
+      + ', your Fed against 1975 to 1977, in percent');
+    /** @param {number} x @param {number} y @param {string} anchor @param {string} text */
+    function label(x, y, anchor, text) {
+      var node = svgEl('text', { x: x, y: y, 'text-anchor': anchor }, 'hist-label');
+      node.textContent = text;
+      svg.appendChild(node);
+    }
+    for (var v = 0; v <= CH.yMax; v += 2) {
+      svg.appendChild(svgEl('line', { x1: CH.left, y1: chartY(v), x2: CH.w - CH.right, y2: chartY(v) }, 'hist-grid'));
+      label(CH.left - 5, chartY(v) + 4, 'end', String(v));
+    }
+    svg.appendChild(svgEl('line', { x1: CH.left, y1: CH.top, x2: CH.left, y2: CH.h - CH.bottom }, 'hist-axis'));
+    [0, 4, 8].forEach(function (i) { label(chartX(i), CH.h - 8, 'middle', quarterLabel(i + 1)); });
+    svg.appendChild(svgEl('polyline', { points: chartPoints(theirs) }, 'hist-line actual'));
+    svg.appendChild(svgEl('polyline', { points: chartPoints(mine) }, 'hist-line player'));
+
+    chartMount.textContent = '';
+    chartMount.appendChild(svg);
+    chartToggle.textContent = chartSeries === 'pi' ? 'Show unemployment' : 'Show inflation';
+  }
+
+  /** @returns {string} 'hike', 'cut' or 'hold' — whichever the player did most of */
+  function dominantMove() {
+    var hikes = 0, cuts = 0;
+    run.moves.forEach(function (m) {
+      if (m.rate > m.prev + 1e-9) hikes += 1;
+      else if (m.rate < m.prev - 1e-9) cuts += 1;
+    });
+    if (hikes > cuts) return 'hike';
+    if (cuts > hikes) return 'cut';
+    return 'hold';
+  }
+
+  function showHistory() {
+    historyText.textContent = '';
+    SCENARIO_1975.HISTORY.forEach(function (line) { historyText.appendChild(fill('', line)); });
+    historyText.appendChild(fill('muted', SCENARIO_1975.HISTORY_NOTE));
+
+    chartLegend.textContent = '';
+    chartLegend.appendChild(chip('hist-key player'));
+    chartLegend.appendChild(chip('muted', 'Your Fed'));
+    chartLegend.appendChild(chip('hist-key actual'));
+    chartLegend.appendChild(chip('muted', '1975–77 actual'));
+
+    chartSeries = 'pi';
+    paintChart();
+    frqLine.textContent = SCENARIO_1975.FRQ[dominantMove()];
+    show('history');
+  }
+
+  chartToggle.addEventListener('click', function () {
+    chartSeries = chartSeries === 'pi' ? 'u' : 'pi';
+    paintChart();
+  });
+
+  /* ===== ERA AND BRIEFING ===== */
+
+  function paintEras() {
+    eraList.textContent = '';
+    SCENARIO_1975.ERAS.forEach(function (era) {
+      var tile = fill('panel level-tile' + (era.ready ? '' : ' locked'));
+      tile.setAttribute('role', 'button');
+      tile.setAttribute('tabindex', era.ready ? '0' : '-1');
+      tile.setAttribute('aria-label', (era.ready ? 'Play ' : 'Locked: ') + era.year + ', ' + era.chair);
+      if (!era.ready) tile.setAttribute('aria-disabled', 'true');
+      tile.appendChild(fill('level-num', era.year));
+
+      var info = fill('');
+      info.setAttribute('style', 'flex:1;min-width:0');
+      info.appendChild(fill('panel-title', era.chair + (era.ready ? '' : ' 🔒')));
+      info.appendChild(fill('muted', era.blurb));
+      if (!era.ready) {
+        var badges = fill('row');
+        badges.appendChild(chip('tag', 'P1'));
+        info.appendChild(badges);
+      }
+      tile.appendChild(info);
+
+      if (era.ready) {
+        tile.addEventListener('click', showBriefing);
+        tile.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); showBriefing(); }
+        });
+      }
+      eraList.appendChild(tile);
+    });
+  }
+
+  function showBriefing() {
+    briefingText.textContent = '';
+    SCENARIO_1975.briefing.forEach(function (para) { briefingText.appendChild(fill('', para)); });
+    show('briefing');
+  }
+
+  /* ===== BOOT ===== */
+
+  Arcade.bigType(Arcade.store.get('arcade.bigType', false));
+  Arcade.sfx.bindMuteButton(byId('muteBtn'));
+  Arcade.voice.bindButton(byId('voiceBtn'));
+  buildGauges();
+  lockBoard(true);
+
+  initialsBtn.textContent = Arcade.initials();
+  initialsBtn.addEventListener('click', function () {
+    if (!initialsPanel.hidden) { initialsPanel.hidden = true; return; }
+    initialsPanel.hidden = false;
+    Arcade.initialsEntry(initialsMount, {
+      onDone: function (value) {
+        initialsBtn.textContent = value;
+        initialsPanel.hidden = true;
+      }
+    });
+  });
+
+  byId('playBtn').addEventListener('click', goEra);
+  byId('eraBack').addEventListener('click', function () { abandonRun(); show('title'); });
+  byId('briefingBack').addEventListener('click', goEra);
+  byId('briefingStart').addEventListener('click', startRun);
+  byId('turnBack').addEventListener('click', goEra);
+  byId('historyBack').addEventListener('click', function () { show('news'); });
+  nudgeDown.addEventListener('click', function () { nudge(-FedModel.RATE_STEP); });
+  nudgeUp.addEventListener('click', function () { nudge(FedModel.RATE_STEP); });
+  endTurnBtn.addEventListener('click', function () { endTurn(); });
+
+  paintEras();
+  var era = String(Arcade.qs('era', ''));
+  if (era === '1975') {
+    showBriefing();
+  } else if (era) {
+    show('era');
+    Arcade.toast(era + ' is not built yet');
+  }
+}());
+</script>
+
+<script>
+/* ================================================================================
+   SIM HARNESS — ?debug=sim only. Plays the three named policies through
+   FedModel.simulate and prints them, so a change to the model's tuning shows up
+   against the same three yardsticks the model's tests use. No UI.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined' || typeof FedModel === 'undefined') return;
+  if (Arcade.qs('debug') !== 'sim') return;
+  var app = document.getElementById('app');
+  if (app) app.hidden = true;
+
+  /** @param {number} n @param {number} v @returns {number[]} */
+  function rep(n, v) { var out = []; while (out.length < n) out.push(v); return out; }
+
+  var POLICIES = {
+    hold: rep(10, 6.5),
+    aggressive: [7.5, 8.5, 9.5, 10.5].concat(rep(6, 10.5)),
+    cut: [5.5, 4.5, 4.0].concat(rep(7, 4.0))
+  };
+
+  /** @type {Record<string, any>} */ var rows = {};
+  Object.keys(POLICIES).forEach(function (name) {
+    var result = FedModel.simulate(POLICIES[name]);
+    // integrity: the named policies never take the White House call, so they earn the point
+    var scored = FedModel.score(result, { integrity: true });
+    rows[name] = {
+      'end pi': +result.final.pi.toFixed(2),
+      'end u': +result.final.u.toFixed(2),
+      'peak u': +result.peakU.toFixed(2),
+      'end piExp': +result.final.piExp.toFixed(2),
+      raw: +scored.raw.toFixed(1),
+      stamp: scored.stamp
+    };
+  });
+  console.table(rows);
+}());
+</script>
+
+</body>
+</html>

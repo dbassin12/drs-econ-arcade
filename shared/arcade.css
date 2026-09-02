@@ -325,6 +325,51 @@ body {
   animation: spin 3s linear infinite;
 }
 
+/* Fed Chair's own parts, added for markup the kit above has no class for. Same tokens, no
+   new colours: the dial's drag surface, the credibility meter, the advisors' two text lines,
+   the FOMC gavel stamp, the newspaper's dateline and sidebar, and the history chart. */
+.dial { touch-action: none; }
+/* The thumb is 48 px wide and centred on its value, so the axis it rides is inset by its
+   radius — otherwise the ends of the dial would hang past the app column at 360 px. */
+.dial-track { left: 24px; right: 24px; }
+/* the quarter and the Chair's name, sized to sit on one line beside a 48 px back button */
+.turn-when { font-family: var(--font-mono); font-size: 13px; line-height: 1.2; }
+.pips { display: flex; gap: 4px; }
+.pip { width: 10px; height: 10px; border-radius: 50%; background: var(--bg3); border: 2px solid var(--border); }
+.pip.on { background: var(--gold); border-color: var(--gold-dark); }
+.advisor-name { font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.advisor-line { font-size: 14px; line-height: 1.35; color: var(--text2); }
+.coin-face { color: #3b2f00; font-weight: 900; font-size: 44px; }
+/* The gavel lands over the board and leaves again; the mount holds the position so the slam
+   keyframe owns the transform. */
+.fomc-mount { position: fixed; left: 0; right: 0; top: 34%; z-index: 95; display: flex; justify-content: center; pointer-events: none; }
+.fomc-mount[hidden] { display: none; }
+.fomc-stamp {
+  padding: 6px 16px;
+  border: 4px solid var(--gold);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: .06em;
+  transform: rotate(-6deg);
+}
+.fomc-stamp.slam { animation: stampSlam .4s ease-out; }
+.np-dateline { text-align: center; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+.np-sidebar { border: 3px solid currentColor; padding: 8px; text-align: center; font-weight: 900; font-size: 15px; }
+.hist-chart { display: block; width: 100%; height: auto; }
+.hist-grid { stroke: var(--border); stroke-width: 1; }
+.hist-axis { stroke: var(--text3); stroke-width: 2; }
+.hist-label { font: 700 11px var(--font); fill: var(--text2); }
+.hist-line { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.hist-line.player { stroke: var(--green); }
+.hist-line.actual { stroke: var(--gold); stroke-dasharray: 7 6; }
+.hist-key { display: inline-block; width: 22px; border-top: 3px solid currentColor; }
+.hist-key.player { color: var(--green); }
+.hist-key.actual { color: var(--gold); border-top-style: dashed; }
+
 /* ===== HUB KIT — .game-card and .heat-cell compose with .panel ===== */
 .marquee { overflow: hidden; }
 .marquee-inner { display: inline-block; white-space: nowrap; animation: marquee 22s linear infinite; }
