@@ -49,7 +49,7 @@
         <div class="game-title">Fed Chair</div>
         <div class="game-blurb">You are the Fed chair in 1975</div>
         <div class="row">
-          <span class="game-best" id="bestFed">No score yet</span>
+          <span class="game-best" id="bestFed">No run yet</span>
           <span class="tag">1975 preview</span>
         </div>
       </div>
@@ -100,14 +100,16 @@
       </div>
     </div>
 
-    <section class="panel readiness">
+    <section class="panel readiness stack">
       <h2 class="panel-title">My AP Readiness</h2>
-      <div class="muted" id="readinessBody">Play a level to see your heat map</div>
+      <div class="stack" id="readinessBody">Play a level to see your heat map</div>
     </section>
 
-    <section class="panel podium" id="podium" hidden>
+    <!-- Arcade Night. The CSS shows it only under html.big-type; the podium rows are rendered always. -->
+    <section class="panel podium stack" id="podium">
       <h2 class="panel-title">Arcade Night</h2>
       <div class="muted">Top scores on this device.</div>
+      <div class="stack" id="podiumBody"></div>
     </section>
 
     <footer class="muted">No accounts. Scores live on this device.</footer>
@@ -116,14 +118,295 @@
 
 </main>
 
+<div class="sheet" id="initialsSheet" role="dialog" aria-label="Set your three-letter initials" hidden>
+  <div class="stack">
+    <div class="stack" id="initialsMount"></div>
+    <button type="button" class="btn btn-ghost btn-block" id="initialsClose">Close</button>
+  </div>
+</div>
+
 <script src="shared/arcade.js"></script>
 <script>
-/* Hub shell. shared/arcade.js arrives in Task 2 and may 404 until then, so every use of
-   Arcade is guarded. Task 6 completes the wiring: initials entry, mute, voice, Arcade
-   Night persistence, per-game bests + medals, and the readiness heat map. */
+/* ================================================================================
+   THE HUB — the one page students bookmark. Sections: elements · game cards ·
+   readiness · Arcade Night · controls · boot.
+   Every figure here is read back out of localStorage through Arcade: the bests and
+   medals the games wrote, and arcade.mastery, which readiness() turns into the heat
+   map, the weakest topic, the score estimate, the next level to play and the code
+   students paste into Schoology. shared/arcade.js is a plain script tag, so every
+   use of Arcade stays behind the guard below.
+   ================================================================================ */
 (function () {
   'use strict';
   if (typeof Arcade === 'undefined') return;
+
+  var GOOD = 0.80;                    // the heat map's three bands
+  var WARN = 0.60;
+  var RANKS = ['🥇', '🥈', '🥉'];
+
+  /* ===== ELEMENTS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {string} cls @param {string} [text] @returns {any} a block node */
+  function fill(cls, text) {
+    var node = document.createElement('div');
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  /** @param {string} cls @param {string} text @returns {any} a phrasing node, legal inside a link */
+  function chip(cls, text) {
+    var node = document.createElement('span');
+    if (cls) node.className = cls;
+    node.textContent = text;
+    return node;
+  }
+  /** @param {number} n @returns {string} 1450 -> "1,450" */
+  function commas(n) { return Number(n).toLocaleString('en-US'); }
+  /** @param {number} acc 0-1 @returns {string} */
+  function pct(acc) { return Math.round(acc * 100) + '%'; }
+  /** @param {number} n @returns {string} */
+  function items(n) { return n === 1 ? '1 item' : n + ' items'; }
+
+  var initialsBtn = byId('initialsBtn'), initialsSheet = byId('initialsSheet'), initialsMount = byId('initialsMount');
+  var bestShift = byId('bestShift'), medalsShift = byId('medalsShift'), bestFed = byId('bestFed');
+  var readinessBody = byId('readinessBody'), podiumBody = byId('podiumBody');
+
+  /* ===== GAME CARDS — the bests and medals the games left on this device ===== */
+
+  /** @returns {any} arcade.shift.progress.levels, or {} when nothing has been played */
+  function shiftLevels() {
+    var p = Arcade.store.get('arcade.shift.progress', null);
+    return p && typeof p === 'object' && p.levels && typeof p.levels === 'object' ? p.levels : {};
+  }
+
+  function renderBests() {
+    var shift = Arcade.bests('shift');
+    bestShift.textContent = shift
+      ? 'Best ' + commas(shift.score) + ' · ' + shift.initials + (shift.level ? ' · L' + shift.level : '')
+      : 'No score yet';
+
+    var levels = shiftLevels();
+    medalsShift.textContent = '';
+    for (var n = 1; n <= 3; n += 1) {
+      var rec = levels[String(n)];
+      var medal = rec && rec.medal ? String(rec.medal) : 'none';
+      var pip = chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase());
+      pip.setAttribute('aria-label', 'Level ' + n + ': ' + (medal === 'none' ? 'no medal yet' : medal + ' medal'));
+      medalsShift.appendChild(pip);
+    }
+
+    // Fed Chair's best is the AP stamp the run earned, 1-5, not a score.
+    var fed = Arcade.bests('fed');
+    bestFed.textContent = fed ? 'Best stamp: ' + fed.score + ' · ' + fed.initials : 'No run yet';
+  }
+
+  /* ===== MY AP READINESS — six units, the weakest topic, the estimate, the code ===== */
+
+  /** @param {number|null} acc @returns {string} the .heat-cell state class */
+  function heatState(acc) {
+    if (acc === null) return 'none';
+    if (acc >= GOOD) return 'good';
+    if (acc >= WARN) return 'warn';
+    return 'bad';
+  }
+
+  /** The units wearing an "Exam Ready" ribbon: a clean Exam Sprint on any level of that unit.
+   *  Shift Happens' three levels are all Unit 3 content.
+   *  @returns {number[]} */
+  function examReadyUnits() {
+    var levels = shiftLevels();
+    for (var n = 1; n <= 3; n += 1) {
+      var rec = levels[String(n)];
+      if (rec && rec.examPerfect) return [3];
+    }
+    return [];
+  }
+
+  /** The expansion under a tapped cell: every topic of that unit the student has answered.
+   *  @param {any} unit one of readiness().units @returns {any} */
+  function topicList(unit) {
+    var box = fill('panel heat-detail');
+    box.appendChild(fill('heat-detail-title', 'Unit ' + unit.unit + ' · ' + unit.name));
+    if (!unit.topics.length) {
+      box.appendChild(fill('muted', 'No items yet'));
+      return box;
+    }
+    unit.topics.forEach(function (topic) {
+      var row = fill('stat-row');
+      row.appendChild(chip('', topic.ced + ' ' + topic.name));
+      row.appendChild(chip('mono', topic.right + '/' + topic.total + ' · ' + pct(topic.acc)));
+      box.appendChild(row);
+    });
+    return box;
+  }
+
+  /** One heat cell: a button that opens its unit's topics in the row beneath it.
+   *  @param {any} unit @param {any} grid the .heat grid the cell lives in @returns {any} */
+  function heatCell(unit, grid) {
+    var cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'panel heat-cell ' + heatState(unit.acc);
+    cell.setAttribute('aria-expanded', 'false');
+    cell.setAttribute('aria-label', 'Unit ' + unit.unit + ' ' + unit.name + ', '
+      + (unit.acc === null ? 'no items yet' : pct(unit.acc) + ' of ' + items(unit.total)));
+    cell.appendChild(chip('heat-unit', 'U' + unit.unit));
+    cell.appendChild(chip('heat-acc mono', unit.acc === null ? '—' : pct(unit.acc)));
+    cell.appendChild(chip('heat-count', items(unit.total)));
+    cell.addEventListener('click', function () {
+      var open = cell.getAttribute('aria-expanded') === 'true';
+      var showing = grid.querySelector('.heat-detail');
+      if (showing) showing.parentNode.removeChild(showing);
+      var cells = grid.querySelectorAll('.heat-cell');
+      for (var i = 0; i < cells.length; i += 1) cells[i].setAttribute('aria-expanded', 'false');
+      if (open) return;                 // a second tap on the open cell closes it
+      cell.setAttribute('aria-expanded', 'true');
+      grid.insertBefore(topicList(unit), cell.nextSibling);
+    });
+    return cell;
+  }
+
+  /** Copy the readiness code, or reveal it for a long-press when the clipboard refuses.
+   *  @param {any} out the read-only textarea that holds the code when copying fails */
+  function copyCode(out) {
+    var code = Arcade.readinessCode();
+    Arcade.copyText(code).then(function (ok) {
+      if (ok) {
+        out.hidden = true;
+        Arcade.toast('Copied — paste into Schoology');
+        return;
+      }
+      out.value = code;
+      out.hidden = false;
+      out.select();
+      Arcade.toast('Copy failed — long-press to select');
+    });
+  }
+
+  function renderReadiness() {
+    var r = Arcade.readiness();
+    readinessBody.textContent = '';
+
+    var grid = fill('heat');
+    r.units.forEach(function (unit) { grid.appendChild(heatCell(unit, grid)); });
+    readinessBody.appendChild(grid);
+
+    var ready = examReadyUnits();
+    if (ready.length) {
+      var ribbons = fill('row');
+      ready.forEach(function (u) { ribbons.appendChild(chip('ribbon', 'U' + u + ' Exam Ready')); });
+      readinessBody.appendChild(ribbons);
+    }
+
+    readinessBody.appendChild(fill('weakest', r.weakest
+      ? 'Weakest: ' + r.weakest.ced + ' ' + r.weakest.name + ' · ' + pct(r.weakest.acc)
+      : 'Weakest: — · needs 3 items on one topic'));
+
+    var band = fill('');
+    band.appendChild(fill('band', 'Estimated score band: ' + (r.band ? r.band.score : '—')));
+    band.appendChild(fill('muted band-note', r.band
+      ? 'A rough estimate, weighted by unit, from ' + items(r.answered) + ' answered.'
+      : 'Play 10 items to see an estimate' + (r.answered ? ' · ' + items(r.answered) + ' answered' : '')));
+    readinessBody.appendChild(band);
+
+    var next = document.createElement('a');
+    next.className = 'btn btn-block play-next';
+    next.href = r.playNext.url;
+    next.appendChild(chip('', 'Play this next →'));
+    next.appendChild(chip('play-next-label', r.playNext.label));
+    readinessBody.appendChild(next);
+
+    var out = document.createElement('textarea');
+    out.className = 'code-out';
+    out.readOnly = true;
+    out.hidden = true;
+    out.setAttribute('aria-label', 'Your readiness code');
+    var copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'btn btn-blue btn-block';
+    copy.textContent = 'Copy readiness code';
+    copy.addEventListener('click', function () { copyCode(out); });
+    readinessBody.appendChild(copy);
+    readinessBody.appendChild(out);
+  }
+
+  /* ===== ARCADE NIGHT — the projector podium: this device's bests, in giant type ===== */
+
+  /** This device's bests as podium rows, best first.
+   *  @returns {{score:number, initials:string, value:string, game:string}[]} */
+  function podiumRows() {
+    var rows = [];
+    var shift = Arcade.bests('shift');
+    var fed = Arcade.bests('fed');
+    if (shift) {
+      rows.push({
+        score: Number(shift.score) || 0, initials: shift.initials, value: commas(shift.score),
+        game: 'Shift Happens' + (shift.level ? ' · L' + shift.level : '')
+      });
+    }
+    if (fed) {
+      rows.push({
+        score: Number(fed.score) || 0, initials: fed.initials, value: 'Stamp ' + fed.score,
+        game: 'Fed Chair'
+      });
+    }
+    rows.sort(function (a, b) { return b.score - a.score; });
+    return rows;
+  }
+
+  function renderPodium() {
+    var rows = podiumRows();
+    podiumBody.textContent = '';
+    for (var i = 0; i < 3; i += 1) {
+      var row = fill('podium-row');
+      var who = fill('podium-who');
+      who.appendChild(fill('podium-initials mono', rows[i] ? rows[i].initials : '—'));
+      who.appendChild(fill('podium-game', rows[i] ? rows[i].game : 'No score yet'));
+      row.appendChild(chip('podium-rank', RANKS[i]));
+      row.appendChild(who);
+      row.appendChild(chip('podium-score mono', rows[i] ? rows[i].value : '—'));
+      podiumBody.appendChild(row);
+    }
+  }
+
+  /* ===== CONTROLS — sound, voice, Arcade Night and the initials chip ===== */
+
+  /** @param {boolean} open the initials sheet is mounted while it is open and emptied when it closes */
+  function showInitials(open) {
+    initialsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (!open) {
+      initialsSheet.classList.remove('open');
+      initialsSheet.hidden = true;
+      initialsMount.textContent = '';
+      return;
+    }
+    Arcade.initialsEntry(initialsMount, {
+      onDone: function (value) {
+        initialsBtn.textContent = value;
+        showInitials(false);
+      }
+    });
+    initialsSheet.hidden = false;
+    requestAnimationFrame(function () { initialsSheet.classList.add('open'); });
+  }
+
+  function wireControls() {
+    Arcade.sfx.bindMuteButton(byId('muteBtn'));
+    Arcade.voice.bindButton(byId('voiceBtn'));
+    Arcade.mountBigTypeButton(byId('bigTypeBtn'));   // this also applies the stored Arcade Night state
+    initialsBtn.textContent = Arcade.initials();
+    initialsBtn.setAttribute('aria-expanded', 'false');
+    initialsBtn.addEventListener('click', function () { showInitials(initialsSheet.hidden); });
+    byId('initialsClose').addEventListener('click', function () { showInitials(false); });
+  }
+
+  /* ===== BOOT ===== */
+
+  wireControls();
+  renderBests();
+  renderReadiness();
+  renderPodium();
 }());
 </script>
 

@@ -350,9 +350,54 @@ body {
 .heat-cell.warn { background: color-mix(in srgb, var(--gold) 25%, transparent); border-color: var(--gold); }
 .heat-cell.bad { background: color-mix(in srgb, var(--red) 25%, transparent); border-color: var(--red); }
 .heat-cell.none { border-style: dashed; }
+/* The readiness panel's own parts. Its heat cells are <button>s — real 48 px targets that
+   toggle a unit's topics — so they need the page's font and colour, not the UA's. Every size
+   the panel adds is in rem, so a bigger root font (a student's browser setting, or Arcade
+   Night's) actually enlarges it. */
+.heat-cell { font-family: var(--font); color: inherit; cursor: pointer; }
+.heat-unit { font-size: .8rem; color: var(--text2); }
+.heat-acc { font-size: 1.1rem; font-weight: 900; }
+.heat-count { font-size: .65rem; color: var(--text3); }
+.heat-detail { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.heat-detail-title { font-weight: 900; font-size: .95rem; }
+.heat-detail .stat-row { font-size: .85rem; }
+.heat-detail .mono { white-space: nowrap; }
+.weakest { font-weight: 700; font-size: .95rem; }
+.band { font-weight: 900; font-size: 1.25rem; }
+.band-note { font-size: .85rem; }
+/* "Play this next" carries the recommendation under its own label, so the button stacks. */
+.play-next { flex-direction: column; gap: 2px; }
+.play-next-label { font-size: .8rem; font-weight: 700; text-transform: none; letter-spacing: normal; }
+.code-out {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 8px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .85rem;
+}
+/* A game card's stats wrap, so Shift's three medals drop below the best line at 360 px; the
+   readiness panel's rows wrap for the same reason. */
+.game-card .row, .readiness .row { flex-wrap: wrap; }
+
+/* ARCADE NIGHT — the podium is the projector view: hidden until html.big-type, and sized in
+   rem so the 150 % root below is a 150 % podium. */
+.podium { display: none; }
+.podium .panel-title { font-size: 1.4rem; }
+.podium-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.podium-rank { font-size: 2rem; line-height: 1; }
+.podium-who { flex: 1 0 6rem; }
+.podium-initials { font-size: 2rem; font-weight: 900; line-height: 1.1; }
+.podium-game { font-size: .8rem; color: var(--text2); }
+/* The score keeps the right edge, and drops to its own line when the row runs out of room. */
+.podium-score { margin-left: auto; font-size: 2rem; font-weight: 900; }
 html.big-type { font-size: 150%; }
 html.big-type .readiness { display: none; }
-html.big-type .podium { display: block; }
+/* On the projector the podium is the point of the night, so it leads the column. */
+html.big-type .podium { display: block; order: -1; }
 
 /* ===== GRAPH KIT — shared/graph.js renders into these classes ===== */
 .graph-wrap { width: 100%; }
