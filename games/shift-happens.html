@@ -31,7 +31,7 @@ const LEVELS = [
     n: 1, name: 'Demand Rookie', blurb: 'AD only — the C, I, G and Xn stories', ready: true,
     time: 10000, draggable: ['AD'], showLRAS: false,
     pool: [
-      { id: 'l1-c-confidence', kind: 'shift', head: 'CONSUMER CONFIDENCE CRASHES', sub: 'Central Avenue merchants in Cedarhurst say the wallets snapped shut overnight.', emoji: '😟', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Falling consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
+      { id: 'l1-c-confidence', kind: 'shift', head: 'CONSUMER CONFIDENCE CRASHES', sub: 'Cedarhurst merchants say the wallets snapped shut overnight.', emoji: '😟', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Falling consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
       { id: 'l1-c-wealth', kind: 'shift', head: 'STOCKS HIT A RECORD HIGH', sub: 'Retirement accounts in Lawrence are suddenly worth a lot more than they were Friday.', emoji: '📈', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'An increase in household wealth increases consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 },
       { id: 'l1-c-taxcut', kind: 'shift', head: 'CONGRESS CUTS INCOME TAXES', sub: 'Every paycheck from Inwood to Hewlett just got a little fatter.', emoji: '💸', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'A cut in personal income taxes raises disposable income and consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
       { id: 'l1-c-debt', kind: 'shift', head: 'HOUSEHOLD DEBT SPIKES', sub: 'Woodmere families are paying down credit cards instead of making the Sunday bagel run.', emoji: '💳', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Households paying down debt decrease consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
@@ -49,15 +49,71 @@ const LEVELS = [
         { curve: 'AD', dir: 'L', head: 'MARKETS CRASH', why: 'The loss of household wealth decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.' },
         { curve: 'AD', dir: 'R', head: 'EMERGENCY STIMULUS PASSES', why: 'Expansionary fiscal policy increases government purchases, so aggregate demand shifts right; the price level rises and real GDP increases.' }
       ],
-      why: 'The crash cuts household wealth and consumption, shifting aggregate demand left; the stimulus then increases government purchases, shifting aggregate demand back to the right.' },
+      why: 'The crash cuts household wealth and consumption spending, shifting aggregate demand left, so the price level falls and real GDP decreases; the stimulus then increases government purchases, shifting aggregate demand back to the right, so the price level rises and real GDP increases.' },
     exam: [
       { stem: 'Assume an economy is currently operating below full employment. Which of the following would most likely cause the aggregate demand curve to shift to the right?', choices: ['An appreciation of the nation’s currency', 'A decrease in household wealth', 'A decrease in personal income tax rates', 'An increase in the real interest rate'], answer: 2, why: 'A decrease in personal income tax rates raises disposable income and consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 1 },
       { stem: 'Assume the marginal propensity to consume is 0.8. If government purchases increase by $100 billion, what is the maximum possible change in real gross domestic product?', choices: ['$80 billion', '$100 billion', '$400 billion', '$500 billion'], answer: 3, why: 'The spending multiplier is 1 / (1 − MPC) = 1 / 0.2 = 5, so a $100 billion increase in government purchases increases real GDP by a maximum of $500 billion.', ced: '3.2', skill: 3 },
       { stem: 'Assume the federal government increases spending on national defense while tax rates are held constant. In the short run, which of the following best describes the effect on aggregate demand, the price level, and real output?', choices: ['Aggregate demand shifts left, the price level falls, and real output decreases', 'Aggregate demand shifts right, the price level rises, and real output increases', 'Aggregate demand is unchanged, the price level rises, and real output decreases', 'Aggregate demand shifts right, the price level falls, and real output increases'], answer: 1, why: 'An increase in government purchases is expansionary fiscal policy that increases aggregate demand; aggregate demand shifts right, the price level rises, and real GDP increases.', ced: '3.8', skill: 1 }
     ]
   },
-  { n: 2, name: 'Supply Side', ready: false },
-  { n: 3, name: 'Gap Attack', ready: false },
+  {
+    n: 2, name: 'Supply Side', blurb: 'SRAS joins AD — costs, expectations and the price-level trap', ready: true,
+    time: 9000, draggable: ['AD', 'SRAS'], showLRAS: false,
+    pool: [
+      { id: 'l2-s-oil', kind: 'shift', head: 'OIL PRICES SPIKE', sub: 'Every delivery van on Rockaway Turnpike just got more expensive to run.', emoji: '🛢️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: null, trick: false, why: 'A rise in the price of a key input raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.3', skill: 4 },
+      { id: 'l2-s-minwage', kind: 'shift', head: 'MINIMUM WAGE JUMPS', sub: 'Cedarhurst bagel shops are rewriting payroll before the Sunday rush.', emoji: '💵', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: null, trick: false, why: 'A higher minimum wage raises nominal wages and per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.3', skill: 4 },
+      { id: 'l2-s-imports', kind: 'shift', head: 'IMPORTED PARTS GET CHEAPER', sub: 'A Woodmere repair shop is paying less for every component it orders.', emoji: '📦', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'R', gap: null, trick: false, why: 'Cheaper imported inputs lower per-unit production costs, so short-run aggregate supply shifts right; the price level falls and real GDP increases.', ced: '3.3', skill: 4 },
+      { id: 'l2-s-tech', kind: 'shift', head: 'PRODUCTIVITY TECH BOOM', sub: 'New scheduling software has Lawrence contractors finishing two jobs a day.', emoji: '⚙️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'R', gap: null, trick: false, why: 'An increase in productivity lowers per-unit production costs, so short-run aggregate supply shifts right; the price level falls and real GDP increases.', ced: '3.3', skill: 4 },
+      { id: 'l2-s-training', kind: 'shift', head: 'STATE FUNDS JOB TRAINING', sub: 'Nassau County opens a free welding program in Inwood.', emoji: '🎓', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'R', gap: null, trick: false, why: 'Better-trained workers are more productive, which lowers per-unit production costs, so short-run aggregate supply shifts right; the price level falls and real GDP increases.', ced: '3.3', skill: 4 },
+      { id: 'l2-s-expected', kind: 'shift', head: 'INFLATION FEARS SPREAD', sub: 'Hewlett unions open contract talks expecting prices to keep climbing.', emoji: '📊', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: null, trick: false, why: 'When workers and firms expect higher inflation they set higher nominal wages and input prices, raising per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.3', skill: 4 },
+      { id: 'l2-s-taxcut', kind: 'shift', head: 'BUSINESS TAX CUT SIGNED', sub: 'Every storefront on Central Avenue keeps more of what it earns.', emoji: '🧾', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'R', gap: null, trick: false, why: 'A cut in business taxes lowers per-unit production costs, so short-run aggregate supply shifts right; the price level falls and real GDP increases.', ced: '3.6', skill: 4 },
+      { id: 'l2-d-confidence', kind: 'shift', head: 'SHOPPERS STOP SPENDING', sub: 'The Five Towns lot is half empty on a Sunday afternoon.', emoji: '🛒', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Falling consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
+      { id: 'l2-d-exports', kind: 'shift', head: 'EXPORT ORDERS SURGE', sub: 'The Inwood freight yards are booked solid through the summer.', emoji: '🚢', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'Stronger foreign demand for United States goods increases net exports, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 },
+      { id: 'l2-d-rates', kind: 'shift', head: 'MORTGAGE RATES SPIKE', sub: 'Two Lawrence closings fell through before lunch.', emoji: '🏚️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'A higher interest rate decreases interest-sensitive investment and consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
+      { id: 'l2-t-plup', kind: 'move', head: 'THE PRICE LEVEL RISES', sub: 'The CPI report lands. Nothing else in the economy changed this morning.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'any', dir: 'up', gap: null, trick: true, why: 'A change in the price level does not shift AD or SRAS; it is a movement along the curves (the wealth, interest-rate, and exchange-rate effects change the quantity of real output demanded).', ced: '3.5', skill: 4 },
+      { id: 'l2-t-pldown', kind: 'move', head: 'THE PRICE LEVEL FALLS', sub: 'Prices slipped across the board — no new policy, no new costs, no new orders.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'any', dir: 'down', gap: null, trick: true, why: 'A change in the price level does not shift AD or SRAS; it is a movement along the curves (the wealth, interest-rate, and exchange-rate effects change the quantity of real output demanded).', ced: '3.5', skill: 4 }
+    ],
+    boss: { id: 'l2-boss', kind: 'boss', head: 'Oil prices spike — and consumers panic', sub: 'Two shocks in one afternoon. Either order — just get both.', emoji: '🚨', graph: 'adas', start: { AD: 0, SRAS: 0 }, gap: null, trick: false, time: 12000, anyOrder: true, ced: '3.6', skill: 4,
+      moves: [
+        { curve: 'SRAS', dir: 'L', head: 'OIL PRICES SPIKE', why: 'The oil shock raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.' },
+        { curve: 'AD', dir: 'L', head: 'CONSUMERS PANIC', why: 'Collapsing consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.' }
+      ],
+      why: 'Short-run aggregate supply shifts left and aggregate demand shifts left, so real GDP falls unambiguously while the effect on the price level is indeterminate — the supply shock pushes the price level up and the demand collapse pushes it down.' },
+    exam: [
+      { stem: 'Assume that an increase in the price of imported oil shifts an economy’s short-run aggregate supply curve to the left. Which of the following will most likely occur in the short run?', choices: ['The price level will fall and real gross domestic product will decrease', 'The price level will rise and real gross domestic product will decrease', 'The price level will rise and real gross domestic product will increase', 'The price level will fall and real gross domestic product will increase'], answer: 1, why: 'A leftward shift of short-run aggregate supply raises per-unit production costs, so the price level rises and real GDP decreases — the combination known as stagflation.', ced: '3.3', skill: 1 },
+      { stem: 'Assume that the price of imported oil falls at the same time that consumer confidence rises. Which of the following best describes the short-run effect on real output and the price level?', choices: ['Real output will decrease and the price level will rise', 'Real output will increase and the price level will rise', 'Real output will increase, but the effect on the price level is indeterminate', 'Real output will be unchanged and the price level will fall'], answer: 2, why: 'Short-run aggregate supply shifts right and aggregate demand shifts right, so real GDP increases unambiguously while the effect on the price level is indeterminate, because the two shifts push the price level in opposite directions.', ced: '3.6', skill: 1 },
+      { stem: 'Assume that the price level in an economy rises while no determinant of aggregate demand changes. Which of the following best describes the effect on aggregate demand?', choices: ['The aggregate demand curve shifts to the left', 'The aggregate demand curve shifts to the right', 'There is a movement up along the aggregate demand curve to a smaller quantity of real output demanded', 'Both the aggregate demand and short-run aggregate supply curves shift to the left'], answer: 2, why: 'A change in the price level is never a determinant of aggregate demand; it produces a movement along the curve, so a higher price level moves the economy up along AD to a smaller quantity of real output demanded.', ced: '3.5', skill: 2 }
+    ]
+  },
+  {
+    n: 3, name: 'Gap Attack', blurb: 'LRAS is on — shift it, then name the gap you left behind', ready: true,
+    time: 8000, draggable: ['AD', 'SRAS'], showLRAS: true,
+    pool: [
+      { id: 'l3-f-infra', kind: 'shift', head: 'INFRASTRUCTURE BILL PASSES', sub: 'The LIRR viaduct at Lawrence finally gets its rebuild, and the crews need the work.', emoji: '🚧', graph: 'adas', start: { AD: -12, SRAS: 0 }, curve: 'AD', dir: 'R', gap: 'none', trick: false, why: 'An increase in government purchases increases aggregate demand, shifting it right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
+      { id: 'l3-f-taxup', kind: 'shift', head: 'INCOME TAXES GO UP', sub: 'With the economy running hot, every Five Towns paycheck loses a little.', emoji: '💸', graph: 'adas', start: { AD: 12, SRAS: 0 }, curve: 'AD', dir: 'L', gap: 'none', trick: false, why: 'Higher personal income taxes reduce disposable income and consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.8', skill: 4 },
+      { id: 'l3-f-checks', kind: 'shift', head: 'STIMULUS CHECKS LAND', sub: 'Direct payments hit accounts from Inwood to Hewlett on the same Friday.', emoji: '💳', graph: 'adas', start: { AD: -12, SRAS: 0 }, curve: 'AD', dir: 'R', gap: 'none', trick: false, why: 'Transfer payments raise disposable income and consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
+      { id: 'l3-d-confidence', kind: 'shift', head: 'CONFIDENCE COLLAPSES', sub: 'Cedarhurst storefronts report the worst Sunday anyone can remember.', emoji: '😟', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: 'recessionary', trick: false, why: 'Falling consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
+      { id: 'l3-d-invest', kind: 'shift', head: 'FIRMS RUSH TO INVEST', sub: 'Three Woodmere warehouses break ground in the same week.', emoji: '🏗️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: 'inflationary', trick: false, why: 'More optimistic profit expectations increase investment spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 },
+      { id: 'l3-s-opec', kind: 'shift', head: 'OPEC CUTS OUTPUT', sub: 'Diesel on Rockaway Turnpike jumps forty cents before the morning rush.', emoji: '🛢️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: 'recessionary', trick: false, why: 'A rise in the price of a key input raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.6', skill: 4 },
+      { id: 'l3-s-harvest', kind: 'shift', head: 'RECORD HARVEST CUTS COSTS', sub: 'Wholesale flour is the cheapest the Woodmere bagel bakers have seen in years.', emoji: '🌾', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'R', gap: 'inflationary', trick: false, why: 'Cheaper inputs lower per-unit production costs, so short-run aggregate supply shifts right; the price level falls and real GDP increases.', ced: '3.3', skill: 4 },
+      { id: 'l3-s-storm', kind: 'shift', head: 'STORM SHUTS THE PORT', sub: 'Containers bound for the Five Towns sit off Rockaway for a week.', emoji: '🌀', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: 'recessionary', trick: false, why: 'A supply shock that disrupts production raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.3', skill: 4 },
+      { id: 'l3-a-wagesfall', kind: 'shift', head: 'WAGES FINALLY GIVE', sub: 'After two years of slack hiring, Five Towns pay offers are being cut.', emoji: '⏳', graph: 'adas', start: { AD: -12, SRAS: 0 }, curve: 'SRAS', dir: 'R', gap: 'none', trick: false, why: 'In a long recessionary gap nominal wages eventually fall, which lowers per-unit production costs, so short-run aggregate supply shifts right; the price level falls and real GDP increases until output returns to full employment.', ced: '3.7', skill: 4 },
+      { id: 'l3-a-raises', kind: 'shift', head: 'WORKERS WIN BIG RAISES', sub: 'After a long boom, Lawrence employers are bidding against each other for staff.', emoji: '📈', graph: 'adas', start: { AD: 12, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: 'none', trick: false, why: 'In a long inflationary gap nominal wages eventually rise, which raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases until output returns to full employment.', ced: '3.7', skill: 4 },
+      { id: 'l3-t-wealth', kind: 'move', head: 'PRICES CLIMB, CASH SHRINKS', sub: 'The same dollars in a Hewlett checking account buy less than they did last month.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'up', gap: null, trick: true, why: 'A change in the price level never shifts aggregate demand; the wealth effect is one of the reasons AD slopes downward, so a higher price level is a movement up along AD to a smaller quantity of real output demanded.', ced: '3.5', skill: 4 },
+      { id: 'l3-t-balances', kind: 'move', head: 'DOLLARS GO FURTHER', sub: 'Prices slipped this quarter, so the same balances buy more in Cedarhurst.', emoji: '🎣', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'down', gap: null, trick: true, why: 'A change in the price level never shifts aggregate demand; the wealth effect is one of the reasons AD slopes downward, so a lower price level is a movement down along AD to a larger quantity of real output demanded.', ced: '3.5', skill: 4 }
+    ],
+    boss: { id: 'l3-boss', kind: 'boss', head: 'OPEC slashes output — and Congress rushes an emergency tax cut', sub: 'Already running hot. Take both, either order, then name the gap.', emoji: '🚨', graph: 'adas', start: { AD: 12, SRAS: 0 }, gap: 'inflationary', trick: false, time: 14000, anyOrder: true, ced: '3.6', skill: 4,
+      moves: [
+        { curve: 'SRAS', dir: 'L', head: 'OPEC SLASHES OUTPUT', why: 'The oil shock raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.' },
+        { curve: 'AD', dir: 'R', head: 'EMERGENCY TAX CUT', why: 'A cut in personal income taxes raises disposable income and consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.' }
+      ],
+      why: 'Short-run aggregate supply shifts left and aggregate demand shifts right, so the price level rises unambiguously while the effect on real GDP is indeterminate; here the two shifts exactly offset, real GDP is unchanged, and the economy is left above full-employment output in an inflationary gap.' },
+    exam: [
+      { stem: 'Assume an economy is operating below full employment and the government takes no policy action. In the long run, which of the following will most likely occur?', choices: ['Nominal wages will fall, short-run aggregate supply will shift right, and output will return to full employment', 'Nominal wages will rise, short-run aggregate supply will shift left, and the price level will rise', 'Aggregate demand will shift right on its own and the price level will rise', 'Long-run aggregate supply will shift left until it meets the short-run equilibrium'], answer: 0, why: 'In a recessionary gap the labor surplus eventually pushes nominal wages down, which lowers per-unit production costs, so short-run aggregate supply shifts right; the price level falls and real GDP increases until output returns to full employment.', ced: '3.7', skill: 1 },
+      { stem: 'Assume the economy is operating above full employment. Which of the following fiscal policy actions would be most appropriate to return the economy to full employment?', choices: ['An increase in government spending on infrastructure', 'A decrease in personal income tax rates', 'An increase in personal income tax rates', 'A sale of government bonds by the central bank'], answer: 2, why: 'An economy above full employment needs contractionary fiscal policy: higher personal income taxes reduce disposable income and consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases back toward full-employment output.', ced: '3.8', skill: 1 },
+      { stem: 'Assume that an economy’s short-run equilibrium level of real output is greater than its full-employment level of output. Which of the following best describes this economy?', choices: ['It has a recessionary gap, and the unemployment rate is above the natural rate', 'It has an inflationary gap, and the unemployment rate is below the natural rate', 'It is in long-run equilibrium, and the unemployment rate equals the natural rate', 'It has an inflationary gap, and the unemployment rate is above the natural rate'], answer: 1, why: 'Short-run equilibrium real GDP above full-employment output is an inflationary gap, and because output exceeds the full-employment level the unemployment rate is below the natural rate of unemployment.', ced: '3.5', skill: 2 }
+    ]
+  },
   { n: 4, name: 'Money Market', ready: false },
   { n: 5, name: 'Loanable Funds', ready: false },
   { n: 6, name: 'FOREX Floor', ready: false },
@@ -96,7 +152,7 @@ const LEVELS = [
 
   <!-- PLAY — .graph-wrap sits straight in the column so the drag targets get the full width -->
   <section class="screen" id="screen-play">
-    <div class="stack">
+    <div class="stack tight">
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the level list">←</button>
         <div class="hearts" id="hearts"></div>
@@ -113,11 +169,31 @@ const LEVELS = [
         </div>
       </div>
       <div class="graph-wrap" id="graphWrap"></div>
-      <p class="muted" id="hint">Drag the curve that moves</p>
+      <!-- a div, not a <p>: the play column has to fit a 740 px phone whole, and a paragraph's two
+           default 16 px margins are exactly what pushed the hint below the fold -->
+      <div class="muted" id="hint">Drag the curve that moves</div>
     </div>
   </section>
 
-  <!-- CLEAR and FAIL both render an Arcade.endScreen panel here -->
+  <!-- EXAM SPRINT — the one screen in the game with multiple choice -->
+  <section class="screen" id="screen-exam">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the level list">←</button>
+        <h2 class="panel-title">Exam Sprint</h2>
+        <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+      </header>
+      <div class="timer-bar" id="examTimer"></div>
+      <div class="row">
+        <span class="tag" id="examPace">70 s</span>
+        <span class="muted" id="examSub"></span>
+      </div>
+      <div class="panel"><div class="exam-stem" id="examStem"></div></div>
+      <div class="stack" id="examChoices"></div>
+    </div>
+  </section>
+
+  <!-- CLEAR, FAIL and the sprint result all render an Arcade.endScreen panel here -->
   <section class="screen" id="screen-end"></section>
 
 </main>
@@ -136,9 +212,12 @@ const LEVELS = [
 <script>
 /* ================================================================================
    SHIFT HAPPENS — the game. Sections: elements · screens · progress · level select ·
-   card logic (pure) · round chrome · round loop · boss · the run · end screens · boot.
-   During play the student's only input is dragging a curve on the graph; the gauges
-   swing as the consequence, and every scored answer calls Arcade.track exactly once.
+   card logic (pure) · round chrome · round loop · boss · exam sprint · the run ·
+   end screens · boot.
+   During play the student's only input is dragging a curve on the graph (Level 3 adds
+   one tap to name the gap the shock left behind); multiple choice appears nowhere but
+   the Exam Sprint. The gauges swing as the consequence, and every scored answer calls
+   Arcade.track exactly once.
    ================================================================================ */
 (function () {
   'use strict';
@@ -148,8 +227,20 @@ const LEVELS = [
   var SHIFT_UNITS = 12;   // where a recognised drag lands — SNAP in shared/graph.js
   var SLIDE_UNITS = 10;   // how far a movement along a curve travels — the engine's dot step
   var EXTEND_MS = 2000;   // the one grace period a drag still in flight at zero may earn
+  var GAP_MS = 5000;      // the Level 3 "name the gap" tap
+  var GAP_POINTS = 50;    // …and what it is worth, before the streak multiplier
+  var EXAM_MS = 70000;    // one Exam Sprint question, matching the real exam's pace
   var HEARTS = 3;
   var ROUNDS = 8;         // cards drawn from the pool before the boss
+  var KEYS = 'ABCD';
+
+  /** What the graph is showing, and the sentence that earns the point for naming it. */
+  var GAP_LABEL = { recessionary: 'Recessionary gap', inflationary: 'Inflationary gap', none: 'At full employment' };
+  var GAP_WHY = {
+    recessionary: 'Short-run equilibrium real GDP is below full-employment output, so the economy is in a recessionary gap and the unemployment rate is above the natural rate.',
+    inflationary: 'Short-run equilibrium real GDP is above full-employment output, so the economy is in an inflationary gap and the unemployment rate is below the natural rate.',
+    none: 'Short-run equilibrium real GDP equals full-employment output, so there is no output gap and the economy is in long-run equilibrium.'
+  };
 
   /* ===== ELEMENTS ===== */
 
@@ -165,12 +256,17 @@ const LEVELS = [
     return node;
   }
 
-  var screens = { title: byId('screen-title'), select: byId('screen-select'), play: byId('screen-play'), end: byId('screen-end') };
+  var screens = {
+    title: byId('screen-title'), select: byId('screen-select'), play: byId('screen-play'),
+    exam: byId('screen-exam'), end: byId('screen-end')
+  };
   var levelList = byId('levelList');
   var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
   var heartsEl = byId('hearts'), comboEl = byId('combo'), scoreEl = byId('score'), timerEl = byId('timer');
   var breakingEl = byId('breaking'), breakingEmoji = byId('breakingEmoji'), breakingBody = byId('breakingBody');
   var graphWrap = byId('graphWrap'), hintEl = byId('hint');
+  var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
+  var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
   var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
 
   var graph = ArcadeGraph.create(graphWrap, { market: 'adas', gauges: true });
@@ -178,8 +274,13 @@ const LEVELS = [
   /** The run in progress. `token` is what tells an awaiting round it has been abandoned. */
   var run = null;
   var runToken = 0;
+  /** The Exam Sprint in progress, on its own token so a run and a sprint cannot abandon each other. */
+  var exam = null;
+  var examToken = 0;
   /** @param {number} token @returns {boolean} false once the student has quit, replayed or finished */
   function alive(token) { return token === runToken; }
+  /** @param {number} token @returns {boolean} false once the sprint has been left */
+  function examAlive(token) { return token === examToken; }
 
   /* ===== SCREENS ===== */
 
@@ -188,10 +289,14 @@ const LEVELS = [
     Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
   }
 
-  /** Abandon whatever round is awaiting an answer and leave the graph inert. */
+  /** Abandon whatever round, gap tap or sprint question is awaiting an answer, and leave the graph
+   *  inert. Every clock's stop() resolves its waiter, so nothing is left hanging. */
   function abortRun() {
     runToken += 1;
+    examToken += 1;
     if (run && run.clock) run.clock.stop();
+    if (run && run.gapClock) run.gapClock.stop();
+    if (exam && exam.stop) exam.stop();
     ackNow();
     hideSheet();
     graph.lock();
@@ -210,20 +315,44 @@ const LEVELS = [
     };
   }
 
+  /** @returns {any} an untouched level record */
+  function blankRecord() {
+    return { cleared: false, acc: 0, best: 0, medal: null, exam: null, examPerfect: false };
+  }
+
+  /** Medal and ribbon are always derived, never written by hand: gold needs 95% on the level *and*
+   *  2 of 3 in the sprint, and the "Exam Ready" ribbon needs a clean sweep on top of that accuracy.
+   *  @param {any} rec @returns {any} the same record */
+  function rescore(rec) {
+    rec.medal = Arcade.medalFor(rec.acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) });
+    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total && rec.acc >= 0.95);
+    return rec;
+  }
+
   /** Record a cleared level: the best score and best accuracy are kept, the medal is recomputed
    *  from that accuracy and whatever the Exam Sprint has stored, and 75% unlocks the next level.
    *  @param {number} n @param {number} score @param {number} acc 0-1 */
   function saveProgress(n, score, acc) {
     var p = loadProgress();
-    var rec = p.levels[String(n)] || { cleared: false, acc: 0, best: 0, medal: null, exam: null, examPerfect: false };
+    var rec = p.levels[String(n)] || blankRecord();
     rec.cleared = true;
     rec.acc = Math.max(rec.acc || 0, acc);
     rec.best = Math.max(rec.best || 0, score);
-    rec.medal = Arcade.medalFor(rec.acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) });
-    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total);
-    p.levels[String(n)] = rec;
+    p.levels[String(n)] = rescore(rec);
     if (rec.acc >= 0.75) p.unlocked = Math.max(p.unlocked, n + 1);
     Arcade.store.set('arcade.shift.progress', p);
+  }
+
+  /** Record an Exam Sprint. The run score is untouched — the sprint only ever moves the medal and
+   *  the ribbon — and the best sprint stands, the same way the best score and accuracy do.
+   *  @param {number} n @param {number} right @param {number} total @returns {any} the level record */
+  function saveExam(n, right, total) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    if (!rec.exam || right > rec.exam.right) rec.exam = { right: right, total: total };
+    p.levels[String(n)] = rescore(rec);
+    Arcade.store.set('arcade.shift.progress', p);
+    return rec;
   }
 
   /* ===== LEVEL SELECT ===== */
@@ -250,20 +379,32 @@ const LEVELS = [
       tile.className = 'panel level-tile' + (locked ? ' locked' : '');
       tile.setAttribute('role', 'button');
       tile.setAttribute('tabindex', locked ? '-1' : '0');
+      tile.setAttribute('aria-label', (locked ? 'Locked: level ' : 'Play level ') + L.n + ', ' + L.name);
       if (locked) tile.setAttribute('aria-disabled', 'true');
       tile.appendChild(fill('level-num', String(L.n)));
 
       var info = document.createElement('div');
       info.setAttribute('style', 'flex:1;min-width:0');   // so the medal rides the right edge
-      info.appendChild(fill('panel-title', L.name));
+      info.appendChild(fill('panel-title', L.name + (locked ? ' 🔒' : '')));
       info.appendChild(fill('muted mono', rec && rec.cleared
         ? 'Best ' + rec.best + ' · ' + Math.round(rec.acc * 100) + '%'
         : !L.ready ? 'Coming soon' : locked ? 'Locked' : 'Not played yet'));
-      if (rec && rec.examPerfect) {
-        var ribbonRow = document.createElement('div');
-        ribbonRow.className = 'row';
-        ribbonRow.appendChild(fill('ribbon', 'Exam Ready'));
-        info.appendChild(ribbonRow);
+
+      var badges = document.createElement('div');
+      badges.className = 'row';
+      if (!L.ready) badges.appendChild(fill('tag', 'P1'));              // built in the next phase
+      if (rec && rec.exam) badges.appendChild(fill('tag', 'Sprint ' + rec.exam.right + '/' + rec.exam.total));
+      if (rec && rec.examPerfect) badges.appendChild(fill('ribbon', 'Exam Ready'));
+      if (badges.childNodes.length) info.appendChild(badges);
+
+      // The sprint replays on its own, without replaying the level it belongs to.
+      if (L.ready && rec && rec.cleared) {
+        var sprint = document.createElement('button');
+        sprint.type = 'button';
+        sprint.className = 'btn btn-ghost btn-sm';
+        sprint.textContent = 'Exam Sprint';
+        sprint.addEventListener('click', function (ev) { ev.stopPropagation(); startExam(L.n); });
+        info.appendChild(sprint);
       }
       tile.appendChild(info);
 
@@ -273,6 +414,7 @@ const LEVELS = [
       if (!locked) {
         tile.addEventListener('click', function () { startLevel(L.n); });
         tile.addEventListener('keydown', function (ev) {
+          if (ev.target !== tile) return;   // the nested Exam Sprint button answers its own keys
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); startLevel(L.n); }
         });
       }
@@ -282,29 +424,38 @@ const LEVELS = [
 
   /* ===== CARD LOGIC — pure; no DOM, no run state ===== */
 
+  /** What one asked-for gesture is. A boss's `moves` entries carry no `kind` of their own, so
+   *  anything that does not say 'move' is a shift.
+   *  @param {{kind?:string}} m a card or one boss move @returns {string} 'shift' or 'move' */
+  function kindOf(m) { return m && m.kind === 'move' ? 'move' : 'shift'; }
+
   /** The true outcome of a card, played after every answer whether or not the student found it.
    *  A shift lands the curve 12 units left or right of where the card started it; a movement along
    *  slides the dot 10 units up-left on AD (up-right on SRAS), and the mirror image for 'down'.
-   *  @param {any} card @returns {{shifts?:Object<string, number>, point?:{curve:string, x:number}}} */
+   *  A boss applies its moves in turn, so a boss that mixes shifts with a movement along ends on
+   *  the dot slid away from the equilibrium its shifts produced.
+   *  @param {any} card @returns {{shifts:Object<string, number>, point?:{curve:string, x:number}}} */
   function computeResult(card) {
     var start = { AD: 0, SRAS: 0 };
     Object.keys(card.start || {}).forEach(function (name) { start[name] = card.start[name]; });
-    if (card.kind === 'move') {
-      var curve = card.curve === 'any' ? 'AD' : card.curve;   // 'any' accepts either; the truth is drawn on AD
-      var eq = ArcadeGraph.intersect('adas', start) || { x: 50, y: 50 };
-      var away = (curve === 'AD' ? -1 : 1) * (card.dir === 'up' ? 1 : -1);
-      return { point: { curve: curve, x: eq.x + SLIDE_UNITS * away } };
-    }
-    var moves = card.kind === 'boss' ? card.moves : [{ curve: card.curve, dir: card.dir }];
-    moves.forEach(function (m) { start[m.curve] += (m.dir === 'R' ? SHIFT_UNITS : -SHIFT_UNITS); });
-    return { shifts: start };
+    var moves = card.kind === 'boss' ? card.moves : [card];
+    var slide = null;
+    moves.forEach(function (m) {
+      if (kindOf(m) === 'move') { slide = m; return; }
+      start[m.curve] += (m.dir === 'R' ? SHIFT_UNITS : -SHIFT_UNITS);
+    });
+    if (!slide) return { shifts: start };
+    var curve = slide.curve === 'any' ? 'AD' : slide.curve;   // 'any' accepts either; the truth is drawn on AD
+    var eq = ArcadeGraph.intersect('adas', start) || { x: 50, y: 50 };
+    var away = (curve === 'AD' ? -1 : 1) * (slide.dir === 'up' ? 1 : -1);
+    return { shifts: start, point: { curve: curve, x: eq.x + SLIDE_UNITS * away } };
   }
 
   /** @param {any} ans a graph `release` payload, or null when the clock won
    *  @param {any} card the card or one boss move @returns {boolean} */
   function judge(ans, card) {
     if (!ans) return false;
-    if (card.kind === 'move') {
+    if (kindOf(card) === 'move') {
       return ans.kind === 'move' && (card.curve === 'any' || ans.curve === card.curve) && ans.dir === card.dir;
     }
     return ans.kind === 'shift' && ans.curve === card.curve && ans.dir === card.dir;
@@ -312,8 +463,19 @@ const LEVELS = [
 
   /** @param {{kind?:string, curve:string, dir:string}} card @returns {string} what it asked for */
   function truthOf(card) {
-    if (card.kind === 'move') return 'Movement along ' + card.curve + ', ' + card.dir;
+    if (kindOf(card) === 'move') {
+      return 'Movement along ' + (card.curve === 'any' ? 'the curve' : card.curve) + ', ' + card.dir;
+    }
     return card.curve + ' shifts ' + (card.dir === 'R' ? 'right' : 'left');
+  }
+
+  /** The gap the graph is showing right now, read with the same test the engine grades a tap by, so
+   *  the band the student aims at can never disagree with the answer they are marked against.
+   *  `out.gap` is 0.8 gauge points per graph unit, hence the 0.008 deadband.
+   *  @returns {string} 'recessionary' | 'inflationary' | 'none' */
+  function gapNow() {
+    var g = graph.state().out.gap;
+    return g < -0.008 ? 'recessionary' : g > 0.008 ? 'inflationary' : 'none';
   }
 
   /** Fisher-Yates, on a copy. @param {any[]} list @returns {any[]} */
@@ -336,18 +498,27 @@ const LEVELS = [
 
   /* ===== ROUND CHROME — the breaking card, the verdict sheet and the clock ===== */
 
-  /** @param {any} card @param {number} active the live boss move, or -1 for an ordinary card */
-  function paintCard(card, active) {
+  /** @param {boolean[]} done @returns {number} the first boss move still to find, or -1 */
+  function firstPending(done) {
+    for (var i = 0; i < done.length; i += 1) if (!done[i]) return i;
+    return -1;
+  }
+
+  /** @param {any} card @param {boolean[]|null} done which boss moves are solved, null for a card.
+   *  A boss that takes its moves in either order shows every unsolved headline as live. */
+  function paintCard(card, done) {
     breakingEmoji.textContent = card.emoji;
     breakingBody.textContent = '';
     var tag = document.createElement('span');
     tag.className = 'tag';
     tag.textContent = card.kind === 'boss' ? 'Breaking · Boss' : 'Breaking';
     breakingBody.appendChild(tag);
-    if (card.kind === 'boss') {
+    if (card.kind === 'boss' && done) {
+      var next = firstPending(done);
       card.moves.forEach(function (move, i) {
-        var mark = i < active ? '✓ ' : i === active ? '▶ ' : '· ';
-        breakingBody.appendChild(fill(i === active ? 'breaking-head' : 'breaking-sub', mark + move.head));
+        var live = !done[i] && (card.anyOrder || i === next);
+        var mark = done[i] ? '✓ ' : live ? '▶ ' : '· ';
+        breakingBody.appendChild(fill(live ? 'breaking-head' : 'breaking-sub', mark + move.head));
       });
     } else {
       breakingBody.appendChild(fill('breaking-head', card.head));
@@ -378,11 +549,14 @@ const LEVELS = [
   }
   sheetBtn.addEventListener('click', function () { hideSheet(); ackNow(); });
 
-  /** The WHY beat: it stays up until the student taps "Got it".
-   *  @param {string} msg @param {string} why @returns {Promise<void>} */
-  function sheetAsk(msg, why) {
+  /** The WHY beat: it stays up until the student taps the button.
+   *  @param {string} msg @param {string} why @param {string} [label] default "Got it"
+   *  @param {string} [kind] 'wrong' (default) or 'correct' — the sprint marks right answers here too
+   *  @returns {Promise<void>} */
+  function sheetAsk(msg, why, label, kind) {
     ackNow();
-    paintSheet('wrong', msg, why, true);
+    sheetBtn.textContent = label || 'Got it';
+    paintSheet(kind || 'wrong', msg, why, true);
     return new Promise(function (resolve) { ackResolve = resolve; });
   }
 
@@ -410,10 +584,10 @@ const LEVELS = [
     }
     function atZero() {
       if (expired) return;
-      if (dragging) {
-        if (!extended) { extended = true; timer.extend(EXTEND_MS); timer.resume(); }
-        return;                        // the release already in flight ends the round instead
-      }
+      // A drag in flight at zero buys the one extension, so the answer under the finger is never
+      // stolen. It buys exactly one: reaching zero a second time expires the round whether or not
+      // a finger is still down, or holding a curve would be unlimited thinking time.
+      if (dragging && !extended) { extended = true; timer.extend(EXTEND_MS); timer.resume(); return; }
       expired = true;
       timer.stop();
       handOver(null);
@@ -446,6 +620,27 @@ const LEVELS = [
     };
   }
 
+  /** The five-second clock the gap tap runs on. `answer` resolves with the graph's `gap` payload, or
+   *  null when the clock wins; `stop()` ends it as a timeout, which is also how a quit unwinds it.
+   *  @param {number} ms @returns {{answer:Promise<any>, stop:() => void}} */
+  function gapClock(ms) {
+    /** @type {(value:any) => void} */ var settle = function () { };
+    var answer = new Promise(function (resolve) { settle = resolve; });
+    var done = false;
+    var timer = Arcade.timerBar(timerEl, ms, { onEnd: function () { finish(null); } });
+    /** @param {any} value */
+    function finish(value) {
+      if (done) return;
+      done = true;
+      timer.stop();
+      graph.off('gap', finish);
+      settle(value);
+    }
+    graph.on('gap', finish);
+    timer.start();
+    return { answer: answer, stop: function () { finish(null); } };
+  }
+
   /** Everything a wrong answer costs, before the WHY line. */
   function punish() {
     Arcade.shake(graphWrap);
@@ -470,12 +665,43 @@ const LEVELS = [
 
   /* ===== ROUND LOOP ===== */
 
+  /** The Level 3 beat: once the consequence has played, name the gap it left behind. Five seconds,
+   *  50 points times the multiplier, its own Arcade.track at skill 2 (Interpretation), and it counts
+   *  toward the run's accuracy like any other scored answer.
+   *  @param {any} card @param {number} token @returns {Promise<void>} */
+  async function playGap(card, token) {
+    var truth = gapNow();
+    hintEl.textContent = 'Tap the gap — left of Yf, right of Yf, or the line itself';
+    graph.askGap();
+    run.gapClock = gapClock(GAP_MS);
+    var ans = await run.gapClock.answer;
+    if (!alive(token)) return;
+    var ok = !!ans && ans.answer === truth;
+    graph.markGap(ok);
+    run.asked += 1;
+    if (ok) {
+      Arcade.sfx.play('coin');
+      award(Math.round(GAP_POINTS * run.streak.mult));
+      run.streak.hit();
+      run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+      run.correct += 1;
+      await sheetFlash('✓ ' + GAP_LABEL[truth]);
+    } else {
+      Arcade.sfx.play('wrong');
+      punish();
+      await sheetAsk('✗ ' + GAP_LABEL[truth], GAP_WHY[truth]);
+    }
+    if (!alive(token)) return;
+    hideSheet();
+    Arcade.track(card.ced, 2, ok);
+  }
+
   /** One card: the headline, the clock, the drag, the verdict, and always the true consequence.
    *  @param {any} card @param {any} L @param {number} token @returns {Promise<void>} */
   async function playRound(card, L, token) {
     graph.setCard({ start: card.start, draggable: L.draggable });
-    paintCard(card, -1);
-    hintEl.textContent = card.kind === 'move' ? '' : 'Drag the curve that moves';
+    paintCard(card, null);
+    hintEl.textContent = L.hint;
     Arcade.sfx.play('card');
     if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
 
@@ -508,59 +734,97 @@ const LEVELS = [
     await graph.animateTo(card.result);          // ~1.2 s of true consequence; a tap skips it
     if (!alive(token)) return;
     Arcade.track(card.ced, card.skill, ok);
+    if (card.gap) await playGap(card, token);    // trick cards carry no gap, so they never ask
   }
 
-  /* ===== BOSS — the moves are answered in order, on one clock ===== */
+  /* ===== BOSS — every move on one clock, in order or in either order ===== */
+
+  /** The move an answer solved. A boss that insists on an order only ever offers its next move.
+   *  @param {any} card @param {boolean[]} done @param {any} ans @returns {number} the index, or -1 */
+  function matchMove(card, done, ans) {
+    for (var i = 0; i < card.moves.length; i += 1) {
+      if (done[i]) continue;
+      if (judge(ans, card.moves[i])) return i;
+      if (!card.anyOrder) return -1;
+    }
+    return -1;
+  }
+
+  /** Which move a wrong answer was aimed at, so the WHY it earns is the one it needed: the unsolved
+   *  move on the curve the student actually touched, else the first still open.
+   *  @param {any} card @param {boolean[]} done @param {any} ans @returns {any} */
+  function aimedAt(card, done, ans) {
+    var first = null;
+    for (var i = 0; i < card.moves.length; i += 1) {
+      if (done[i]) continue;
+      if (!first) first = card.moves[i];
+      if (ans && ans.curve && ans.curve === card.moves[i].curve) return card.moves[i];
+    }
+    return first;
+  }
 
   /** @param {any} card @param {any} L @param {number} token @returns {Promise<void>} */
   async function playBoss(card, L, token) {
     graph.setCard({ start: card.start, draggable: L.draggable });
-    hintEl.textContent = 'Drag the curve that moves — one headline at a time';
+    hintEl.textContent = card.anyOrder
+      ? 'Drag the curve that moves — both headlines, either order'
+      : 'Drag the curve that moves — one headline at a time';
     Arcade.sfx.play('boss');
     if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
 
     run.clock = roundClock(card.time);
+    var done = card.moves.map(function () { return false; });
+    var frozen = [];                             // the curves already marked green
     var accepted = 0;
     var outOfTime = false;
 
-    for (var i = 0; i < card.moves.length; i += 1) {
-      var move = card.moves[i];
-      var solved = false;
-      if (!outOfTime) paintCard(card, i);
-      while (!solved && !outOfTime) {
-        var ans = await run.clock.next();
+    paintCard(card, done);
+    while (accepted < card.moves.length && !outOfTime) {
+      var ans = await run.clock.next();
+      if (!alive(token)) return;
+      if (!ans) { outOfTime = true; break; }
+      graph.lock();
+      var hit = matchMove(card, done, ans);
+      if (hit < 0) {
+        var missed = aimedAt(card, done, ans);
+        Arcade.sfx.play('snap');
+        Arcade.sfx.play('wrong');
+        await graph.snapBack({ jolt: true });    // back to where the last accepted move left it
         if (!alive(token)) return;
-        if (!ans) { outOfTime = true; break; }
-        graph.lock();
-        if (judge(ans, move)) {
-          Arcade.sfx.play('coin');
-          graph.accept(move.curve);
-          run.streak.hit();
-          run.bestStreak = Math.max(run.bestStreak, run.streak.count);
-          solved = true;
-          accepted += 1;
-          await wait(450);                       // let the green land before the next headline
-          if (!alive(token)) return;
-          // The next move is on the same curve, so re-base the card where this one left it:
-          // setCard clears `accepted` and makes AD grabbable again from its new position.
-          if (i + 1 < card.moves.length) graph.setCard({ start: graph.state().shifts, draggable: L.draggable });
-        } else {
-          Arcade.sfx.play('snap');
-          Arcade.sfx.play('wrong');
-          await graph.snapBack({ jolt: true });
-          if (!alive(token)) return;
-          punish();
-          run.clock.pause();                     // the WHY beat is not a speed test
-          await sheetAsk('✗ ' + truthOf(move), move.why);
-          if (!alive(token)) return;
-          hideSheet();
-          graph.unlock();
-          run.clock.resume();
-        }
+        punish();
+        run.clock.pause();                       // the WHY beat is not a speed test
+        await sheetAsk('✗ ' + truthOf(missed), missed.why);
+        if (!alive(token)) return;
+        hideSheet();
+        graph.unlock();
+        run.clock.resume();
+        continue;
       }
-      Arcade.track(card.ced, card.skill, solved);   // exactly once per move, solved or not
+      Arcade.sfx.play('coin');
+      graph.accept(card.moves[hit].curve);
+      frozen.push(card.moves[hit].curve);
+      done[hit] = true;
+      accepted += 1;
+      run.streak.hit();
+      run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+      await wait(450);                           // let the green land before the next headline
+      if (!alive(token)) return;
+      if (accepted < card.moves.length) {
+        // Re-base the card where this move left it, so a wrong attempt on the next one snaps back
+        // to here and not to the boss's opening state. setCard is the only way to do that and it
+        // clears every green, so the solved curves are marked again — all but one the next move has
+        // to drag itself, which the game cannot both freeze and ask for (Level 1: AD, then AD).
+        var nextCurve = card.moves[firstPending(done)].curve;
+        graph.setCard({ start: graph.state().shifts, draggable: L.draggable });
+        frozen.forEach(function (curve) { if (curve !== nextCurve) graph.accept(curve); });
+      }
+      paintCard(card, done);
+    }
+
+    for (var m = 0; m < card.moves.length; m += 1) {
+      Arcade.track(card.ced, card.skill, done[m]);   // exactly once per move, solved or not
       run.asked += 1;
-      if (solved) run.correct += 1;
+      if (done[m]) run.correct += 1;
     }
 
     var left = run.clock.remaining();
@@ -576,6 +840,106 @@ const LEVELS = [
     if (!alive(token)) return;
     hideSheet();
     await graph.animateTo(card.result);
+    if (!alive(token)) return;
+    if (card.gap) await playGap(card, token);      // Level 3 names the gap both shocks left behind
+  }
+
+  /* ===== EXAM SPRINT — three College Board-voiced questions, the only multiple choice in the game.
+     It never touches the run score: all it can move is the medal and the "Exam Ready" ribbon. ===== */
+
+  /** One question: the stem, four choices, a 70-second pace bar, then the marking and the WHY.
+   *  @param {any} q @param {number} index @param {number} total @param {number} token
+   *  @returns {Promise<boolean>} whether it was answered right */
+  async function askQuestion(q, index, total, token) {
+    examCountEl.textContent = (index + 1) + '/' + total;
+    examStemEl.textContent = q.stem;
+    examChoicesEl.textContent = '';
+    var buttons = q.choices.map(function (text, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-block choice';
+      b.textContent = KEYS.charAt(i) + '. ' + text;
+      examChoicesEl.appendChild(b);
+      return b;
+    });
+
+    var picked = await new Promise(function (resolve) {
+      var settled = false;
+      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { onEnd: function () { finish(-1); } });
+      /** @param {number} i the choice tapped, or -1 when the clock won */
+      function finish(i) {
+        if (settled) return;
+        settled = true;
+        timer.stop();
+        resolve(i);
+      }
+      buttons.forEach(function (b, i) { b.addEventListener('click', function () { finish(i); }); });
+      exam.stop = function () { finish(-1); };
+      timer.start();
+    });
+    if (!examAlive(token)) return false;
+
+    var ok = picked === q.answer;
+    buttons.forEach(function (b, i) {
+      b.classList.add('marked');
+      if (i === q.answer) b.classList.add('right');
+      else if (i === picked) b.classList.add('wrong');
+    });
+    Arcade.sfx.play(ok ? 'correct' : 'wrong');
+    Arcade.track(q.ced, q.skill, ok);
+    await sheetAsk(ok ? '✓ Correct' : '✗ ' + KEYS.charAt(q.answer) + ' is the answer', q.why, 'Next', ok ? 'correct' : 'wrong');
+    if (!examAlive(token)) return ok;
+    hideSheet();
+    return ok;
+  }
+
+  /** @param {number} n the level whose sprint this is */
+  function startExam(n) {
+    var L = levelOf(n);
+    if (!L || !L.ready || !L.exam || !L.exam.length) return;
+    abortRun();
+    show('exam');
+    runExam(L);
+  }
+
+  /** @param {any} L */
+  async function runExam(L) {
+    examToken += 1;
+    var token = examToken;
+    exam = { L: L, stop: null };
+    examSubEl.textContent = 'Level ' + L.n + ' · ' + L.name;
+    hideSheet();
+    var right = 0;
+    for (var i = 0; i < L.exam.length; i += 1) {
+      var ok = await askQuestion(L.exam[i], i, L.exam.length, token);
+      if (!examAlive(token)) return;
+      if (ok) right += 1;
+    }
+    examToken += 1;                    // the sprint is over; nothing still awaiting may touch it
+    showExamResult(L, right, L.exam.length);
+  }
+
+  /** @param {any} L @param {number} right @param {number} total */
+  function showExamResult(L, right, total) {
+    var rec = saveExam(L.n, right, total);
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'EXAM SPRINT', sub: 'Exam Sprint: ' + right + '/' + total,
+      score: rec.best || 0, accuracy: rec.acc || 0,
+      medal: rec.medal, stamp: Arcade.stampFor(rec.acc || 0),
+      ribbon: rec.examPerfect ? 'Exam Ready' : '',
+      stats: [
+        { label: 'Level ' + L.n, value: L.name },
+        { label: 'Best sprint', value: rec.exam.right + '/' + rec.exam.total }
+      ],
+      note: rec.medal === 'gold' ? '' : 'Gold needs 95% on the level and 2 of 3 here.',
+      buttons: [
+        { label: 'Levels', primary: true, onClick: goSelect },
+        { label: 'Run it again', onClick: function () { startExam(L.n); } }
+      ]
+    });
+    if (right === total) Arcade.confetti();
   }
 
   /* ===== THE RUN ===== */
@@ -595,7 +959,7 @@ const LEVELS = [
     var token = runToken;
     run = {
       L: L, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(),
-      score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null
+      score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, gapClock: null
     };
     run.streak.render(comboEl);
     scoreEl.textContent = '0';
@@ -633,6 +997,8 @@ const LEVELS = [
     var acc = accuracy();
     var score = run.score;
     runToken += 1;                       // the run is over; nothing still awaiting may touch it
+    Arcade.voice.stop();                 // no headline keeps reading over an end screen
+    sheetBtn.textContent = 'Got it';
     saveProgress(L.n, score, acc);
     Arcade.saveBest('shift', { score: score, initials: Arcade.initials(), level: L.n });
     var saved = loadProgress();
@@ -646,7 +1012,7 @@ const LEVELS = [
       stats: runStats(),
       note: saved.unlocked > L.n ? '' : 'Clear 75% to unlock the next level.',
       buttons: [
-        { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { Arcade.toast('Coming in Task 5'); } },
+        { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { startExam(L.n); } },
         { label: 'Levels', onClick: goSelect },
         { label: 'Replay', onClick: function () { startLevel(L.n); } }
       ]
@@ -658,6 +1024,8 @@ const LEVELS = [
   function showFail(L) {
     var acc = accuracy();
     runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
     show('end');
     Arcade.endScreen(screens.end, {
       title: 'LEVEL FAILED', sub: 'The economy collapsed. Retry?',
@@ -671,7 +1039,8 @@ const LEVELS = [
   }
 
   function goSelect() {
-    abortRun();
+    abortRun();                          // which is also where the read-aloud voice is stopped
+    sheetBtn.textContent = 'Got it';
     paintSelect();
     show('select');
   }
@@ -682,6 +1051,11 @@ const LEVELS = [
     if (!L.ready) return;
     L.pool.forEach(function (card) { card.result = computeResult(card); });
     L.boss.result = computeResult(L.boss);
+    // One hint for every card in a level that hides trick cards in its pool, so the hint itself
+    // never gives away which kind of card is on screen.
+    L.hint = L.pool.some(function (card) { return card.trick; })
+      ? 'Drag whatever the headline actually moves'
+      : 'Drag the curve that moves';
   });
 
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
@@ -705,6 +1079,7 @@ const LEVELS = [
   byId('playBtn').addEventListener('click', goSelect);
   byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
   byId('playBack').addEventListener('click', goSelect);
+  byId('examBack').addEventListener('click', goSelect);
 
   paintSelect();
   var deepLink = parseInt(String(Arcade.qs('level', '')), 10);

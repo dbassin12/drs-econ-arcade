@@ -145,7 +145,10 @@ body {
 }
 
 /* ===== GAME KIT — .breaking, .level-tile and .toast compose with .panel ===== */
-.breaking { animation: slideInRight .3s; }
+/* The play column is the one screen that has to fit a 740 px phone whole — headline, graph, gauges
+   and hint all above the fold — so it runs tighter than the rest of the kit. The graph never gives. */
+.stack.tight { gap: 8px; }
+.breaking { animation: slideInRight .3s; padding: 12px; }
 .breaking .tag { background: var(--red); color: var(--text); }
 .breaking-emoji { font-size: 44px; line-height: 1; }
 .breaking-head { font-weight: 900; font-size: 22px; }
@@ -204,6 +207,13 @@ body {
 .level-tile { display: flex; gap: 12px; align-items: center; }
 .level-tile.locked { opacity: .45; }
 .level-num { font-family: var(--font-mono); font-weight: 900; font-size: 28px; }
+/* Exam Sprint — the arcade's only multiple choice. A choice composes with .btn.btn-ghost.btn-block,
+   so it needs the sentence case and left edge a chunky uppercase button does not have. */
+.exam-stem { font-weight: 700; font-size: 17px; line-height: 1.45; }
+.choice { justify-content: flex-start; text-align: left; text-transform: none; letter-spacing: normal; font-size: 16px; font-weight: 700; }
+.choice.marked { pointer-events: none; opacity: .5; }
+.choice.right { border-color: var(--green); color: var(--green); box-shadow: 0 4px 0 var(--green-dark); opacity: 1; }
+.choice.wrong { border-color: var(--red); color: var(--red); box-shadow: 0 4px 0 var(--red-dark); opacity: 1; }
 .toast {
   position: fixed;
   top: 16px;

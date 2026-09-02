@@ -533,7 +533,12 @@ var ArcadeGraph = (function () {
         attr(zoneR, 'x', n2(rx + half)); attr(zoneR, 'width', n2(Math.max(0, PLOT - rx - half)));
         attr(zoneM, 'x', n2(rx - half)); attr(zoneM, 'width', n2(bandW));
         zoneM.style.display = bandW > 0 ? '' : 'none';
-        if (tickText) attr(tickText, 'x', n2(PLOT_X + rx));
+        if (tickText) {
+          attr(tickText, 'x', n2(PLOT_X + rx));
+          // The tick belongs to its reference curve: an AD-only level that hides LRAS must not be
+          // left with a lone "Yf" under the axis marking a line that is not on screen.
+          tickText.style.display = visible[market.xTick.at] ? '' : 'none';
+        }
         if (shadeOn) {
           attr(shade, 'x', n2(Math.min(dx, rx))); attr(shade, 'width', n2(Math.abs(dx - rx)));
           attr(gapLabel, 'x', n2(clamp((dx + rx) / 2, 46, PLOT - 46)));
