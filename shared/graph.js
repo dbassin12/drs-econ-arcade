@@ -770,16 +770,24 @@ var ArcadeGraph = (function () {
       settle = landed ? null : handle;
     }
 
-    /** End an in-flight drag with no verdict. lock() and setCard() cut a round short while a finger
-     *  is still down, and that finger must stop writing shifts the snapBack/animateTo springs are
-     *  already animating — otherwise the eventual pointerup springs the curve to startShift ± SNAP
-     *  under the WHY sheet. No `release` is emitted: nothing was answered. */
+    /** End an in-flight drag with no verdict. lock(), setCard() and a pointercancel all cut a round
+     *  short while a finger is still down, and that finger must stop writing shifts the
+     *  snapBack/animateTo springs are already animating — otherwise the eventual pointerup springs
+     *  the curve to startShift ± SNAP under the WHY sheet.
+     *
+     *  It does emit a release, and that release is always `{kind:'none'}`: nothing was answered, and
+     *  every listener already ignores a `none` (a tap with no drag has always produced one). The
+     *  emit is what tells a game that the finger it was told went down is no longer down. Without
+     *  it, Shift Happens' roundClock left `dragging` stuck true and handed the next round's zero the
+     *  hold-past-zero extension for a finger that had been gone for a minute. `drag` is cleared
+     *  before the emit, so a listener that re-enters through setCard() finds nothing left to end. */
     function endDrag() {
       if (!drag) return;
       var d = drag;
       drag = null;
       try { hit.releasePointerCapture(d.pointerId); } catch (err) { /* already gone */ }
       if (d.curve && parts[d.curve]) parts[d.curve].g.classList.remove('grabbed');
+      emit('release', { kind: 'none', curve: null, dir: null, magnitude: 0 });
     }
 
     function onUp(ev) {

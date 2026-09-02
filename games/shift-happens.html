@@ -133,6 +133,9 @@ const TIMING = {
   gapSeconds: 12,                         // the Level 3 "name the gap" tap
   extendSeconds: 3,                       // the one grace period a drag still in flight at zero earns
   warnSeconds: 5,                         // when the bar turns red and the tick/tock starts
+  cardInSeconds: 0.3,                     // the card's slide-in; the clock waits for it to land
+  readGrace: 5,                           // opening seconds of the clock that all pay the full
+                                          // speed bonus, so reading the headline costs nothing
   examSeconds: 70                         // the Exam Sprint stays at the real exam's Section I pace
 };
 
@@ -290,6 +293,8 @@ const HOWTO = [
   var EXTEND_MS = TIMING.extendSeconds * 1000;
   var GAP_MS = TIMING.gapSeconds * 1000;
   var WARN_MS = TIMING.warnSeconds * 1000;
+  var CARD_IN_MS = TIMING.cardInSeconds * 1000;
+  var GRACE_MS = TIMING.readGrace * 1000;
   var EXAM_MS = TIMING.examSeconds * 1000;
   var GAP_POINTS = 50;    // what naming the gap is worth, before the streak multiplier
   var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
@@ -667,6 +672,8 @@ const HOWTO = [
   function roundClock(ms) {
     var expired = false, dragging = false, extended = false;
     /** @type {((value:any) => void)|null} */ var waiting = null;
+    /** @type {any} */ var startHandle = null;   // the slide-in beat, before the clock is running
+    var waitingToStart = false;                  // …and the same beat, paused by the ? button
     var timer = Arcade.timerBar(timerEl, ms, {
       warnAt: WARN_MS, onEnd: atZero, onTick: function (left) { if (left <= 0) atZero(); }
     });
@@ -702,18 +709,45 @@ const HOWTO = [
     }
     graph.on('dragstart', onDragStart);
     graph.on('release', onRelease);
-    timer.start();
+
+    // The clock does not start until the headline has finished sliding in. The bar sits full and
+    // stopped for those 300 ms, so the round never opens with "the clock started before I saw the
+    // words" — and an answer given inside the beat still reads a full bar, i.e. a full speed bonus.
+    // The graph is already live and both listeners are already attached, so nothing is dropped.
+    function armStart() {
+      if (CARD_IN_MS > 0 && typeof setTimeout === 'function') {
+        startHandle = setTimeout(function () { startHandle = null; timer.start(); }, CARD_IN_MS);
+      } else {
+        timer.start();
+      }
+    }
+    /** @returns {boolean} true if a not-yet-started clock was the thing that got halted */
+    function disarmStart() {
+      if (!startHandle) return false;
+      clearTimeout(startHandle);
+      startHandle = null;
+      return true;
+    }
+    armStart();
 
     return {
       /** @returns {Promise<any>} */
       next: function () {
         return expired ? Promise.resolve(null) : new Promise(function (resolve) { waiting = resolve; });
       },
-      remaining: function () { return timer.remaining(); },
-      pause: function () { timer.pause(); },
-      resume: function () { if (!expired) timer.resume(); },
+      // Never more than there was when the clock first hit zero. A round rescued by the
+      // hold-past-zero extension had 0 ms left at that moment, so it scores no speed bonus: the
+      // extension buys the answer under the finger, not the points for having been quick.
+      remaining: function () { return extended ? 0 : timer.remaining(); },
+      pause: function () { if (disarmStart()) { waitingToStart = true; return; } timer.pause(); },
+      resume: function () {
+        if (expired) return;
+        if (waitingToStart) { waitingToStart = false; armStart(); return; }
+        timer.resume();
+      },
       stop: function () {
         expired = true;
+        disarmStart();
         timer.stop();
         graph.off('dragstart', onDragStart);
         graph.off('release', onRelease);
@@ -772,10 +806,21 @@ const HOWTO = [
     scoreEl.textContent = String(run.score);
   }
 
-  /** @param {number} left ms on the clock @param {number} total @param {number} cap
+  /** The speed bonus, with a reading grace. Flat at the cap for the first TIMING.readGrace seconds
+   *  of the clock, then straight down to zero at the buzzer.
+   *
+   *  Linear in time remaining — what this used to be — paid students not to read: a careful reader
+   *  who was right scored below a fast guesser who was right, 600 against 750 on the same correct
+   *  answer at a ×5 streak. And it got worse as the clocks got longer, because a bigger window is a
+   *  bigger penalty for using it. Now the reading beat is free and only the race is scored.
+   *  @param {number} left ms on the clock @param {number} total @param {number} cap
    *  @returns {number} the speed bonus, banked for the end screen */
   function speedBonus(left, total, cap) {
-    var bonus = Math.round(cap * left / total);
+    var window = total - GRACE_MS;      // the part of the clock the bonus actually decays across
+    var frac = window > 0
+      ? Math.min(1, Math.max(0, left / window))
+      : (left > 0 ? 1 : 0);             // a grace longer than the clock: the whole round is grace
+    var bonus = Math.round(cap * frac);
     run.speedTotal += bonus;
     return bonus;
   }
@@ -1043,14 +1088,14 @@ const HOWTO = [
     Arcade.sfx.play('boss');
     if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
 
-    run.clock = roundClock(card.time);
     var done = card.moves.map(function () { return false; });
     var frozen = [];                             // the curves already marked green
     var accepted = 0;
     var outOfTime = false;
     var dead = false;                            // the last heart went on a boss move
 
-    paintCard(card, done);
+    paintCard(card, done);                       // painted first: the clock waits on this slide-in
+    run.clock = roundClock(card.time);
     while (accepted < card.moves.length && !outOfTime) {
       var ans = await run.clock.next();
       if (!alive(token)) return;
