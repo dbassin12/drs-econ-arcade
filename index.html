@@ -277,9 +277,13 @@
 
   /** Copy the readiness code, or reveal it for a long-press when the clipboard refuses.
    *  @param {any} out the read-only textarea that holds the code when copying fails */
+  var copyBusy = false;
   function copyCode(out) {
+    if (copyBusy) return;               // a double tap is one copy, and therefore one toast
+    copyBusy = true;
     var code = Arcade.readinessCode();
     Arcade.copyText(code).then(function (ok) {
+      copyBusy = false;
       if (ok) {
         out.hidden = true;
         Arcade.toast('Copied — paste into Schoology');
@@ -383,6 +387,8 @@
   /** Every open and close bumps this, so a close still sliding out cannot hide a sheet that has
    *  been reopened behind it. */
   var initialsSeq = 0;
+  /** The focus trap's release while the sheet is open; it hands focus back to the chip. */
+  /** @type {(() => void)|null} */ var releaseInitials = null;
 
   /** @param {boolean} open the initials sheet is mounted while it is open and emptied when it closes */
   function showInitials(open) {
@@ -391,6 +397,9 @@
     initialsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (!open) {
       if (initialsSheet.hidden) return;
+      // Released before the slide-out, so focus is back on the chip while the sheet is still
+      // visibly leaving — and never lands on a control that is about to be `hidden`.
+      if (releaseInitials) { var release = releaseInitials; releaseInitials = null; release(); }
       // The sheet slides out first and leaves the page after: setting `hidden` in the same tick as
       // the class removal skipped the animation entirely. Reduced motion still fires the (1 ms)
       // transitionend, and the timer covers a transition that never runs at all.
@@ -419,6 +428,9 @@
     });
     initialsSheet.hidden = false;
     requestAnimationFrame(function () { initialsSheet.classList.add('open'); });
+    // It is a role="dialog" that lives at the end of <body>, fourteen tab stops from the chip that
+    // opens it. Focus goes into it, Tab stays in it, and Escape is a way out.
+    releaseInitials = Arcade.trapFocus(initialsSheet, function () { showInitials(false); });
   }
 
   function wireControls() {

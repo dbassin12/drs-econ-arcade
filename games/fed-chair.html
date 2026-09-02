@@ -152,6 +152,33 @@ const SCENARIO_1975 = {
     hold: 'Holding the nominal federal funds rate while inflation falls raises the real interest rate on its own, which decreases interest-sensitive spending and shifts aggregate demand left even though the Fed never moved.'
   }
 };
+
+/* ================================================================================
+   TIMING — Teacher-tunable: seconds students get.  Fed Chair has no answer clock at
+   all: the board waits as long as a student needs to think, and the quarter only
+   moves when they gavel it.  These two numbers are therefore the pace of the END
+   TURN animation and nothing else.  Numbers are seconds.
+   ================================================================================ */
+const TIMING = {
+  beatSeconds: 0.4,          // one step of the END TURN sequence: the gavel, then each pipeline chip
+  skipGuardSeconds: 0.35     // how long a skipped sequence stays deaf, so its spent tap fires nothing
+};
+
+/* ================================================================================
+   HOW TO PLAY — shown once between the briefing and the first quarter, and from the
+   ? on the board.  One emoji, one bold line, one sentence, same as Shift Happens.
+   ================================================================================ */
+const HOWTO = [
+  { emoji: '\u{1F3AF}', head: 'One number, ten quarters', body: 'Bring inflation down toward the 2 percent target without throwing the country out of work. Ten quarters, one decision in each.' },
+  { emoji: '\u{1F39A}\uFE0F', head: 'The dial is the federal funds rate', body: 'Drag it, or nudge it \u00B125 bps at a time. You may move it at most \u00B1100 bps \u2014 a full point \u2014 in any one quarter.' },
+  { emoji: '\u{1F528}', head: 'END TURN gavels the quarter', body: 'Nothing happens until you press it. Tap the board while the gavel plays to skip straight to the result.' },
+  { emoji: '\u23F3', head: 'The lag is the whole game', body: 'Your move hits output next quarter and inflation the quarter after \u2014 watch the pipeline strip. Nothing you do today can change today\u2019s inflation print.' },
+  { emoji: '\u{1F4CA}', head: 'Three gauges and the real-rate line', body: 'Inflation, unemployment and the output gap, with your rate minus inflation underneath: the real rate is what the economy actually feels.' },
+  { emoji: '\u{1F985}', head: 'Your advisors disagree on purpose', body: 'Dr. Hawk wants it tighter and Prof. Dove wants it looser. Neither of them is the answer; they are the argument you have to settle.' },
+  { emoji: '\u260E\uFE0F', head: 'Some quarters bring a decision', body: 'A card or a phone call slams over the board. Read it \u2014 one of them changes what the next quarter does to you.' },
+  { emoji: '\u{1F3C5}', head: 'Credibility is the row of pips', body: 'It fills when you hold the real rate above neutral long enough to be believed. Anchored expectations are what make disinflation cheap.' },
+  { emoji: '\u{1F170}\uFE0F', head: 'How the AP stamp is scored', body: 'Finish with inflation near 2 and unemployment near 6, avoid a jobs bloodbath, keep expectations anchored \u2014 and hold the Fed\u2019s independence.' }
+];
 </script>
 
 <main class="app" id="app">
@@ -162,7 +189,7 @@ const SCENARIO_1975 = {
       <div class="row" style="justify-content:center">
         <div class="coin" aria-hidden="true"><span class="coin-face">$</span></div>
       </div>
-      <h1 class="h1">FED CHAIR</h1>
+      <h1 class="h1" tabindex="-1" data-focus>FED CHAIR</h1>
       <p class="muted">You are the Fed chair. The economy is on fire.</p>
       <div class="row">
         <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
@@ -180,7 +207,7 @@ const SCENARIO_1975 = {
     <div class="stack">
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="eraBack" aria-label="Back to the title screen">←</button>
-        <h2 class="panel-title">Pick your crisis</h2>
+        <h2 class="panel-title" tabindex="-1" data-focus>Pick your crisis</h2>
       </header>
       <div class="stack" id="eraList"></div>
     </div>
@@ -191,10 +218,22 @@ const SCENARIO_1975 = {
     <div class="stack">
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="briefingBack" aria-label="Back to the era list">←</button>
-        <h2 class="panel-title">Your desk, January 1975</h2>
+        <h2 class="panel-title" tabindex="-1" data-focus>Your desk, January 1975</h2>
       </header>
       <div class="panel stack" id="briefingText"></div>
       <button type="button" class="btn btn-block" id="briefingStart">Take the gavel</button>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY — between the briefing and the first quarter, and from the ? on the board -->
+  <section class="screen" id="screen-howto">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>How to play</h2>
+      </header>
+      <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-block" id="howtoGo">Got it — take the chair</button>
     </div>
   </section>
 
@@ -203,8 +242,9 @@ const SCENARIO_1975 = {
     <div class="stack tight">
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="turnBack" aria-label="Quit to the era list">←</button>
-        <div class="turn-when" id="turnLabel">1975 · Q1 · Chair Burns</div>
+        <div class="turn-when" id="turnLabel" tabindex="-1" data-focus>1975 · Q1 · Chair Burns</div>
         <div class="topbar-stats"><div class="pips" id="credPips" role="img" aria-label="Credibility"></div></div>
+        <button type="button" class="btn btn-ghost howto-btn" id="turnHowto" aria-label="How to play">?</button>
       </header>
       <div id="gaugeStrip"></div>
       <div class="mono muted" id="realLine"></div>
@@ -245,7 +285,7 @@ const SCENARIO_1975 = {
   <!-- NEWSPAPER — the front page, then the run's report card underneath it -->
   <section class="screen" id="screen-news">
     <div class="stack">
-      <div class="newspaper stack" id="newspaper"></div>
+      <div class="newspaper stack" id="newspaper" tabindex="-1" data-focus></div>
       <div id="newsEnd"></div>
     </div>
   </section>
@@ -255,7 +295,7 @@ const SCENARIO_1975 = {
     <div class="stack">
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="historyBack" aria-label="Back to the front page">←</button>
-        <h2 class="panel-title">What really happened</h2>
+        <h2 class="panel-title" tabindex="-1" data-focus>What really happened</h2>
       </header>
       <div class="panel stack" id="historyText"></div>
       <div class="panel stack">
@@ -315,7 +355,8 @@ const SCENARIO_1975 = {
 
   var TURNS = FedModel.HISTORY_1975.pi.length;   // ten quarters, 1975 Q1 through 1977 Q2
   var THUMB = 48;                                // the dial thumb's width, and the axis inset
-  var BEAT = 400;                                // one step of the END TURN sequence
+  var BEAT = TIMING.beatSeconds * 1000;          // one step of the END TURN sequence; edit TIMING
+  var PAGE_STEP = FedModel.MAX_MOVE;             // PageUp/PageDown take the whole quarter's allowance
 
   /* ===== BOOT HELPERS ===== */
 
@@ -352,7 +393,8 @@ const SCENARIO_1975 = {
 
   var screens = {
     title: byId('screen-title'), era: byId('screen-era'), briefing: byId('screen-briefing'),
-    turn: byId('screen-turn'), news: byId('screen-news'), history: byId('screen-history')
+    howto: byId('screen-howto'), turn: byId('screen-turn'), news: byId('screen-news'),
+    history: byId('screen-history')
   };
   var eraList = byId('eraList'), briefingText = byId('briefingText');
   var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
@@ -368,13 +410,18 @@ const SCENARIO_1975 = {
   var newspaperEl = byId('newspaper'), newsEnd = byId('newsEnd');
   var historyText = byId('historyText'), chartMount = byId('chartMount'), chartLegend = byId('chartLegend');
   var chartToggle = byId('chartToggle'), frqLine = byId('frqLine');
+  var howtoCards = byId('howtoCards');
 
   /* ===== SCREENS ===== */
 
-  /** @param {string} name a key of `screens` */
+  /** Swap screens, deafen the page for a moment so a double tap cannot go two screens deep, and
+   *  put the keyboard on the screen that just appeared instead of dropping it on <body>.
+   *  @param {string} name a key of `screens` */
   function show(name) {
     Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
     window.scrollTo(0, 0);
+    Arcade.guardTaps();
+    Arcade.focusScreen(screens[name]);
   }
 
   /** Abandon whatever sequence or sheet is in flight and leave the board inert. */
@@ -405,13 +452,11 @@ const SCENARIO_1975 = {
   var sequence = null;
   /** @type {Record<string, any>} */ var gauges = {};
 
-  /** Set when a skipped sequence leaves a tap still in flight; see endSequence. */
-  var guardUntil = 0;
-  /** @returns {boolean} true while a spent skip tap could still be arriving */
-  function guarded() { return Date.now() < guardUntil; }
-  /** Wrap a click action so a spent skip tap cannot fire it.
-   *  @param {() => void} action @returns {() => void} */
-  function ignoringSkipTap(action) { return function () { if (!guarded()) action(); }; }
+  // The deaf window a spent skip tap needs is the same one a screen change needs, so both games
+  // now share Arcade's. Wrapping a handler in ignoringSkipTap is belt and braces: Arcade also
+  // swallows the click itself, in the capture phase, for as long as the guard is up.
+  var guarded = Arcade.guarded;
+  var ignoringSkipTap = Arcade.ignoringSkipTap;
 
   /** @param {number} token @returns {boolean} false once the player has quit or replayed */
   function alive(token) { return token === runToken; }
@@ -451,6 +496,9 @@ const SCENARIO_1975 = {
    *  already swung the gauges and slid the ticker by the time it calls this, so only a `fresh`
    *  paint — the first quarter of a run — touches those two.
    *  @param {{fresh?:boolean}} [opts] */
+  /** Set when END TURN was disabled out from under the keyboard; see paintTurn. */
+  var refocusEndTurn = false;
+
   function paintTurn(opts) {
     var o = opts || {};
     var state = current();
@@ -462,6 +510,12 @@ const SCENARIO_1975 = {
     paintDial();
     if (o.fresh) { setGauges(state, false); paintTicker(state); }
     lockBoard(false);
+    // lockBoard(true) disabled the very button the click came from, which drops focus to <body>
+    // ten times a run. It comes back the moment the board is live again.
+    if (refocusEndTurn) {
+      refocusEndTurn = false;
+      try { endTurnBtn.focus({ preventScroll: true }); } catch (err) { endTurnBtn.focus(); }
+    }
     endTurnBtn.textContent = run.t === TURNS ? 'End turn · final' : 'End turn';
   }
 
@@ -564,13 +618,22 @@ const SCENARIO_1975 = {
   }
   dialEl.addEventListener('pointerup', endDrag);
   dialEl.addEventListener('pointercancel', endDrag);
-  // Chromebooks get the same dial from the keyboard the nudge buttons give a phone.
+  // Chromebooks get the same dial from the keyboard the nudge buttons give a phone — and the whole
+  // WAI-ARIA slider pattern, not half of it: Home and End jump to the ends of the quarter's legal
+  // window, PageUp and PageDown take the full point in one press.
   dialEl.addEventListener('keydown', function (ev) {
-    var step = (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') ? -FedModel.RATE_STEP
-      : (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') ? FedModel.RATE_STEP : 0;
-    if (!step) return;
+    if (boardLocked || guarded() || !run) return;
+    var win = legalWindow();
+    var to = null;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') to = run.rate - FedModel.RATE_STEP;
+    else if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') to = run.rate + FedModel.RATE_STEP;
+    else if (ev.key === 'PageDown') to = run.rate - PAGE_STEP;
+    else if (ev.key === 'PageUp') to = run.rate + PAGE_STEP;
+    else if (ev.key === 'Home') to = win.lo;
+    else if (ev.key === 'End') to = win.hi;
+    if (to === null) return;
     ev.preventDefault();
-    nudge(step);
+    if (setRate(to)) Arcade.sfx.play('card');
   });
   window.addEventListener('resize', function () { if (run) paintDial(); });
 
@@ -696,7 +759,7 @@ const SCENARIO_1975 = {
     // button the sequence just re-enabled, the back button (never disabled at all), or a sheet or
     // end-screen button that did not exist when the finger went down. None of them may count, so
     // a skipped sequence deafens the whole board until that tap is spent.
-    if (sequence && sequence.skip) guardUntil = Date.now() + 350;
+    if (sequence && sequence.skip) Arcade.guardTaps(TIMING.skipGuardSeconds * 1000);
     sequence = null;
   }
 
@@ -717,6 +780,7 @@ const SCENARIO_1975 = {
     var state = current();
     var rate = run.rate;
     var prev = state.rate;
+    refocusEndTurn = document.activeElement === endTurnBtn;
     lockBoard(true);
     beginSequence();
 
@@ -772,10 +836,14 @@ const SCENARIO_1975 = {
 
   /* ===== EVENTS — the four beats, each one opening its quarter ===== */
 
+  /** Set while the sheet is up: the focus trap's release, which also hands focus back. */
+  /** @type {(() => void)|null} */ var releaseSheet = null;
+
   function closeSheet() {
     eventSheet.classList.remove('open');
     eventSheet.setAttribute('aria-hidden', 'true');
     eventButtons.textContent = '';
+    if (releaseSheet) { var release = releaseSheet; releaseSheet = null; release(); }
   }
 
   /** Raise the sheet and wait for a button. A card has one; the call has two.
@@ -795,19 +863,22 @@ const SCENARIO_1975 = {
     Arcade.say(event.head, { who: 'anchor' });
 
     return new Promise(function (resolve) {
+      var settled = false;
+      /** @param {() => void} onPick what the button that was chosen does */
+      function settle(onPick) {
+        if (settled) return;
+        settled = true;
+        if (alive(token)) onPick();
+        closeSheet();
+        resolve();
+      }
       /** @param {string} label @param {string} cls @param {() => void} onPick */
       function addButton(label, cls, onPick) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = cls;
         btn.textContent = label;
-        btn.addEventListener('click', function () {
-          if (guarded()) return;
-          if (!alive(token)) { closeSheet(); resolve(); return; }
-          onPick();
-          closeSheet();
-          resolve();
-        });
+        btn.addEventListener('click', function () { if (!guarded()) settle(onPick); });
         eventButtons.appendChild(btn);
       }
 
@@ -828,6 +899,14 @@ const SCENARIO_1975 = {
       }
       eventSheet.setAttribute('aria-hidden', 'false');
       eventSheet.classList.add('open');
+      // It says aria-modal="true", so it has to behave like one: focus lands inside it and Tab
+      // cannot walk out into the board — where #turnBack is never disabled, so a keyboard user
+      // could quit the run from inside a "modal". Escape dismisses a card, which is a warning with
+      // one button; it does not dismiss the call, because that is a forced choice and letting a
+      // keypress take the independent answer would hand out the integrity point for free.
+      releaseSheet = Arcade.trapFocus(eventSheet, event.kind === 'call' ? null : function () {
+        settle(function () { /* a card is a warning: acknowledging it is the whole interaction */ });
+      });
     });
   }
 
@@ -1007,6 +1086,53 @@ const SCENARIO_1975 = {
     paintChart();
   });
 
+  /* ===== HOW TO PLAY — once between the briefing and the first quarter, and from every ? ===== */
+
+  /** @type {(() => void)|null} */ var howtoAfter = null;
+
+  /** @returns {boolean} */
+  function howtoSeen() {
+    var saved = Arcade.store.get('arcade.fed.howto', null);
+    return !!(saved && saved.seen);
+  }
+
+  function markHowtoSeen() { Arcade.store.set('arcade.fed.howto', { seen: true }); }
+
+  function paintHowto() {
+    howtoCards.textContent = '';
+    HOWTO.forEach(function (card) {
+      var panel = fill('panel howto-card');
+      var emoji = fill('howto-emoji', card.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      panel.appendChild(emoji);
+      var body = fill('');
+      body.appendChild(fill('howto-head', card.head));
+      body.appendChild(fill('howto-body', card.body));
+      panel.appendChild(body);
+      howtoCards.appendChild(panel);
+    });
+  }
+
+  /** @param {() => void} after what closing the screen does */
+  function openHowto(after) {
+    howtoAfter = after;
+    paintHowto();
+    show('howto');
+  }
+
+  function closeHowto() {
+    var after = howtoAfter;
+    howtoAfter = null;
+    if (after) after();
+  }
+
+  /** The briefing's own button: the rules the first time, then straight to the chair. */
+  function takeTheGavel() {
+    if (howtoSeen()) { startRun(); return; }
+    markHowtoSeen();
+    openHowto(startRun);
+  }
+
   /* ===== ERA AND BRIEFING ===== */
 
   function paintEras() {
@@ -1069,7 +1195,13 @@ const SCENARIO_1975 = {
   byId('playBtn').addEventListener('click', goEra);
   byId('eraBack').addEventListener('click', function () { abandonRun(); show('title'); });
   byId('briefingBack').addEventListener('click', goEra);
-  byId('briefingStart').addEventListener('click', startRun);
+  byId('briefingStart').addEventListener('click', takeTheGavel);
+  byId('howtoBack').addEventListener('click', closeHowto);
+  byId('howtoGo').addEventListener('click', closeHowto);
+  byId('turnHowto').addEventListener('click', ignoringSkipTap(function () {
+    // Turn-based: there is no clock to pause, so the board is simply where it was left.
+    openHowto(function () { show('turn'); });
+  }));
   byId('turnBack').addEventListener('click', ignoringSkipTap(goEra));
   byId('historyBack').addEventListener('click', function () { show('news'); });
   nudgeDown.addEventListener('click', function () { nudge(-FedModel.RATE_STEP); });
