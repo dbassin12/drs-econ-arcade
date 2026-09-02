@@ -566,3 +566,25 @@ test('a dropped frame on a slow Chromebook costs no more than the cap either', (
   assert.equal(clock.remaining(), 19750);
   clearRaf();
 });
+
+/* ===== the tap guard — one short deaf window per screen change ===== */
+
+test('the tap guard opens for its window and closes again', () => {
+  Arcade.guardTaps(0);
+  assert.equal(Arcade.guarded(), false);
+  Arcade.guardTaps(5000);
+  assert.equal(Arcade.guarded(), true);
+  let fired = 0;
+  const wrapped = Arcade.ignoringSkipTap(() => { fired += 1; });
+  wrapped();
+  assert.equal(fired, 0, 'a spent tap fired an action while the guard was up');
+  Arcade.guardTaps(0);
+  wrapped();
+  assert.equal(fired, 1);
+});
+
+test('focusScreen and trapFocus are safe no-ops without a document', () => {
+  assert.equal(Arcade.focusScreen(null), null);
+  assert.equal(typeof Arcade.trapFocus(null, null), 'function');
+  Arcade.trapFocus(null, null)();
+});

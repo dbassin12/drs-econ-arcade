@@ -9,6 +9,7 @@ var ArcadeGraph = (function () {
   /* ===== CONSTANTS — both axes run 0-100 in graph units ===== */
 
   var SNAP = 12;      // where a recognised shift lands, measured from where the drag began
+  var SLIDE = 10;     // …and how far a recognised movement along a curve slides the dot
   var CLAMP = 25;     // how far a curve may travel from its market position
   var DEAD = 8;       // a drag shorter than this meant nothing
   var HIT = 8.3;      // how near a finger must pass a curve to grab it (24 px)
@@ -44,9 +45,12 @@ var ArcadeGraph = (function () {
       out: function (eq) {
         return { PL: 100 + 0.8 * (eq.y - 50), Y: 100 + 0.8 * (eq.x - 50), gap: 0.8 * (eq.x - 50), u: 6 - 0.5 * (0.8 * (eq.x - 50)) };
       },
+      // The rails are the domain the cards really reach: the Level 3 boss lands at PL 114.4 from a
+      // +12 start, which the old 88-112 gauge stopped dead at 112 while its own WHY line said the
+      // price level had risen. Anything past these still prints its true figure, marked `pinned`.
       gauges: [
-        { id: 'PL', label: 'Price Level', min: 88, max: 112, from: 'PL', decimals: 1 },
-        { id: 'Y', label: 'Real GDP', min: 88, max: 112, from: 'Y', ref: 100, refLabel: 'Yf', decimals: 1 },
+        { id: 'PL', label: 'Price Level', min: 85, max: 116, from: 'PL', decimals: 1 },
+        { id: 'Y', label: 'Real GDP', min: 85, max: 116, from: 'Y', ref: 100, refLabel: 'Yf', decimals: 1 },
         { id: 'u', label: 'Unemployment', min: 0, max: 12, from: 'u', unit: '%', ref: 6, refLabel: 'u*', decimals: 1 }
       ]
     },
@@ -248,7 +252,7 @@ var ArcadeGraph = (function () {
     this.max = o.max === undefined ? 100 : o.max;
     this.unit = o.unit || '';
     this.decimals = o.decimals === undefined ? 0 : o.decimals;
-    this.value = clamp(o.value === undefined ? this.min : o.value, this.min, this.max);
+    this.value = o.value === undefined ? this.min : o.value;
     /** @type {any} */ this.anim = null;
 
     gEl.appendChild(el('path', { d: arcPath(G_A0, G_A0 + G_ARC, G_R) }, 'gauge-arc'));
@@ -280,7 +284,11 @@ var ArcadeGraph = (function () {
     return G_A0 + G_ARC * (span === 0 ? 0 : (clamp(v, this.min, this.max) - this.min) / span);
   };
 
-  /** @param {number} v */
+  /** The needle is rail-to-rail — `angle()` clamps it — but the number under it is the reading the
+   *  economy actually produced, never the rail. A board that prints "12.0 %" while the front page
+   *  says "unemployment finishes at 13.6 percent" is teaching students to misread their own
+   *  instruments, so a pinned needle is marked instead of quietly rewriting the figure.
+   *  @param {number} v */
   Gauge.prototype.paint = function (v) {
     var a = this.angle(v);
     attr(this.fill, 'd', arcPath(G_A0, a, G_R));
@@ -288,19 +296,19 @@ var ArcadeGraph = (function () {
     attr(this.needle, 'x2', n2(tip.x));
     attr(this.needle, 'y2', n2(tip.y));
     this.valText.textContent = v.toFixed(this.decimals) + this.unit;
+    attr(this.valText, 'class', 'gauge-val' + (v < this.min || v > this.max ? ' pinned' : ''));
   };
 
   /** @param {number} v @param {{animate?:boolean, preset?:string}} [opts] */
   Gauge.prototype.set = function (v, opts) {
     var o = opts || {};
     var self = this;
-    var to = clamp(v, this.min, this.max);
     if (this.anim) { this.anim.cancel(); this.anim = null; }
-    if (o.animate === false) { this.value = to; this.paint(to); return; }
+    if (o.animate === false) { this.value = v; this.paint(v); return; }
     var landed = false;
-    var handle = spring(this.value, to, function (x) {
-      self.value = clamp(x, self.min, self.max);
-      self.paint(self.value);
+    var handle = spring(this.value, v, function (x) {
+      self.value = x;
+      self.paint(x);
     }, o.preset || 'consequence', function () { landed = true; self.anim = null; });
     this.anim = landed ? null : handle;   // a reduced-motion spring is already done by now
   };
@@ -315,9 +323,10 @@ var ArcadeGraph = (function () {
 
   /** Mount a draggable market graph.
    *  @param {any} mount the element the svg goes into, usually `.graph-wrap`
-   *  @param {{market?:string, gauges?:any, show?:Object<string, boolean>}} [opts]
+   *  @param {{market?:string, gauges?:any, show?:Object<string, boolean>, readout?:any}} [opts]
    *    `gauges`: the element to draw the gauge strip into, or true to append it to `mount`.
    *    `show`: preset curve visibility, e.g. `{LRAS:false}`.
+   *    `readout`: an `aria-live` element render() writes the board's reading into.
    *  @returns {any} the graph API */
   function create(mount, opts) {
     if (typeof document === 'undefined') throw new Error('ArcadeGraph.create needs a browser');
@@ -339,6 +348,10 @@ var ArcadeGraph = (function () {
     /** @type {(() => void)|null} */ var animResolve = null;
     /** @type {any} */ var settle = null;
     var locked = false, gapMode = false, gapAnswered = false, shadeOn = false;
+    /** The `aria-live` line a screen reader reads the board off, and the trailing timer that keeps
+     *  a 60 fps drag from writing to it sixty times a second. @type {any} */
+    var readout = o.readout || null;
+    var readTimer = 0, lastRead = '';
 
     names.forEach(function (n) {
       shifts[n] = 0;
@@ -497,6 +510,41 @@ var ArcadeGraph = (function () {
       return hi < lo ? { lo: lo, hi: lo } : { lo: lo, hi: hi };
     }
 
+    /** Everything the graph is showing, as one sentence: where each visible curve stands, then the
+     *  reading off the dot — the same figures the gauges draw. A student who cannot see the plot
+     *  gets the plot.
+     *  @returns {string} */
+    function reading() {
+      var here = [];
+      names.forEach(function (n) {
+        if (!visible[n]) return;
+        var s = shifts[n];
+        here.push(n + (Math.abs(s) < 0.5 ? ' at rest' : s > 0 ? ' shifted right' : ' shifted left'));
+      });
+      var dot = dotPos();
+      var out = outputs(market, dot);
+      market.gauges.forEach(function (spec) {
+        var v = out[spec.from];
+        if (typeof v !== 'number') return;
+        here.push(spec.label + ' ' + v.toFixed(spec.decimals === undefined ? 0 : spec.decimals) + (spec.unit || ''));
+      });
+      return here.join(', ') + '.';
+    }
+
+    /** Write the reading once the board has stopped moving. A spring and a finger both call
+     *  render() every frame, and a live region that changes sixty times a second is unreadable. */
+    function scheduleReadout() {
+      if (!readout || typeof setTimeout !== 'function') return;
+      if (readTimer) clearTimeout(readTimer);
+      readTimer = setTimeout(function () {
+        readTimer = 0;
+        var text = reading();
+        if (text === lastRead) return;
+        lastRead = text;
+        readout.textContent = text;
+      }, 250);
+    }
+
     /* --- render: the only place the svg changes --- */
 
     function render() {
@@ -558,6 +606,7 @@ var ArcadeGraph = (function () {
         var g = gauges[spec.id];
         if (g && typeof out[spec.from] === 'number') g.set(out[spec.from], { animate: false });
       });
+      scheduleReadout();
     }
 
     /* --- events --- */
@@ -729,13 +778,55 @@ var ArcadeGraph = (function () {
       var moved = classify({ kind: 'dot', curve: d.curve, x0: d.dotX, y0: d.dotY, x: here.x, y: here.y });
       var slope = market.curves[d.curve].m;
       var toX = moved.kind === 'move'
-        ? d.dotX + 10 * (slope > 0 ? 1 : -1) * (moved.dir === 'up' ? 1 : -1)
+        ? d.dotX + SLIDE * (slope > 0 ? 1 : -1) * (moved.dir === 'up' ? 1 : -1)
         : d.dotX;
       springPoint(d.curve, toX, moved.kind === 'none' && !d.hadPoint, function () { emit('release', moved); });
     }
 
+    /** A cancel is the OS taking the finger away — an incoming call, a Control-Centre pull, an app
+     *  switch, a rotation. The half-formed gesture it throws away was never an answer, so it is not
+     *  graded either way: the curve goes back to where the card started it and the round waits, the
+     *  same contract endDrag() documents. Grading it cost a heart for a drag the student never
+     *  finished, and paid a speed bonus for one they never meant. */
+    function onCancel(ev) {
+      if (locked || !drag || ev.pointerId !== drag.pointerId) return;
+      var d = drag;
+      endDrag();
+      if (d.kind === 'curve') { springShift(d.curve, d.startShift, function () { }); return; }
+      if (d.curve) springPoint(d.curve, d.dotX, !d.hadPoint, function () { });
+    }
+
     hit.addEventListener('pointerdown', onDown); hit.addEventListener('pointermove', onMove);
-    hit.addEventListener('pointerup', onUp); hit.addEventListener('pointercancel', onUp);
+    hit.addEventListener('pointerup', onUp); hit.addEventListener('pointercancel', onCancel);
+
+    /** The keyboard's way onto the plot. A Chromebook with no working trackpad, and any student on
+     *  a screen reader, has to be able to answer the question a finger answers — so this runs the
+     *  identical path a finished drag runs: the curve springs to where the drag would have snapped
+     *  it, or the dot slides the distance the drag would have slid it, and the same `release`
+     *  payload the pointer produces is emitted when it lands.
+     *  @param {string} kind 'shift' or 'move' @param {string} curve @param {string} dir 'L'/'R', 'up'/'down'
+     *  @returns {boolean} false when the board is not taking this answer right now */
+    function answer(kind, curve, dir) {
+      if (locked || drag || gapMode) return false;
+      if (draggable.indexOf(curve) < 0 || !visible[curve] || accepted[curve]) return false;
+      if (settle) { var last = settle; settle = null; last.finish(); }
+      if (kind === 'shift') {
+        var to = clamp(cardStart[curve] + (dir === 'R' ? SNAP : -SNAP), -CLAMP, CLAMP);
+        springShift(curve, to, function () {
+          emit('release', { kind: 'shift', curve: curve, dir: dir, magnitude: SNAP });
+        });
+        return true;
+      }
+      if (kind !== 'move') return false;
+      var c = market.curves[curve];
+      if (c.vertical) return false;
+      var from = dotPos();
+      var away = (c.m > 0 ? 1 : -1) * (dir === 'up' ? 1 : -1);
+      springPoint(curve, from.x + SLIDE * away, false, function () {
+        emit('release', { kind: 'move', curve: curve, dir: dir, magnitude: SLIDE });
+      });
+      return true;
+    }
 
     /* --- gap mode --- */
 
@@ -749,15 +840,24 @@ var ArcadeGraph = (function () {
       hit.style.pointerEvents = '';
     }
 
-    /** @param {string} answer @returns {(ev:any) => void} */
-    function onZone(answer) {
+    /** Name the gap. The three zones tap into this, and so does the keyboard's control row, so a
+     *  tap and a key are the same answer arriving by different roads.
+     *  @param {string} choice 'recessionary' | 'inflationary' | 'none'
+     *  @returns {boolean} false when no gap is being asked about */
+    function answerGap(choice) {
+      if (!gapMode || gapAnswered) return false;
+      gapAnswered = true;
+      gapMode = false;
+      zonesG.style.pointerEvents = 'none';
+      emit('gap', { answer: choice });
+      return true;
+    }
+
+    /** @param {string} choice @returns {(ev:any) => void} */
+    function onZone(choice) {
       return function (ev) {
         ev.preventDefault();
-        if (!gapMode || gapAnswered) return;
-        gapAnswered = true;
-        gapMode = false;
-        zonesG.style.pointerEvents = 'none';
-        emit('gap', { answer: answer });
+        answerGap(choice);
       };
     }
     zoneL.addEventListener('pointerdown', onZone('recessionary'));
@@ -909,7 +1009,8 @@ var ArcadeGraph = (function () {
       listeners = {};   // before stopAnims(), so a torn-down graph reports nothing to nobody
       stopAnims();
       hit.removeEventListener('pointerdown', onDown); hit.removeEventListener('pointermove', onMove);
-      hit.removeEventListener('pointerup', onUp); hit.removeEventListener('pointercancel', onUp);
+      hit.removeEventListener('pointerup', onUp); hit.removeEventListener('pointercancel', onCancel);
+      if (readTimer && typeof clearTimeout === 'function') clearTimeout(readTimer);
       if (root.parentNode) root.parentNode.removeChild(root);
       if (strip && strip.parentNode) strip.parentNode.removeChild(strip);
     }
@@ -924,6 +1025,7 @@ var ArcadeGraph = (function () {
       lock: function () { locked = true; endDrag(); },
       unlock: function () { locked = false; },
       askGap: askGap, markGap: markGap, setVisible: setVisible,
+      answer: answer, answerGap: answerGap, reading: reading,
       state: state, setLabels: setLabels, reset: reset, destroy: destroy
     };
   }

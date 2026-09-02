@@ -576,11 +576,16 @@ const SCENARIO_1975 = {
 
   /* ===== GAUGES AND PIPELINE ===== */
 
+  // The rails are the domain a legal rate path really reaches, not the domain a good one does:
+  // hiking a point a quarter for four quarters — the strategy the briefing itself teaches — takes
+  // the gap past −11 and unemployment past 12, and the old rails printed −8.0 and 12.0 while the
+  // ticker, the bloodbath headline and the front page all used the true numbers. Anything still
+  // beyond these prints its true figure with the needle marked `pinned`.
   var GAUGE_SPECS = [
     { id: 'pi', label: 'Inflation π', min: 0, max: 15, unit: '%', decimals: 1,
       zones: [{ from: 1, to: 3, color: token('--green') }, { from: 8, to: 15, color: token('--red') }] },
-    { id: 'u', label: 'Unemployment u', min: 0, max: 12, unit: '%', decimals: 1, ref: 6, refLabel: 'u* = 6' },
-    { id: 'gap', label: 'Output gap', min: -8, max: 6, unit: '%', decimals: 1, ref: 0, refLabel: 'full employment' }
+    { id: 'u', label: 'Unemployment u', min: 0, max: 16, unit: '%', decimals: 1, ref: 6, refLabel: 'u* = 6' },
+    { id: 'gap', label: 'Output gap', min: -16, max: 9, unit: '%', decimals: 1, ref: 0, refLabel: 'full employment' }
   ];
 
   function buildGauges() {

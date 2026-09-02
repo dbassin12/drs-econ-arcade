@@ -193,7 +193,13 @@ var Arcade = (function () {
 
   /** @param {string} name a RECIPES key; unknown names, mute and locked audio are all no-ops */
   function play(name) {
-    if (muted || !ctx || !master || ctx.state !== 'running') return;
+    if (muted) return;
+    // iOS suspends the context on a phone call, Siri or a backgrounding, and Chrome suspends a
+    // discarded tab's. Nothing else in the arcade ever re-opens one — the first-gesture listeners
+    // were torn down the moment audio first ran — so without this the tick/tock warning beat, the
+    // right/wrong cues and the gavel go silent for the rest of the session.
+    if (ctx && ctx.state !== 'running') unlock();
+    if (!ctx || !master || ctx.state !== 'running') return;
     var recipe = RECIPES[name];
     if (!recipe) return;
     try { recipe(ctx.currentTime + 0.001); } catch (err) { /* an audio hiccup never stops play */ }
@@ -319,6 +325,10 @@ var Arcade = (function () {
       voiceOn = !voiceOn;
       store.set('arcade.voice', voiceOn);
       syncVoiceButtons();
+      // This runs inside the 🗣 button's own click handler, which is the one user activation
+      // guaranteed to be about read-aloud. Priming here is what keeps the first headline a student
+      // turns the voice on for from being swallowed.
+      if (voiceOn) primeSpeech();
       if (!voiceOn) voice.stop();
       return voiceOn;
     },
@@ -1127,6 +1137,76 @@ var Arcade = (function () {
     return t;
   }
 
+  /* ===== TAP GUARD AND FOCUS — what a screen change owes a finger and a keyboard ===== */
+
+  var guardUntil = 0;
+  var GUARD_MS = 350;   // long enough to cover the second half of a double tap, short enough to feel instant
+
+  /** Deafen the page for a moment. The tap that caused a screen change is still in flight: its
+   *  `click` is delivered after the swap, to whatever now occupies that coordinate — the next
+   *  screen's back button sitting in the identical 48 px box, or a choice button that did not
+   *  exist when the finger went down. A double tap must do the single-tap thing only.
+   *  @param {number} [ms] default 350 */
+  function guardTaps(ms) { guardUntil = Date.now() + (ms === undefined ? GUARD_MS : ms); }
+
+  /** @returns {boolean} true while a spent tap could still be arriving */
+  function guarded() { return Date.now() < guardUntil; }
+
+  /** @param {() => void} action @returns {() => void} the action, deaf while the guard is up */
+  function ignoringSkipTap(action) { return function () { if (!guarded()) action(); }; }
+
+  var FOCUSABLE = 'button:not([disabled]), [href], input, select, textarea, [tabindex]';
+
+  /** Put focus on the screen that just became visible. Without it every navigation drops focus to
+   *  <body> — the element it was on has just gone `display:none` — and a keyboard user restarts
+   *  from the top of the document on every single move.
+   *  @param {any} el the newly-active screen @returns {any} whatever took focus, or null */
+  function focusScreen(el) {
+    if (!el || typeof document === 'undefined') return null;
+    var target = el.querySelector('[data-focus]') || el.querySelector('h1, h2, ' + FOCUSABLE);
+    if (!target || typeof target.focus !== 'function') return null;
+    try { target.focus({ preventScroll: true }); } catch (err) { target.focus(); }
+    return target;
+  }
+
+  /** Make a dialog behave like one: focus lands inside it, Tab stays inside it, Escape leaves it,
+   *  and the control that opened it gets focus back.
+   *  @param {any} el the dialog @param {(() => void)|null} [onEscape] omit for a forced choice
+   *  @returns {() => void} release it */
+  function trapFocus(el, onEscape) {
+    if (!el || typeof document === 'undefined') return function () { };
+    var opener = document.activeElement;
+    function stops() {
+      var all = el.querySelectorAll(FOCUSABLE);
+      var out = [];
+      for (var i = 0; i < all.length; i += 1) {
+        if (!all[i].disabled && all[i].getAttribute('tabindex') !== '-1'
+          && (typeof all[i].getClientRects !== 'function' || all[i].getClientRects().length > 0)) out.push(all[i]);
+      }
+      return out;
+    }
+    /** @param {any} ev */
+    function onKey(ev) {
+      if (ev.key === 'Escape' && onEscape) { ev.preventDefault(); onEscape(); return; }
+      if (ev.key !== 'Tab') return;
+      var list = stops();
+      if (!list.length) return;
+      var first = list[0], last = list[list.length - 1];
+      var here = document.activeElement;
+      if (ev.shiftKey && (here === first || !el.contains(here))) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && (here === last || !el.contains(here))) { ev.preventDefault(); first.focus(); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    var open = stops()[0];
+    if (open) { try { open.focus({ preventScroll: true }); } catch (err) { open.focus(); } }
+    return function () {
+      document.removeEventListener('keydown', onKey, true);
+      if (opener && typeof opener.focus === 'function' && document.contains(opener)) {
+        try { opener.focus({ preventScroll: true }); } catch (err) { opener.focus(); }
+      }
+    };
+  }
+
   /* ===== FIRST GESTURE — the one DOM touch at load: unlock audio, prime speech ===== */
 
   /** Every activation-triggering event a student can produce here. A touch `pointerdown` is NOT one
@@ -1150,6 +1230,14 @@ var Arcade = (function () {
   if (typeof document !== 'undefined') {
     gestureBound = true;
     GESTURE_EVENTS.forEach(function (name) { document.addEventListener(name, onFirstGesture); });
+    // The guard is enforced in one place, in the capture phase, so no handler has to remember it.
+    // Only `click` is swallowed: pointerdown and pointerup still reach the document, so the audio
+    // unlock and the graph's own drag surface are untouched by a screen change.
+    document.addEventListener('click', function (ev) {
+      if (!guarded()) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+    }, true);
   }
 
   return {
@@ -1159,6 +1247,8 @@ var Arcade = (function () {
     copyText: copyText, CED_NAMES: CED_NAMES, UNIT_NAMES: UNIT_NAMES, CED_TO_LEVEL: CED_TO_LEVEL,
     SPRING: SPRING, prefersReducedMotion: prefersReducedMotion, spring: spring,
     confetti: confetti, shake: shake, flash: flash,
+    guardTaps: guardTaps, guarded: guarded, ignoringSkipTap: ignoringSkipTap,
+    focusScreen: focusScreen, trapFocus: trapFocus,
     hearts: hearts, streak: streak, timerBar: timerBar, endScreen: endScreen,
     medalFor: medalFor, stampFor: stampFor, titleFor: titleFor, initialsEntry: initialsEntry,
     bigType: bigType, mountBigTypeButton: mountBigTypeButton, toast: toast

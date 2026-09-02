@@ -82,7 +82,11 @@ body {
 .btn-blue { background: var(--blue); box-shadow: 0 4px 0 var(--blue-dark); }
 .btn-red { background: var(--red); box-shadow: 0 4px 0 var(--red-dark); }
 .btn-ghost { background: transparent; color: var(--text); border: 2px solid var(--border); box-shadow: 0 4px 0 var(--border); }
-.btn-sm { min-height: 40px; padding: 8px 14px; font-size: 15px; }
+/* A pressed toggle has to look pressed. 🗣 and 📺 are the same glyph in both states, so aria-pressed
+   was the only signal a sighted student had — and it is not a signal you can see. */
+.btn-ghost[aria-pressed="true"] { border-color: var(--green); color: var(--green); box-shadow: 0 4px 0 var(--green-dark); }
+/* Smaller type and padding, never a smaller target: 48 px is the floor everywhere. */
+.btn-sm { min-height: 48px; padding: 8px 14px; font-size: 15px; }
 .btn-block { display: flex; width: 100%; }
 
 /* ===== LAYOUT ===== */
@@ -558,10 +562,11 @@ html.big-type .podium { display: block; order: -1; }
 .curve .ghost { fill: none; stroke-width: 3; stroke-dasharray: 6 6; opacity: .35; }
 .curve.grabbed .line { stroke-width: 6; }
 .curve.accepted .line { stroke: var(--green); }
-.curve .tag { font: 900 14px var(--font); fill: currentColor; }
+.curve .tag { font: 900 14px var(--font); fill: currentColor; color: inherit; }
 /* The ghost trail and the curve's own name take the colour of the line they belong to: the
-   `.ghost` above sets no stroke and the `.tag` above has no `color` to resolve currentColor
-   against, so both fell back to the page's text colour. Same three tokens as `.line`. */
+   `.ghost` above sets no stroke, and the label carries class="tag", which the pill rule near the
+   top of this file paints `--text2` ON the text element itself — so `currentColor` resolved grey
+   until `.curve .tag` took its colour back by inheriting the <g>'s. Same three tokens as `.line`. */
 .curve[data-curve=AD], .curve[data-curve=D], .curve[data-curve=MD], .curve[data-curve=SRPC] { color: var(--blue); }
 .curve[data-curve=SRAS], .curve[data-curve=S], .curve[data-curve=MS] { color: var(--gold); }
 .curve[data-curve=LRAS], .curve[data-curve=LRPC] { color: var(--purple); }
@@ -587,6 +592,9 @@ html.big-type .podium { display: block; order: -1; }
 /* The reference's name goes on the cell's last line, small and gold like the tick it explains, so it
    stops crowding the value's digits above it. */
 .gauge-reflabel { font: 800 10px var(--font); fill: var(--gold); text-anchor: middle; }
+/* The needle has run out of dial but the number under it has not: the figure is the true one and
+   goes gold to say the arc is no longer measuring it. */
+.gauge-val.pinned { fill: var(--gold); }
 .gauge.flash-red .gauge-fill { stroke: var(--red); }
 
 /* ===== ENGINE KIT — the few classes shared/arcade.js generates that the kit above lacks.
@@ -597,7 +605,11 @@ html.big-type .podium { display: block; order: -1; }
 .combo.crack { animation: crack .45s; }
 .end-head { display: flex; gap: 12px; align-items: center; }
 .end-head .ap-stamp { margin-left: auto; }
-.end-score { font-size: 40px; }
+/* The score and the accuracy under it are two different numbers, and on a zero-score fail they read
+   as one ("0" over "0% correct" scans as "00%"). The gap and the smaller line separate them; the
+   word "Accuracy" in front of the second one does the rest. */
+.end-score { display: block; font-size: 40px; line-height: 1; }
+.end-score + .muted { margin-top: 6px; font-size: 14px; }
 .stat-row { display: flex; gap: 12px; justify-content: space-between; }
 
 /* ===== KEYFRAMES ===== */
@@ -650,3 +662,36 @@ html.big-type .podium { display: block; order: -1; }
     transition-duration: .001s !important;
   }
 }
+
+/* ===== KEYBOARD LAYER — the way onto the graph that is not a finger =====
+   The control row is out of the way until a Tab reaches it, and then it is an ordinary visible row
+   of 48 px buttons: a phone never sees it, a Chromebook keyboard cannot miss it. */
+.sr-only, .kbd-answers {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.kbd-answers:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+.kbd-answers .btn { flex: 1 1 auto; padding: 8px 10px; font-size: 14px; }
+
+/* ===== HOW TO PLAY — one screen of illustrated cards, scrollable on a 360x740 phone ===== */
+.howto-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px; }
+.howto-emoji { flex: 0 0 auto; font-size: 30px; line-height: 1.1; }
+.howto-head { font-weight: 900; font-size: 17px; }
+.howto-body { color: var(--text2); font-size: 15px; line-height: 1.4; }
+.howto-demo { max-width: 200px; margin: 0 auto; }
+.howto-caption { text-align: center; }
+.topbar .howto-btn { width: 48px; height: 48px; flex: 0 0 48px; padding: 0; margin-left: auto; }
