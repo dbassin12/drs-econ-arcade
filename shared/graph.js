@@ -231,8 +231,9 @@ var ArcadeGraph = (function () {
       (Math.abs(a2 - a1) > 180 ? 1 : 0) + ' ' + (a2 > a1 ? 1 : 0) + ' ' + n2(p2.x) + ' ' + n2(p2.y);
   }
 
-  /** One dial. The ref tick sits at its own angle across the arc; its name sits under the value,
-   *  which is the one place in a 120x90 cell no needle can cross.
+  /** One dial. The ref tick crosses the arc but stops short of the gauge's name above it; the value
+   *  sits under the dial, the one place in a 120x90 cell no needle can cross, and the reference's
+   *  name sits smaller and gold on the cell's last line, clear of the value's digits.
    *  @param {any} gEl an `<g class="gauge">` to draw into
    *  @param {{id?:string, label?:string, min?:number, max?:number, value?:number, unit?:string,
    *           ref?:number, refLabel?:string, zones?:{from:number, to:number, color:string}[],
@@ -259,17 +260,17 @@ var ArcadeGraph = (function () {
     this.fill = el('path', {}, 'gauge-fill');
     gEl.appendChild(this.fill);
     if (typeof o.ref === 'number') {
-      var inner = dial(this.angle(o.ref), 27), outer = dial(this.angle(o.ref), 41);
+      var inner = dial(this.angle(o.ref), 26), outer = dial(this.angle(o.ref), 36);
       var tick = el('line', {}, 'gauge-ref');
       line2(tick, inner.x, inner.y, outer.x, outer.y);
       gEl.appendChild(tick);
-      gEl.appendChild(textEl(G_CX, GAUGE_H - 3, o.refLabel || String(o.ref), 'gauge-label'));
+      gEl.appendChild(textEl(G_CX, GAUGE_H - 2, o.refLabel || String(o.ref), 'gauge-reflabel'));
     }
     this.needle = el('line', { x1: G_CX, y1: G_CY, x2: G_CX, y2: G_CY }, 'gauge-needle');
     gEl.appendChild(this.needle);
     this.valText = textEl(G_CX, 78, '', 'gauge-val');
     gEl.appendChild(this.valText);
-    gEl.appendChild(textEl(G_CX, 12, o.label || '', 'gauge-label'));
+    gEl.appendChild(textEl(G_CX, 10, o.label || '', 'gauge-label'));
     this.paint(this.value);
   }
 
@@ -384,7 +385,7 @@ var ArcadeGraph = (function () {
     plot.appendChild(guides);
     var guideV = el('line', {});
     var guideH = el('line', {});
-    var guideXText = textEl(0, PLOT + 14, '', 'axis-label');
+    var guideXText = textEl(0, PLOT + 30, '', 'axis-label');   // under the reference tick's own line
     var guideYText = textEl(-6, 0, '', 'axis-label', 'end');
     guides.appendChild(guideV); guides.appendChild(guideH);
     guides.appendChild(guideXText); guides.appendChild(guideYText);
@@ -418,7 +419,11 @@ var ArcadeGraph = (function () {
     var yLabel = textEl(14, PLOT_Y + PLOT / 2, market.yLabel, 'axis-label');
     attr(yLabel, 'transform', 'rotate(-90 14 ' + (PLOT_Y + PLOT / 2) + ')');
     axes.appendChild(yLabel);
-    var tickText = market.xTick ? textEl(0, VB - 24, market.xTick.text, 'axis-label') : null;
+    // The reference tick is a mark ON the axis with its name beside it: centred under the axis it
+    // stacked straight on top of the x-axis label, and the two crowded each other at 360 px.
+    var tickMark = market.xTick ? el('line', {}, 'axis-tickmark') : null;
+    var tickText = market.xTick ? textEl(0, base + 16, market.xTick.text, 'axis-tick', 'start') : null;
+    if (tickMark) axes.appendChild(tickMark);
     if (tickText) axes.appendChild(tickText);
 
     mount.appendChild(root);
@@ -533,11 +538,14 @@ var ArcadeGraph = (function () {
         attr(zoneR, 'x', n2(rx + half)); attr(zoneR, 'width', n2(Math.max(0, PLOT - rx - half)));
         attr(zoneM, 'x', n2(rx - half)); attr(zoneM, 'width', n2(bandW));
         zoneM.style.display = bandW > 0 ? '' : 'none';
-        if (tickText) {
-          attr(tickText, 'x', n2(PLOT_X + rx));
+        if (tickText && tickMark) {
+          attr(tickText, 'x', n2(PLOT_X + rx + 6));
+          line2(tickMark, PLOT_X + rx, base - 5, PLOT_X + rx, base + 5);
           // The tick belongs to its reference curve: an AD-only level that hides LRAS must not be
           // left with a lone "Yf" under the axis marking a line that is not on screen.
-          tickText.style.display = visible[market.xTick.at] ? '' : 'none';
+          var showTick = visible[market.xTick.at] ? '' : 'none';
+          tickText.style.display = showTick;
+          tickMark.style.display = showTick;
         }
         if (shadeOn) {
           attr(shade, 'x', n2(Math.min(dx, rx))); attr(shade, 'width', n2(Math.abs(dx - rx)));

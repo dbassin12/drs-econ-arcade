@@ -905,17 +905,19 @@ var Arcade = (function () {
     return 1;
   }
 
-  /** The celebration panel every run ends on.
+  /** The panel every run ends on — a celebration by default, a plain red verdict under `tone:'fail'`.
    *  @param {any} el mount point; its contents are replaced
    *  @param {{title?:string, sub?:string, score?:number, accuracy?:number, medal?:string|null,
    *           stamp?:number, stats?:{label:string, value:string}[],
    *           buttons?:{label:string, onClick?:() => void, primary?:boolean, variant?:string}[],
-   *           ribbon?:string, note?:string}} opts `accuracy` is a 0–1 fraction
+   *           ribbon?:string, note?:string, tone?:string}} opts `accuracy` is a 0–1 fraction
    *  @returns {any} the panel element */
   function endScreen(el, opts) {
     if (typeof document === 'undefined') return null;
     var o = opts || {};
-    var panel = make('panel stack');
+    // `tone:'fail'` swaps the celebratory gradient headline for the flat red the wrong-answer
+    // sheet already uses, and borders the panel to match. Losing should not look like winning.
+    var panel = make('panel stack' + (o.tone === 'fail' ? ' tone-fail' : ''));
 
     if (o.title) {
       var h = document.createElement('h2');

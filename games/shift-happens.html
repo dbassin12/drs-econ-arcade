@@ -256,6 +256,13 @@ const LEVELS = [
     node.textContent = text;
     return node;
   }
+  /** @param {string} cls @param {string} text @returns {any} a phrasing node, legal inside a button */
+  function chip(cls, text) {
+    var node = document.createElement('span');
+    node.className = cls;
+    node.textContent = text;
+    return node;
+  }
 
   var screens = {
     title: byId('screen-title'), select: byId('screen-select'), play: byId('screen-play'),
@@ -370,73 +377,58 @@ const LEVELS = [
     return !!(L && L.ready && n <= loadProgress().unlocked);
   }
 
+  /** A tile is two real controls in one panel: the body plays the level, the chip beside it replays
+   *  the Exam Sprint. Neither is nested inside the other, so each answers its own taps and its own
+   *  keys, and the number, name, best, badges and medal all ride one row.
+   *  @param {any} L a level @param {any} rec its saved record, or null @param {boolean} locked
+   *  @returns {any} the tile */
+  function levelTile(L, rec, locked) {
+    var tile = document.createElement('div');
+    tile.className = 'panel level-tile' + (locked ? ' locked' : '');
+
+    var medal = rec && rec.medal ? rec.medal : 'none';
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'tile-open';
+    open.disabled = locked;
+    open.setAttribute('aria-label', (locked ? 'Locked: level ' : 'Play level ') + L.n + ', ' + L.name
+      + (medal === 'none' ? '' : ', ' + medal + ' medal'));
+    open.appendChild(chip('level-num', String(L.n)));
+
+    var info = chip('tile-info', '');
+    info.appendChild(chip('tile-name', L.name + (locked ? ' 🔒' : '')));
+    var meta = chip('tile-meta', '');
+    meta.appendChild(chip('muted', rec && rec.cleared
+      ? 'Best ' + rec.best + ' · ' + Math.round(rec.acc * 100) + '%'
+      : !L.ready ? 'Coming soon' : locked ? 'Locked' : 'Not played yet'));
+    if (!L.ready) meta.appendChild(chip('tag', 'P1'));                 // built in the next phase
+    if (rec && rec.exam) meta.appendChild(chip('tag', 'Sprint ' + rec.exam.right + '/' + rec.exam.total));
+    if (rec && rec.examPerfect) meta.appendChild(chip('ribbon', 'Exam Ready'));
+    info.appendChild(meta);
+    open.appendChild(info);
+    open.appendChild(chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
+    if (!locked) open.addEventListener('click', function () { startLevel(L.n); });
+    tile.appendChild(open);
+
+    // The sprint replays on its own, without replaying the level it belongs to.
+    if (L.ready && rec && rec.cleared) {
+      var sprint = document.createElement('button');
+      sprint.type = 'button';
+      sprint.className = 'btn btn-ghost tile-btn';
+      sprint.textContent = 'Exam Sprint';
+      sprint.setAttribute('aria-label', 'Exam Sprint for level ' + L.n);
+      sprint.addEventListener('click', function () { startExam(L.n); });
+      tile.appendChild(sprint);
+    }
+    return tile;
+  }
+
   function paintSelect() {
     var progress = loadProgress();
     levelList.textContent = '';
     LEVELS.forEach(function (L) {
-      var rec = progress.levels[String(L.n)] || null;
-      var locked = !L.ready || L.n > progress.unlocked;
-      var tile = document.createElement('div');
-      tile.className = 'panel level-tile' + (locked ? ' locked' : '');
-      tile.setAttribute('role', 'button');
-      tile.setAttribute('tabindex', locked ? '-1' : '0');
-      tile.setAttribute('aria-label', (locked ? 'Locked: level ' : 'Play level ') + L.n + ', ' + L.name);
-      if (locked) tile.setAttribute('aria-disabled', 'true');
-      tile.appendChild(fill('level-num', String(L.n)));
-
-      var info = document.createElement('div');
-      info.setAttribute('style', 'flex:1;min-width:0');   // so the medal rides the right edge
-      info.appendChild(fill('panel-title', L.name + (locked ? ' 🔒' : '')));
-      info.appendChild(fill('muted mono', rec && rec.cleared
-        ? 'Best ' + rec.best + ' · ' + Math.round(rec.acc * 100) + '%'
-        : !L.ready ? 'Coming soon' : locked ? 'Locked' : 'Not played yet'));
-
-      var badges = document.createElement('div');
-      badges.className = 'row';
-      if (!L.ready) badges.appendChild(fill('tag', 'P1'));              // built in the next phase
-      if (rec && rec.exam) badges.appendChild(fill('tag', 'Sprint ' + rec.exam.right + '/' + rec.exam.total));
-      if (rec && rec.examPerfect) badges.appendChild(fill('ribbon', 'Exam Ready'));
-      if (badges.childNodes.length) info.appendChild(badges);
-
-      // The sprint replays on its own, without replaying the level it belongs to. A full-size .btn
-      // (48 px, never .btn-sm) on its own line, and its own tap stops before the tile's handler.
-      var sprint = null;
-      if (L.ready && rec && rec.cleared) {
-        sprint = document.createElement('button');
-        sprint.type = 'button';
-        sprint.className = 'btn btn-ghost tile-btn';
-        sprint.textContent = 'Exam Sprint';
-        sprint.addEventListener('click', function (ev) { ev.stopPropagation(); startExam(L.n); });
-        info.appendChild(sprint);
-      }
-      tile.appendChild(info);
-
-      /** A tap the button itself did not catch — its 16 px rounded corners are not part of its hit
-       *  area — must still be the sprint and never the tile, because falling through would replay
-       *  the whole level, the one thing this button exists to avoid.
-       *  @param {any} ev @returns {boolean} */
-      function onSprint(ev) {
-        if (!sprint) return false;
-        var r = sprint.getBoundingClientRect();
-        var pad = 6;
-        return ev.clientX >= r.left - pad && ev.clientX <= r.right + pad
-          && ev.clientY >= r.top - pad && ev.clientY <= r.bottom + pad;
-      }
-
-      var medal = rec && rec.medal ? rec.medal : 'none';
-      tile.appendChild(fill('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
-
-      if (!locked) {
-        tile.addEventListener('click', function (ev) {
-          if (onSprint(ev)) { startExam(L.n); return; }
-          startLevel(L.n);
-        });
-        tile.addEventListener('keydown', function (ev) {
-          if (ev.target !== tile) return;   // the nested Exam Sprint button answers its own keys
-          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); startLevel(L.n); }
-        });
-      }
-      levelList.appendChild(tile);
+      levelList.appendChild(levelTile(L, progress.levels[String(L.n)] || null,
+        !L.ready || L.n > progress.unlocked));
     });
   }
 
@@ -1047,7 +1039,7 @@ const LEVELS = [
     sheetBtn.textContent = 'Got it';
     show('end');
     Arcade.endScreen(screens.end, {
-      title: 'LEVEL FAILED', sub: 'The economy collapsed. Retry?',
+      title: 'LEVEL FAILED', sub: 'The economy collapsed. Retry?', tone: 'fail',
       score: run.score, accuracy: acc, medal: null, stamp: Arcade.stampFor(acc),
       stats: runStats(),
       buttons: [

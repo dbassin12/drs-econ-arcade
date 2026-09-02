@@ -372,13 +372,35 @@
 
   /* ===== CONTROLS — sound, voice, Arcade Night and the initials chip ===== */
 
+  /** Every open and close bumps this, so a close still sliding out cannot hide a sheet that has
+   *  been reopened behind it. */
+  var initialsSeq = 0;
+
   /** @param {boolean} open the initials sheet is mounted while it is open and emptied when it closes */
   function showInitials(open) {
+    initialsSeq += 1;
+    var seq = initialsSeq;
     initialsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (!open) {
+      if (initialsSheet.hidden) return;
+      // The sheet slides out first and leaves the page after: setting `hidden` in the same tick as
+      // the class removal skipped the animation entirely. Reduced motion still fires the (1 ms)
+      // transitionend, and the timer covers a transition that never runs at all.
       initialsSheet.classList.remove('open');
-      initialsSheet.hidden = true;
-      initialsMount.textContent = '';
+      var timer = 0;
+      /** @param {any} [ev] the transition that finished, when one did */
+      var settle = function (ev) {
+        // transitionend bubbles: the Close button's own 60 ms press transition would otherwise
+        // end the slide before it had started.
+        if (ev && ev.target !== initialsSheet) return;
+        initialsSheet.removeEventListener('transitionend', settle);
+        clearTimeout(timer);
+        if (seq !== initialsSeq) return;
+        initialsSheet.hidden = true;
+        initialsMount.textContent = '';
+      };
+      timer = setTimeout(settle, 400);
+      initialsSheet.addEventListener('transitionend', settle);
       return;
     }
     Arcade.initialsEntry(initialsMount, {
@@ -397,7 +419,9 @@
     Arcade.mountBigTypeButton(byId('bigTypeBtn'));   // this also applies the stored Arcade Night state
     initialsBtn.textContent = Arcade.initials();
     initialsBtn.setAttribute('aria-expanded', 'false');
-    initialsBtn.addEventListener('click', function () { showInitials(initialsSheet.hidden); });
+    initialsBtn.addEventListener('click', function () {
+      showInitials(initialsBtn.getAttribute('aria-expanded') !== 'true');
+    });
     byId('initialsClose').addEventListener('click', function () { showInitials(false); });
   }
 

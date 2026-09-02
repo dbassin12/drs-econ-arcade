@@ -39,6 +39,9 @@
 /* ===== BASE ===== */
 * { box-sizing: border-box; }
 html { color-scheme: dark; }
+/* One focus ring for the whole arcade: the tiles, dial and heat cells are all real controls now,
+   and a Chromebook keyboard has to be able to see where it is. */
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 body {
   margin: 0;
   background: var(--bg);
@@ -81,11 +84,15 @@ body {
 
 /* ===== LAYOUT ===== */
 .app {
-  max-width: 480px;
+  /* 30rem is the same 480 px column at the default root font, and a column that grows with the type
+     under Arcade Night's 150 % root — a projector should not read a phone-width strip. */
+  max-width: 30rem;
   margin: 0 auto;
   padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
 }
-.screen { display: none; }
+/* A screen clips sideways: the breaking card slides in from 60 px off the right edge, and for those
+   300 ms the page could be flicked horizontally. Nothing a screen holds is meant to leave its column. */
+.screen { display: none; overflow-x: clip; }
 .screen.active { display: block; animation: slideUp .3s ease; }
 .topbar { display: flex; gap: 10px; align-items: center; }
 .topbar-back { width: 48px; height: 48px; flex: 0 0 48px; padding: 0; }
@@ -103,7 +110,7 @@ body {
   right: 0;
   bottom: 0;
   width: 100%;
-  max-width: 480px;
+  max-width: 30rem;
   margin: 0 auto;
   z-index: 90;
   background: var(--bg2);
@@ -125,13 +132,21 @@ body {
 .h1 {
   margin: 0;
   font-weight: 900;
-  font-size: clamp(28px, 8vw, 40px);
+  font-size: clamp(1.75rem, 8vw, 2.5rem);
   line-height: 1.1;
   background: linear-gradient(135deg, var(--green), var(--blue));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+/* A failed level is not a celebration: flat red where the win screen is a gradient, and the panel
+   takes the same red edge the wrong-answer sheet has. Both are tokens the arcade already owns. */
+.tone-fail { border-color: var(--red); }
+.tone-fail .h1 {
+  background: none;
+  color: var(--red);
+  -webkit-text-fill-color: var(--red);
 }
 .tag {
   display: inline-block;
@@ -204,12 +219,44 @@ body {
   text-transform: uppercase;
 }
 .ribbon::before { content: '\2713'; }
-.level-tile { display: flex; gap: 12px; align-items: center; }
+/* A level tile is two real controls side by side: `.tile-open` plays the level, `.tile-btn` replays
+   the Exam Sprint. Both clear 48 px. The tile runs tight — one text column, badges wrapping onto the
+   line under the name — so all seven levels fit a 740 px phone without scrolling. */
+.level-tile { display: flex; gap: 8px; align-items: center; padding: 8px 12px; }
 .level-tile.locked { opacity: .45; }
-/* The tile's own button keeps the 48 px tap floor but not the 24 px side padding, so it still fits
-   the tile's text column at 360 px — and sits clear of the tile's tap area above it. */
-.tile-btn { margin-top: 8px; padding: 12px 16px; font-size: 15px; }
-.level-num { font-family: var(--font-mono); font-weight: 900; font-size: 28px; }
+.tile-open {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tile-open:disabled { cursor: default; }
+.tile-info { flex: 1; min-width: 0; }
+.tile-name { display: block; font-weight: 900; font-size: 18px; line-height: 1.25; }
+.tile-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tile-meta .muted { font-family: var(--font-mono); font-size: 13px; }
+/* The sprint is the tile's second action, so it reads as a chip beside the medal, not a third row:
+   two short lines of the same chunky button, never under 48 px. */
+.tile-btn {
+  flex: 0 0 auto;
+  width: 68px;
+  min-height: 48px;
+  padding: 4px 6px;
+  font-size: 13px;
+  line-height: 1.15;
+  white-space: normal;
+}
+.level-tile .medal { width: 40px; height: 40px; border-width: 2px; font-size: 15px; }
+.level-num { font-family: var(--font-mono); font-weight: 900; font-size: 24px; }
 /* Exam Sprint — the arcade's only multiple choice. A choice composes with .btn.btn-ghost.btn-block,
    so it needs the sentence case and left edge a chunky uppercase button does not have. */
 .exam-stem { font-weight: 700; font-size: 17px; line-height: 1.45; }
@@ -244,7 +291,10 @@ body {
   font-size: 32px;
 }
 .initials .slot.active { border-color: var(--green); }
-.az-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+/* Six 48 px keys fit a 360 px sheet exactly, and nothing narrower — a game's title panel, or a
+   Chromebook's classic scrollbar — leaves 43 px keys. auto-fit drops to five wider columns instead
+   of shaving the tap target. */
+.az-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 8px; }
 .az-grid .btn { min-height: 48px; padding: 0; font-size: 18px; }
 .gauge-strip { display: block; width: 100%; }
 
@@ -300,14 +350,18 @@ body {
   color: #1B1B1B;
   font-family: 'Playfair Display', Georgia, serif;
 }
+/* A masthead that wraps is not a masthead. The column is the viewport less the app's 24 px and the
+   paper's 40 px, and the widest fallback serif needs ~14.6 units of width per unit of size, so this
+   is the largest size the name still fits on one line — capped at the 28 px the design wants. */
 .np-masthead {
   border-top: 3px double #1B1B1B;
   border-bottom: 3px double #1B1B1B;
   padding: 6px 0;
   text-align: center;
   text-transform: uppercase;
+  white-space: nowrap;
   font-weight: 900;
-  font-size: 28px;
+  font-size: min(28px, calc((100vw - 68px) / 14.6));
 }
 .np-head { font-weight: 900; font-size: 26px; }
 .np-sub { font-style: italic; font-size: 16px; }
@@ -366,6 +420,10 @@ body {
 .hist-line { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
 .hist-line.player { stroke: var(--green); }
 .hist-line.actual { stroke: var(--gold); stroke-dasharray: 7 6; }
+/* The legend names the series and its unit before the two keys, so it wraps at 360 px. The caption
+   keeps the tag's pill but not its uppercase: the CED writes the Phillips axis "π%", not "Π%". */
+.hist-legend { flex-wrap: wrap; }
+.hist-series { text-transform: none; }
 .hist-key { display: inline-block; width: 22px; border-top: 3px solid currentColor; }
 .hist-key.player { color: var(--green); }
 .hist-key.actual { color: var(--gold); border-top-style: dashed; }
@@ -375,10 +433,14 @@ body {
 .marquee-inner { display: inline-block; white-space: nowrap; animation: marquee 22s linear infinite; }
 .game-card { display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none; }
 .game-info { flex: 1; min-width: 0; }
-.game-emoji { font-size: 40px; line-height: 1; }
-.game-title { font-weight: 900; font-size: 20px; }
-.game-blurb { color: var(--text2); font-size: 14px; }
-.game-best { font-family: var(--font-mono); }
+/* Every size on a game card is in rem: Arcade Night raises the root font to 150 %, and the card is
+   the thing a class reads from the back of the room. */
+.game-emoji { font-size: 2.5rem; line-height: 1; }
+.game-title { font-weight: 900; font-size: 1.25rem; }
+.game-blurb { color: var(--text2); font-size: .875rem; }
+.game-best { font-family: var(--font-mono); font-size: 1rem; }
+.game-card .tag { font-size: .75rem; }
+.game-card .medal { width: 3.5rem; height: 3.5rem; font-size: 1rem; }
 .game-card.soon { opacity: .5; }
 .heat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .heat-cell {
@@ -457,6 +519,10 @@ html.big-type .podium { display: block; order: -1; }
 .plot-bg { fill: var(--bg2); }
 .axis { stroke: var(--text2); stroke-width: 2; }
 .axis-label { fill: var(--text); font: 800 13px var(--font); }
+/* The reference tick: a gold mark on the axis with its name beside it, the same pairing the gauges'
+   reference ticks use, and smaller than the axis label it now sits clear of. */
+.axis-tickmark { stroke: var(--gold); stroke-width: 2; }
+.axis-tick { fill: var(--gold); font: 800 12px var(--font); }
 .curve .line { fill: none; stroke-width: 4; stroke-linecap: round; }
 .curve .halo { fill: none; stroke-width: 14; opacity: .14; }
 .curve[data-curve=AD] .line, .curve[data-curve=AD] .halo,
@@ -497,6 +563,9 @@ html.big-type .podium { display: block; order: -1; }
 .gauge-val { font: 700 15px var(--font-mono); fill: var(--text); }
 .gauge-label { font: 800 11px var(--font); fill: var(--text2); }
 .gauge-ref { stroke: var(--gold); stroke-width: 2; }
+/* The reference's name goes on the cell's last line, small and gold like the tick it explains, so it
+   stops crowding the value's digits above it. */
+.gauge-reflabel { font: 800 10px var(--font); fill: var(--gold); text-anchor: middle; }
 .gauge.flash-red .gauge-fill { stroke: var(--red); }
 
 /* ===== ENGINE KIT — the few classes shared/arcade.js generates that the kit above lacks.

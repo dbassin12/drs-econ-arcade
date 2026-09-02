@@ -260,7 +260,7 @@ const SCENARIO_1975 = {
       <div class="panel stack" id="historyText"></div>
       <div class="panel stack">
         <div id="chartMount"></div>
-        <div class="row" id="chartLegend"></div>
+        <div class="row hist-legend" id="chartLegend"></div>
         <button type="button" class="btn btn-ghost btn-block" id="chartToggle">Show unemployment</button>
       </div>
       <div class="panel stack">
@@ -454,9 +454,8 @@ const SCENARIO_1975 = {
   function paintTurn(opts) {
     var o = opts || {};
     var state = current();
-    var when = quarterOf(run.t);
     run.rate = state.rate;                 // the dial opens where last quarter left it
-    turnLabel.textContent = when.year + ' · Q' + when.q + ' · Chair Burns';
+    paintWhen();
     paintPips(state.cred);
     paintPipeline(0);
     paintAdvisors(state);
@@ -464,6 +463,13 @@ const SCENARIO_1975 = {
     if (o.fresh) { setGauges(state, false); paintTicker(state); }
     lockBoard(false);
     endTurnBtn.textContent = run.t === TURNS ? 'End turn · final' : 'End turn';
+  }
+
+  /** The topbar's quarter. It moves the moment the quarter does, so an event sheet that opens the
+   *  new quarter is never read under the old one's label. */
+  function paintWhen() {
+    var when = quarterOf(run.t);
+    turnLabel.textContent = when.year + ' · Q' + when.q + ' · Chair Burns';
   }
 
   /** @param {number} cred 0–1 */
@@ -742,6 +748,7 @@ const SCENARIO_1975 = {
 
     fomcMount.hidden = true;
     if (run.t <= TURNS) {
+      paintWhen();                       // the new quarter, before its event sheet opens on top
       paintTicker(next);
       await beat(BEAT / 2);
     }
@@ -895,7 +902,7 @@ const SCENARIO_1975 = {
     return node;
   }
 
-  var CH = { w: 360, h: 200, left: 30, right: 8, top: 12, bottom: 26, yMax: 14 };
+  var CH = { w: 360, h: 200, left: 34, right: 8, top: 12, bottom: 26, yMax: 14 };   // `left` holds "14%"
   /** @param {number} i 0–9 @returns {number} */
   function chartX(i) { return CH.left + (CH.w - CH.right - CH.left) * (i / (TURNS - 1)); }
   /** @param {number} v @returns {number} */
@@ -928,7 +935,7 @@ const SCENARIO_1975 = {
     }
     for (var v = 0; v <= CH.yMax; v += 2) {
       svg.appendChild(svgEl('line', { x1: CH.left, y1: chartY(v), x2: CH.w - CH.right, y2: chartY(v) }, 'hist-grid'));
-      label(CH.left - 5, chartY(v) + 4, 'end', String(v));
+      label(CH.left - 5, chartY(v) + 4, 'end', v + '%');       // the axis says what it is measuring in
     }
     svg.appendChild(svgEl('line', { x1: CH.left, y1: CH.top, x2: CH.left, y2: CH.h - CH.bottom }, 'hist-axis'));
     [0, 4, 8].forEach(function (i) { label(chartX(i), CH.h - 8, 'middle', quarterLabel(i + 1)); });
@@ -937,7 +944,19 @@ const SCENARIO_1975 = {
 
     chartMount.textContent = '';
     chartMount.appendChild(svg);
+    paintLegend();
     chartToggle.textContent = chartSeries === 'pi' ? 'Show unemployment' : 'Show inflation';
+  }
+
+  /** The legend names the series the chart is showing, in the CED's own words and units, then the
+   *  two lines. It repaints with the chart, so the toggle renames it too. */
+  function paintLegend() {
+    chartLegend.textContent = '';
+    chartLegend.appendChild(chip('tag hist-series', chartSeries === 'pi' ? 'Inflation rate (π%)' : 'Unemployment rate (u%)'));
+    chartLegend.appendChild(chip('hist-key player'));
+    chartLegend.appendChild(chip('muted', 'Your Fed'));
+    chartLegend.appendChild(chip('hist-key actual'));
+    chartLegend.appendChild(chip('muted', '1975–77 actual'));
   }
 
   /** @returns {string} 'hike', 'cut' or 'hold' — whichever the player did most of */
@@ -956,12 +975,6 @@ const SCENARIO_1975 = {
     historyText.textContent = '';
     SCENARIO_1975.HISTORY.forEach(function (line) { historyText.appendChild(fill('', line)); });
     historyText.appendChild(fill('muted', SCENARIO_1975.HISTORY_NOTE));
-
-    chartLegend.textContent = '';
-    chartLegend.appendChild(chip('hist-key player'));
-    chartLegend.appendChild(chip('muted', 'Your Fed'));
-    chartLegend.appendChild(chip('hist-key actual'));
-    chartLegend.appendChild(chip('muted', '1975–77 actual'));
 
     chartSeries = 'pi';
     paintChart();
