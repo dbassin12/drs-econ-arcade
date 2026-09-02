@@ -369,6 +369,16 @@ html.big-type .podium { display: block; }
 .curve.grabbed .line { stroke-width: 6; }
 .curve.accepted .line { stroke: var(--green); }
 .curve .tag { font: 900 14px var(--font); fill: currentColor; }
+/* The ghost trail and the curve's own name take the colour of the line they belong to: the
+   `.ghost` above sets no stroke and the `.tag` above has no `color` to resolve currentColor
+   against, so both fell back to the page's text colour. Same three tokens as `.line`. */
+.curve[data-curve=AD], .curve[data-curve=D], .curve[data-curve=MD], .curve[data-curve=SRPC] { color: var(--blue); }
+.curve[data-curve=SRAS], .curve[data-curve=S], .curve[data-curve=MS] { color: var(--gold); }
+.curve[data-curve=LRAS], .curve[data-curve=LRPC] { color: var(--purple); }
+.curve[data-curve=AD] .ghost, .curve[data-curve=D] .ghost,
+.curve[data-curve=MD] .ghost, .curve[data-curve=SRPC] .ghost { stroke: var(--blue); }
+.curve[data-curve=SRAS] .ghost, .curve[data-curve=S] .ghost, .curve[data-curve=MS] .ghost { stroke: var(--gold); }
+.curve[data-curve=LRAS] .ghost, .curve[data-curve=LRPC] .ghost { stroke: var(--purple); }
 .eq { fill: var(--text); stroke: var(--bg); stroke-width: 3; }
 .eq-ghost { fill: var(--text2); opacity: .5; }
 .guides line { stroke: var(--text3); stroke-dasharray: 4 4; }

@@ -11,29 +11,722 @@
 </head>
 <body>
 
-<main class="app stack" id="app">
+<script>
+/* ================================================================================
+   CONTENT — every card, boss and exam question in the game, one entry per line.
+   Nothing here is logic; the game reads this and nothing else for its content.
 
-  <header class="topbar">
-    <a class="btn btn-ghost topbar-back" href="../index.html" aria-label="Back to the arcade">←</a>
-    <h1 class="panel-title">Shift Happens</h1>
-  </header>
+   Level: { n, name, blurb, ready, time (ms per card), draggable (curves the student
+            may touch), showLRAS, pool[], boss, exam[] }.  A level with ready:false is
+            a stub: its tile is locked and inert until the task that fills it lands.
+   Card:  { id, kind:'shift'|'move'|'boss', head, sub, emoji, graph, start:{AD,SRAS},
+            curve:'AD'|'SRAS'|'any', dir:'L'|'R' (shift) | 'up'|'down' (move),
+            gap:null|'recessionary'|'inflationary'|'none', trick, why, ced, skill }.
+            A boss adds moves:[{curve, dir, head, why}, …] and its own time (ms).
+   Exam:  { stem, choices[4], answer (index), why, ced, skill }.
+   `why` is always the sentence that would earn the FRQ point.
+   ================================================================================ */
+const LEVELS = [
+  {
+    n: 1, name: 'Demand Rookie', blurb: 'AD only — the C, I, G and Xn stories', ready: true,
+    time: 10000, draggable: ['AD'], showLRAS: false,
+    pool: [
+      { id: 'l1-c-confidence', kind: 'shift', head: 'CONSUMER CONFIDENCE CRASHES', sub: 'Central Avenue merchants in Cedarhurst say the wallets snapped shut overnight.', emoji: '😟', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Falling consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
+      { id: 'l1-c-wealth', kind: 'shift', head: 'STOCKS HIT A RECORD HIGH', sub: 'Retirement accounts in Lawrence are suddenly worth a lot more than they were Friday.', emoji: '📈', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'The wealth effect increases consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 },
+      { id: 'l1-c-taxcut', kind: 'shift', head: 'CONGRESS CUTS INCOME TAXES', sub: 'Every paycheck from Inwood to Hewlett just got a little fatter.', emoji: '💸', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'A cut in personal income taxes raises disposable income and consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
+      { id: 'l1-c-debt', kind: 'shift', head: 'HOUSEHOLD DEBT SPIKES', sub: 'Woodmere families are paying down credit cards instead of making the Sunday bagel run.', emoji: '💳', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Households paying down debt decrease consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
+      { id: 'l1-i-fedcut', kind: 'shift', head: 'FED CUTS INTEREST RATES', sub: 'Contractors on Rockaway Turnpike are already pricing out new equipment loans.', emoji: '🏦', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'A lower interest rate increases investment spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 },
+      { id: 'l1-i-optimism', kind: 'shift', head: 'BUSINESS OPTIMISM SURGES', sub: 'Two Hewlett storefronts break ground in the same week.', emoji: '🏗️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'More optimistic profit expectations increase investment spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 4 },
+      { id: 'l1-i-credit', kind: 'shift', head: 'NEW INVESTMENT TAX CREDIT', sub: 'Cedarhurst dentists are suddenly shopping for new chairs.', emoji: '🧾', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'An investment tax credit lowers the after-tax cost of capital and increases investment spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
+      { id: 'l1-g-infra', kind: 'shift', head: 'INFRASTRUCTURE BILL SIGNED', sub: 'The LIRR platform at Lawrence is first in line for a rebuild.', emoji: '🚧', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'An increase in government purchases increases aggregate demand, shifting it right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
+      { id: 'l1-g-defense', kind: 'shift', head: 'PENTAGON SLASHES SPENDING', sub: 'A Woodmere parts supplier says the order book emptied in a morning.', emoji: '✂️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'A decrease in government purchases decreases aggregate demand, shifting it left; the price level falls and real GDP decreases.', ced: '3.8', skill: 4 },
+      { id: 'l1-x-partner', kind: 'shift', head: 'EUROPE FALLS INTO RECESSION', sub: 'Five Towns exporters watch the overseas order book dry up.', emoji: '🌍', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'A recession abroad lowers foreign income and foreign demand for United States goods, so net exports fall and aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '6.5', skill: 4 },
+      { id: 'l1-x-dollar', kind: 'shift', head: 'THE DOLLAR SOARS', sub: 'Great for a Lawrence family booking a summer trip; brutal for the exporter next door.', emoji: '💵', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'An appreciation of the dollar makes United States exports more expensive and imports cheaper, so net exports fall and aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '6.5', skill: 4 },
+      { id: 'l1-x-boom', kind: 'shift', head: 'FOREIGN INCOMES SURGE', sub: 'Asia is booming and the Inwood freight yards are humming past midnight.', emoji: '🚢', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'R', gap: null, trick: false, why: 'Rising foreign income increases foreign demand for United States exports, so net exports rise and aggregate demand shifts right; the price level rises and real GDP increases.', ced: '6.5', skill: 4 }
+    ],
+    boss: { id: 'l1-boss', kind: 'boss', head: 'Stock market crashes — then Congress passes an emergency stimulus', sub: 'Two shocks, one afternoon. Handle them in the order they break.', emoji: '🚨', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, time: 15000, ced: '3.8', skill: 4,
+      moves: [
+        { curve: 'AD', dir: 'L', head: 'MARKETS CRASH', why: 'The loss of household wealth decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.' },
+        { curve: 'AD', dir: 'R', head: 'EMERGENCY STIMULUS PASSES', why: 'Expansionary fiscal policy increases government purchases, so aggregate demand shifts right; the price level rises and real GDP increases.' }
+      ],
+      why: 'The crash cuts household wealth and consumption, shifting aggregate demand left; the stimulus then increases government purchases, shifting aggregate demand back to the right.' },
+    exam: [
+      { stem: 'Assume an economy is currently operating below full employment. Which of the following would most likely cause the aggregate demand curve to shift to the right?', choices: ['An appreciation of the nation’s currency', 'A decrease in household wealth', 'A decrease in personal income tax rates', 'An increase in the real interest rate'], answer: 2, why: 'A decrease in personal income tax rates raises disposable income and consumption spending, so aggregate demand shifts right; the price level rises and real GDP increases.', ced: '3.1', skill: 1 },
+      { stem: 'Assume the marginal propensity to consume is 0.8. If government purchases increase by $100 billion, what is the maximum possible change in real gross domestic product?', choices: ['$80 billion', '$100 billion', '$400 billion', '$500 billion'], answer: 3, why: 'The spending multiplier is 1 / (1 − MPC) = 1 / 0.2 = 5, so a $100 billion increase in government purchases increases real GDP by a maximum of $500 billion.', ced: '3.2', skill: 3 },
+      { stem: 'Assume the federal government increases spending on national defense while tax rates are held constant. In the short run, which of the following best describes the effect on aggregate demand, the price level, and real output?', choices: ['Aggregate demand shifts left, the price level falls, and real output decreases', 'Aggregate demand shifts right, the price level rises, and real output increases', 'Aggregate demand is unchanged, the price level rises, and real output decreases', 'Aggregate demand shifts right, the price level falls, and real output increases'], answer: 1, why: 'An increase in government purchases is expansionary fiscal policy that increases aggregate demand; aggregate demand shifts right, the price level rises, and real GDP increases.', ced: '3.8', skill: 1 }
+    ]
+  },
+  { n: 2, name: 'Supply Side', ready: false },
+  { n: 3, name: 'Gap Attack', ready: false },
+  { n: 4, name: 'Money Market', ready: false },
+  { n: 5, name: 'Loanable Funds', ready: false },
+  { n: 6, name: 'FOREX Floor', ready: false },
+  { n: 7, name: 'Phillips Finale', ready: false }
+];
+</script>
 
-  <p class="muted" id="placeholder">
-    The game arrives in the next task. Open this page with <span class="mono">?debug=graph</span>
-    to drive the graph engine on its own.
-  </p>
+<main class="app" id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div class="stack">
+      <h1 class="h1">SHIFT HAPPENS</h1>
+      <p class="muted">You are a graph surgeon under time pressure.</p>
+      <div class="row">
+        <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+        <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+        <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      </div>
+      <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
+      <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+  <!-- SELECT -->
+  <section class="screen" id="screen-select">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
+        <h2 class="panel-title">Levels</h2>
+      </header>
+      <div class="stack" id="levelList"></div>
+    </div>
+  </section>
+
+  <!-- PLAY — .graph-wrap sits straight in the column so the drag targets get the full width -->
+  <section class="screen" id="screen-play">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the level list">←</button>
+        <div class="hearts" id="hearts"></div>
+        <div class="topbar-stats">
+          <span class="combo" id="combo"></span>
+          <span class="score" id="score">0</span>
+        </div>
+      </header>
+      <div class="timer-bar" id="timer"></div>
+      <div class="panel breaking" id="breaking">
+        <div class="row">
+          <div class="breaking-emoji" id="breakingEmoji" aria-hidden="true">📰</div>
+          <div id="breakingBody"></div>
+        </div>
+      </div>
+      <div class="graph-wrap" id="graphWrap"></div>
+      <p class="muted" id="hint">Drag the curve that moves</p>
+    </div>
+  </section>
+
+  <!-- CLEAR and FAIL both render an Arcade.endScreen panel here -->
+  <section class="screen" id="screen-end"></section>
 
 </main>
+
+<div class="sheet" id="sheet" role="status">
+  <div class="stack">
+    <div class="sheet-msg" id="sheetMsg"></div>
+    <div class="sheet-why" id="sheetWhy"></div>
+    <button type="button" class="btn btn-block" id="sheetBtn">Got it</button>
+  </div>
+</div>
 
 <script src="../shared/arcade.js"></script>
 <script src="../shared/graph.js"></script>
 
 <script>
 /* ================================================================================
-   GRAPH DEBUG HARNESS — only under ?debug=graph, and only until Tasks 4-5 build the
-   game around it. It mounts one adas graph with its gauges, prints every release and
-   gap payload, and gives four buttons to drive the rest of the API. Nothing in this
-   block belongs to the game; delete it wholesale, or leave it behind the query flag.
+   SHIFT HAPPENS — the game. Sections: elements · screens · progress · level select ·
+   card logic (pure) · round chrome · round loop · boss · the run · end screens · boot.
+   During play the student's only input is dragging a curve on the graph; the gauges
+   swing as the consequence, and every scored answer calls Arcade.track exactly once.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined') return;
+  if (Arcade.qs('debug') === 'graph') return;   // the harness below owns the page instead
+
+  var SHIFT_UNITS = 12;   // where a recognised drag lands — SNAP in shared/graph.js
+  var SLIDE_UNITS = 10;   // how far a movement along a curve travels — the engine's dot step
+  var EXTEND_MS = 2000;   // the one grace period a drag still in flight at zero may earn
+  var HEARTS = 3;
+  var ROUNDS = 8;         // cards drawn from the pool before the boss
+
+  /* ===== ELEMENTS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {number} ms @returns {Promise<void>} */
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function fill(cls, text) {
+    var node = document.createElement('div');
+    node.className = cls;
+    node.textContent = text;
+    return node;
+  }
+
+  var screens = { title: byId('screen-title'), select: byId('screen-select'), play: byId('screen-play'), end: byId('screen-end') };
+  var levelList = byId('levelList');
+  var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
+  var heartsEl = byId('hearts'), comboEl = byId('combo'), scoreEl = byId('score'), timerEl = byId('timer');
+  var breakingEl = byId('breaking'), breakingEmoji = byId('breakingEmoji'), breakingBody = byId('breakingBody');
+  var graphWrap = byId('graphWrap'), hintEl = byId('hint');
+  var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+
+  var graph = ArcadeGraph.create(graphWrap, { market: 'adas', gauges: true });
+
+  /** The run in progress. `token` is what tells an awaiting round it has been abandoned. */
+  var run = null;
+  var runToken = 0;
+  /** @param {number} token @returns {boolean} false once the student has quit, replayed or finished */
+  function alive(token) { return token === runToken; }
+
+  /* ===== SCREENS ===== */
+
+  /** @param {string} name a key of `screens` */
+  function show(name) {
+    Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+  }
+
+  /** Abandon whatever round is awaiting an answer and leave the graph inert. */
+  function abortRun() {
+    runToken += 1;
+    if (run && run.clock) run.clock.stop();
+    ackNow();
+    hideSheet();
+    graph.lock();
+    Arcade.voice.stop();
+  }
+
+  /* ===== PROGRESS — arcade.shift.progress ===== */
+
+  /** @returns {{unlocked:number, levels:Object<string, any>}} */
+  function loadProgress() {
+    var p = Arcade.store.get('arcade.shift.progress', null);
+    if (!p || typeof p !== 'object') p = {};
+    return {
+      unlocked: typeof p.unlocked === 'number' && p.unlocked >= 1 ? p.unlocked : 1,
+      levels: p.levels && typeof p.levels === 'object' ? p.levels : {}
+    };
+  }
+
+  /** Record a cleared level: the best score and best accuracy are kept, the medal is recomputed
+   *  from that accuracy and whatever the Exam Sprint has stored, and 75% unlocks the next level.
+   *  @param {number} n @param {number} score @param {number} acc 0-1 */
+  function saveProgress(n, score, acc) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || { cleared: false, acc: 0, best: 0, medal: null, exam: null, examPerfect: false };
+    rec.cleared = true;
+    rec.acc = Math.max(rec.acc || 0, acc);
+    rec.best = Math.max(rec.best || 0, score);
+    rec.medal = Arcade.medalFor(rec.acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) });
+    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total);
+    p.levels[String(n)] = rec;
+    if (rec.acc >= 0.75) p.unlocked = Math.max(p.unlocked, n + 1);
+    Arcade.store.set('arcade.shift.progress', p);
+  }
+
+  /* ===== LEVEL SELECT ===== */
+
+  /** @param {number} n @returns {any} the level, or undefined */
+  function levelOf(n) {
+    for (var i = 0; i < LEVELS.length; i += 1) if (LEVELS[i].n === n) return LEVELS[i];
+    return undefined;
+  }
+
+  /** @param {number} n @returns {boolean} built and unlocked */
+  function playable(n) {
+    var L = levelOf(n);
+    return !!(L && L.ready && n <= loadProgress().unlocked);
+  }
+
+  function paintSelect() {
+    var progress = loadProgress();
+    levelList.textContent = '';
+    LEVELS.forEach(function (L) {
+      var rec = progress.levels[String(L.n)] || null;
+      var locked = !L.ready || L.n > progress.unlocked;
+      var tile = document.createElement('div');
+      tile.className = 'panel level-tile' + (locked ? ' locked' : '');
+      tile.setAttribute('role', 'button');
+      tile.setAttribute('tabindex', locked ? '-1' : '0');
+      if (locked) tile.setAttribute('aria-disabled', 'true');
+      tile.appendChild(fill('level-num', String(L.n)));
+
+      var info = document.createElement('div');
+      info.setAttribute('style', 'flex:1;min-width:0');   // so the medal rides the right edge
+      info.appendChild(fill('panel-title', L.name));
+      info.appendChild(fill('muted mono', rec && rec.cleared
+        ? 'Best ' + rec.best + ' · ' + Math.round(rec.acc * 100) + '%'
+        : !L.ready ? 'Coming soon' : locked ? 'Locked' : 'Not played yet'));
+      if (rec && rec.examPerfect) {
+        var ribbonRow = document.createElement('div');
+        ribbonRow.className = 'row';
+        ribbonRow.appendChild(fill('ribbon', 'Exam Ready'));
+        info.appendChild(ribbonRow);
+      }
+      tile.appendChild(info);
+
+      var medal = rec && rec.medal ? rec.medal : 'none';
+      tile.appendChild(fill('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
+
+      if (!locked) {
+        tile.addEventListener('click', function () { startLevel(L.n); });
+        tile.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); startLevel(L.n); }
+        });
+      }
+      levelList.appendChild(tile);
+    });
+  }
+
+  /* ===== CARD LOGIC — pure; no DOM, no run state ===== */
+
+  /** The true outcome of a card, played after every answer whether or not the student found it.
+   *  A shift lands the curve 12 units left or right of where the card started it; a movement along
+   *  slides the dot 10 units up-left on AD (up-right on SRAS), and the mirror image for 'down'.
+   *  @param {any} card @returns {{shifts?:Object<string, number>, point?:{curve:string, x:number}}} */
+  function computeResult(card) {
+    var start = { AD: 0, SRAS: 0 };
+    Object.keys(card.start || {}).forEach(function (name) { start[name] = card.start[name]; });
+    if (card.kind === 'move') {
+      var curve = card.curve === 'any' ? 'AD' : card.curve;   // 'any' accepts either; the truth is drawn on AD
+      var eq = ArcadeGraph.intersect('adas', start) || { x: 50, y: 50 };
+      var away = (curve === 'AD' ? -1 : 1) * (card.dir === 'up' ? 1 : -1);
+      return { point: { curve: curve, x: eq.x + SLIDE_UNITS * away } };
+    }
+    var moves = card.kind === 'boss' ? card.moves : [{ curve: card.curve, dir: card.dir }];
+    moves.forEach(function (m) { start[m.curve] += (m.dir === 'R' ? SHIFT_UNITS : -SHIFT_UNITS); });
+    return { shifts: start };
+  }
+
+  /** @param {any} ans a graph `release` payload, or null when the clock won
+   *  @param {any} card the card or one boss move @returns {boolean} */
+  function judge(ans, card) {
+    if (!ans) return false;
+    if (card.kind === 'move') {
+      return ans.kind === 'move' && (card.curve === 'any' || ans.curve === card.curve) && ans.dir === card.dir;
+    }
+    return ans.kind === 'shift' && ans.curve === card.curve && ans.dir === card.dir;
+  }
+
+  /** @param {{kind?:string, curve:string, dir:string}} card @returns {string} what it asked for */
+  function truthOf(card) {
+    if (card.kind === 'move') return 'Movement along ' + card.curve + ', ' + card.dir;
+    return card.curve + ' shifts ' + (card.dir === 'R' ? 'right' : 'left');
+  }
+
+  /** Fisher-Yates, on a copy. @param {any[]} list @returns {any[]} */
+  function shuffled(list) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i -= 1) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var swap = a[i]; a[i] = a[j]; a[j] = swap;
+    }
+    return a;
+  }
+
+  /** The hand for one run: `count` cards, with two trick cards guaranteed when the pool has them.
+   *  @param {any[]} pool @param {number} count @returns {any[]} */
+  function drawCards(pool, count) {
+    var tricks = shuffled(pool.filter(function (c) { return c.trick; })).slice(0, Math.min(2, count));
+    var rest = shuffled(pool.filter(function (c) { return tricks.indexOf(c) < 0; }));
+    return shuffled(tricks.concat(rest).slice(0, count));
+  }
+
+  /* ===== ROUND CHROME — the breaking card, the verdict sheet and the clock ===== */
+
+  /** @param {any} card @param {number} active the live boss move, or -1 for an ordinary card */
+  function paintCard(card, active) {
+    breakingEmoji.textContent = card.emoji;
+    breakingBody.textContent = '';
+    var tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = card.kind === 'boss' ? 'Breaking · Boss' : 'Breaking';
+    breakingBody.appendChild(tag);
+    if (card.kind === 'boss') {
+      card.moves.forEach(function (move, i) {
+        var mark = i < active ? '✓ ' : i === active ? '▶ ' : '· ';
+        breakingBody.appendChild(fill(i === active ? 'breaking-head' : 'breaking-sub', mark + move.head));
+      });
+    } else {
+      breakingBody.appendChild(fill('breaking-head', card.head));
+    }
+    breakingBody.appendChild(fill('breaking-sub', card.sub));
+    breakingEl.classList.remove('breaking');
+    void breakingEl.offsetWidth;         // restart the slide-in for the new headline
+    breakingEl.classList.add('breaking');
+  }
+
+  /** @param {string} kind 'correct' or 'wrong' @param {string} msg @param {string} why
+   *  @param {boolean} ack whether the student has to tap to continue */
+  function paintSheet(kind, msg, why, ack) {
+    sheetMsg.textContent = msg;
+    sheetWhy.textContent = why;
+    sheetBtn.style.display = ack ? '' : 'none';
+    sheet.className = 'sheet ' + kind + ' open';
+  }
+
+  function hideSheet() { sheet.classList.remove('open'); }
+
+  /** @type {(() => void)|null} */ var ackResolve = null;
+  function ackNow() {
+    if (!ackResolve) return;
+    var resolve = ackResolve;
+    ackResolve = null;
+    resolve();
+  }
+  sheetBtn.addEventListener('click', function () { hideSheet(); ackNow(); });
+
+  /** The WHY beat: it stays up until the student taps "Got it".
+   *  @param {string} msg @param {string} why @returns {Promise<void>} */
+  function sheetAsk(msg, why) {
+    ackNow();
+    paintSheet('wrong', msg, why, true);
+    return new Promise(function (resolve) { ackResolve = resolve; });
+  }
+
+  /** @param {string} msg @returns {Promise<void>} the 450 ms tick of approval */
+  function sheetFlash(msg) {
+    paintSheet('correct', msg, '', false);
+    return wait(450).then(hideSheet);
+  }
+
+  /** The round clock wired to the graph's release stream. `next()` resolves with the student's next
+   *  release, or null once the clock runs out. A drag still in flight at zero buys one extension, so
+   *  the answer already under the finger is never stolen; one clock serves all of a boss's moves.
+   *  @param {number} ms @returns {any} */
+  function roundClock(ms) {
+    var expired = false, dragging = false, extended = false;
+    /** @type {((value:any) => void)|null} */ var waiting = null;
+    var timer = Arcade.timerBar(timerEl, ms, { onEnd: atZero, onTick: function (left) { if (left <= 0) atZero(); } });
+
+    /** @param {any} value */
+    function handOver(value) {
+      if (!waiting) return;
+      var resolve = waiting;
+      waiting = null;
+      resolve(value);
+    }
+    function atZero() {
+      if (expired) return;
+      if (dragging) {
+        if (!extended) { extended = true; timer.extend(EXTEND_MS); timer.resume(); }
+        return;                        // the release already in flight ends the round instead
+      }
+      expired = true;
+      timer.stop();
+      handOver(null);
+    }
+    function onDragStart() { dragging = true; }
+    /** @param {any} payload */
+    function onRelease(payload) {
+      dragging = false;
+      if (!expired) handOver(payload);
+    }
+    graph.on('dragstart', onDragStart);
+    graph.on('release', onRelease);
+    timer.start();
+
+    return {
+      /** @returns {Promise<any>} */
+      next: function () {
+        return expired ? Promise.resolve(null) : new Promise(function (resolve) { waiting = resolve; });
+      },
+      remaining: function () { return timer.remaining(); },
+      pause: function () { timer.pause(); },
+      resume: function () { if (!expired) timer.resume(); },
+      stop: function () {
+        expired = true;
+        timer.stop();
+        graph.off('dragstart', onDragStart);
+        graph.off('release', onRelease);
+        handOver(null);
+      }
+    };
+  }
+
+  /** Everything a wrong answer costs, before the WHY line. */
+  function punish() {
+    Arcade.shake(graphWrap);
+    Object.keys(graph.gauges).forEach(function (id) { graph.gauges[id].flash('red'); });
+    run.hearts.lose();
+    run.streak.miss();
+  }
+
+  /** @param {number} points */
+  function award(points) {
+    run.score += points;
+    scoreEl.textContent = String(run.score);
+  }
+
+  /** @param {number} left ms on the clock @param {number} total @param {number} cap
+   *  @returns {number} the speed bonus, banked for the end screen */
+  function speedBonus(left, total, cap) {
+    var bonus = Math.round(cap * left / total);
+    run.speedTotal += bonus;
+    return bonus;
+  }
+
+  /* ===== ROUND LOOP ===== */
+
+  /** One card: the headline, the clock, the drag, the verdict, and always the true consequence.
+   *  @param {any} card @param {any} L @param {number} token @returns {Promise<void>} */
+  async function playRound(card, L, token) {
+    graph.setCard({ start: card.start, draggable: L.draggable });
+    paintCard(card, -1);
+    hintEl.textContent = card.kind === 'move' ? '' : 'Drag the curve that moves';
+    Arcade.sfx.play('card');
+    if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
+
+    run.clock = roundClock(L.time);
+    var ans = await run.clock.next();
+    if (!alive(token)) return;
+    var left = run.clock.remaining();
+    run.clock.stop();
+    graph.lock();
+
+    var ok = judge(ans, card);
+    run.asked += 1;
+    if (ok) {
+      Arcade.sfx.play('correct');
+      award(Math.round((100 + speedBonus(left, L.time, 50)) * run.streak.mult));
+      run.streak.hit();
+      run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+      run.correct += 1;
+      await sheetFlash('✓ ' + truthOf(card));
+    } else {
+      Arcade.sfx.play('snap');
+      Arcade.sfx.play('wrong');
+      await graph.snapBack({ jolt: true });
+      if (!alive(token)) return;
+      punish();
+      await sheetAsk('✗ ' + truthOf(card), card.why);
+    }
+    if (!alive(token)) return;
+    hideSheet();
+    await graph.animateTo(card.result);          // ~1.2 s of true consequence; a tap skips it
+    if (!alive(token)) return;
+    Arcade.track(card.ced, card.skill, ok);
+  }
+
+  /* ===== BOSS — the moves are answered in order, on one clock ===== */
+
+  /** @param {any} card @param {any} L @param {number} token @returns {Promise<void>} */
+  async function playBoss(card, L, token) {
+    graph.setCard({ start: card.start, draggable: L.draggable });
+    hintEl.textContent = 'Drag the curve that moves — one headline at a time';
+    Arcade.sfx.play('boss');
+    if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
+
+    run.clock = roundClock(card.time);
+    var accepted = 0;
+    var outOfTime = false;
+
+    for (var i = 0; i < card.moves.length; i += 1) {
+      var move = card.moves[i];
+      var solved = false;
+      if (!outOfTime) paintCard(card, i);
+      while (!solved && !outOfTime) {
+        var ans = await run.clock.next();
+        if (!alive(token)) return;
+        if (!ans) { outOfTime = true; break; }
+        graph.lock();
+        if (judge(ans, move)) {
+          Arcade.sfx.play('coin');
+          graph.accept(move.curve);
+          run.streak.hit();
+          run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+          solved = true;
+          accepted += 1;
+          await wait(450);                       // let the green land before the next headline
+          if (!alive(token)) return;
+          // The next move is on the same curve, so re-base the card where this one left it:
+          // setCard clears `accepted` and makes AD grabbable again from its new position.
+          if (i + 1 < card.moves.length) graph.setCard({ start: graph.state().shifts, draggable: L.draggable });
+        } else {
+          Arcade.sfx.play('snap');
+          Arcade.sfx.play('wrong');
+          await graph.snapBack({ jolt: true });
+          if (!alive(token)) return;
+          punish();
+          run.clock.pause();                     // the WHY beat is not a speed test
+          await sheetAsk('✗ ' + truthOf(move), move.why);
+          if (!alive(token)) return;
+          hideSheet();
+          graph.unlock();
+          run.clock.resume();
+        }
+      }
+      Arcade.track(card.ced, card.skill, solved);   // exactly once per move, solved or not
+      run.asked += 1;
+      if (solved) run.correct += 1;
+    }
+
+    var left = run.clock.remaining();
+    run.clock.stop();
+    graph.lock();
+    if (accepted === card.moves.length) {
+      Arcade.sfx.play('win');
+      award(Math.round((300 + speedBonus(left, card.time, 100)) * run.streak.mult));
+      await sheetFlash('✓ Boss cleared');
+    } else {
+      await sheetAsk('✗ Out of time', card.why);   // a boss left unfinished still earns its WHY
+    }
+    if (!alive(token)) return;
+    hideSheet();
+    await graph.animateTo(card.result);
+  }
+
+  /* ===== THE RUN ===== */
+
+  /** @param {number} n */
+  function startLevel(n) {
+    var L = levelOf(n);
+    if (!L || !L.ready) return;
+    abortRun();
+    show('play');
+    playLevel(L);
+  }
+
+  /** @param {any} L */
+  async function playLevel(L) {
+    runToken += 1;
+    var token = runToken;
+    run = {
+      L: L, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(),
+      score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null
+    };
+    run.streak.render(comboEl);
+    scoreEl.textContent = '0';
+    hideSheet();
+    graph.setVisible('LRAS', !!L.showLRAS);
+    graph.setCard({ start: { AD: 0, SRAS: 0 }, draggable: L.draggable });
+
+    var cards = drawCards(L.pool, ROUNDS);
+    for (var i = 0; i < cards.length; i += 1) {
+      await playRound(cards[i], L, token);
+      if (!alive(token)) return;
+      if (run.hearts.get() === 0) { showFail(L); return; }
+    }
+    await playBoss(L.boss, L, token);
+    if (!alive(token)) return;
+    if (run.hearts.get() === 0) { showFail(L); return; }
+    showClear(L);
+  }
+
+  /* ===== END SCREENS ===== */
+
+  /** @returns {number} 0-1 */
+  function accuracy() { return run.asked ? run.correct / run.asked : 0; }
+
+  /** @returns {{label:string, value:string}[]} */
+  function runStats() {
+    return [
+      { label: 'Best streak', value: String(run.bestStreak) },
+      { label: 'Speed bonus', value: '+' + run.speedTotal }
+    ];
+  }
+
+  /** @param {any} L */
+  function showClear(L) {
+    var acc = accuracy();
+    var score = run.score;
+    runToken += 1;                       // the run is over; nothing still awaiting may touch it
+    saveProgress(L.n, score, acc);
+    Arcade.saveBest('shift', { score: score, initials: Arcade.initials(), level: L.n });
+    var saved = loadProgress();
+    var rec = saved.levels[String(L.n)] || {};
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'LEVEL CLEAR', sub: 'Level ' + L.n + ' · ' + L.name,
+      // this run's medal and stamp, not the career best the level tile carries
+      score: score, accuracy: acc, stamp: Arcade.stampFor(acc),
+      medal: Arcade.medalFor(acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) }),
+      stats: runStats(),
+      note: saved.unlocked > L.n ? '' : 'Clear 75% to unlock the next level.',
+      buttons: [
+        { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { Arcade.toast('Coming in Task 5'); } },
+        { label: 'Levels', onClick: goSelect },
+        { label: 'Replay', onClick: function () { startLevel(L.n); } }
+      ]
+    });
+    Arcade.confetti();
+  }
+
+  /** @param {any} L */
+  function showFail(L) {
+    var acc = accuracy();
+    runToken += 1;
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'LEVEL FAILED', sub: 'The economy collapsed. Retry?',
+      score: run.score, accuracy: acc, medal: null, stamp: Arcade.stampFor(acc),
+      stats: runStats(),
+      buttons: [
+        { label: 'Retry', primary: true, onClick: function () { startLevel(L.n); } },
+        { label: 'Levels', onClick: goSelect }
+      ]
+    });
+  }
+
+  function goSelect() {
+    abortRun();
+    paintSelect();
+    show('select');
+  }
+
+  /* ===== BOOT ===== */
+
+  LEVELS.forEach(function (L) {                  // every card's true outcome, computed once at load
+    if (!L.ready) return;
+    L.pool.forEach(function (card) { card.result = computeResult(card); });
+    L.boss.result = computeResult(L.boss);
+  });
+
+  Arcade.bigType(Arcade.store.get('arcade.bigType', false));
+  Arcade.sfx.bindMuteButton(byId('muteBtn'));
+  Arcade.voice.bindButton(byId('voiceBtn'));
+  sheetBtn.style.display = 'none';
+  graph.lock();
+
+  initialsBtn.textContent = Arcade.initials();
+  initialsBtn.addEventListener('click', function () {
+    if (!initialsPanel.hidden) { initialsPanel.hidden = true; return; }
+    initialsPanel.hidden = false;
+    Arcade.initialsEntry(initialsMount, {
+      onDone: function (value) {
+        initialsBtn.textContent = value;
+        initialsPanel.hidden = true;
+      }
+    });
+  });
+
+  byId('playBtn').addEventListener('click', goSelect);
+  byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
+  byId('playBack').addEventListener('click', goSelect);
+
+  paintSelect();
+  var deepLink = parseInt(String(Arcade.qs('level', '')), 10);
+  if (Number.isFinite(deepLink)) {
+    if (playable(deepLink)) {
+      startLevel(deepLink);
+    } else {
+      show('select');
+      var target = levelOf(deepLink);
+      Arcade.toast(target && target.ready ? 'Level ' + deepLink + ' is still locked' : 'Level ' + deepLink + ' is not built yet');
+    }
+  }
+}());
+</script>
+
+<script>
+/* ================================================================================
+   GRAPH DEBUG HARNESS — only under ?debug=graph, and only until the graph engine is
+   settled. It hides the game's screens, mounts one adas graph with its gauges, prints
+   every release and gap payload, and gives four buttons to drive the rest of the API.
+   Nothing in this block belongs to the game; delete it wholesale, or leave it behind
+   the query flag.
    ================================================================================ */
 (function () {
   'use strict';
@@ -41,8 +734,8 @@
   if (Arcade.qs('debug') !== 'graph') return;
 
   var app = document.getElementById('app');
-  var placeholder = document.getElementById('placeholder');
-  if (placeholder) placeholder.remove();
+  var screens = document.querySelectorAll('.screen');
+  for (var s = 0; s < screens.length; s += 1) screens[s].classList.remove('active');
 
   /** @param {string} tag @param {string} cls @param {string} [css] */
   function box(tag, cls, css) {
