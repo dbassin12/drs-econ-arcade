@@ -15,8 +15,10 @@ var ArcadeGraph = (function () {
   var DOT_HIT = 7;    // how near a finger must land on the equilibrium dot to grab it
   var ZONE_BAND = 60;   // the "at full employment" tap band, in svg units, when `none` is the right
                         // answer: ~48 css px, so the intended target obeys the mobile tap rule.
-  var ZONE_SLIVER = 12; // ...and when a gap exists, so a tap anywhere in the shaded gap answers with
-                        // the gap's own side. Only this invisible band moves; the LRAS line does not.
+  var ZONE_WITH_GAP = 0;// ...and nothing at all once a gap is on screen: `none` is never the right
+                        // answer then, so left and right meet exactly at the line and a tap pressed
+                        // against it still answers with the gap's own side instead of costing a
+                        // heart. Only this invisible band changes; the LRAS line never moves.
 
   var VB = 360;                   // the graph svg is a 360-unit square
   var PLOT_X = 48, PLOT_Y = 16;   // the plot's top-left corner inside it
@@ -470,8 +472,8 @@ var ArcadeGraph = (function () {
     }
 
     /** @returns {number} how wide the "at full employment" band should be, in svg units: a real
-     *  48 px target when `none` is the right answer, a sliver when the answer is a side. */
-    function gapBandWidth() { return gapTruth() === 'none' ? ZONE_BAND : ZONE_SLIVER; }
+     *  48 px target when `none` is the right answer, and none at all when a side is. */
+    function gapBandWidth() { return gapTruth() === 'none' ? ZONE_BAND : ZONE_WITH_GAP; }
 
     /** @param {any} c @param {number} s @returns {string} the `d` of a curve trimmed to the plot */
     function pathFor(c, s) {
@@ -526,10 +528,11 @@ var ArcadeGraph = (function () {
 
       if (market.ref) {
         var rx = gx(refX());
-        var half = gapBandWidth() / 2;
+        var bandW = gapBandWidth(), half = bandW / 2;
         attr(zoneL, 'width', n2(Math.max(0, rx - half)));
         attr(zoneR, 'x', n2(rx + half)); attr(zoneR, 'width', n2(Math.max(0, PLOT - rx - half)));
-        attr(zoneM, 'x', n2(rx - half)); attr(zoneM, 'width', n2(gapBandWidth()));
+        attr(zoneM, 'x', n2(rx - half)); attr(zoneM, 'width', n2(bandW));
+        zoneM.style.display = bandW > 0 ? '' : 'none';
         if (tickText) attr(tickText, 'x', n2(PLOT_X + rx));
         if (shadeOn) {
           attr(shade, 'x', n2(Math.min(dx, rx))); attr(shade, 'width', n2(Math.abs(dx - rx)));

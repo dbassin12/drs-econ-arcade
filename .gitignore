@@ -2,3 +2,4 @@
 .vercel
 .superpowers/
 node_modules/
+.playwright-mcp/
