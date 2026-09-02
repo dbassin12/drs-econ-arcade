@@ -14,7 +14,7 @@ diagnostic. Plain HTML/CSS/JS: no frameworks, no build step, no accounts, no bac
 ├── index.html                    # hub: marquee, initials, game cards, AP readiness panel
 ├── games/
 │   ├── shift-happens.html        # P0 game: graph surgery under time pressure
-│   ├── fed-chair.html            # P1 game: you are the Fed chair
+│   ├── fed-chair.html            # P0 preview (1975 era): you are the Fed chair
 │   ├── fed-chair.model.js        # the Fed macro model (pure logic)
 │   └── fed-chair.model.test.js
 ├── shared/
@@ -23,6 +23,7 @@ diagnostic. Plain HTML/CSS/JS: no frameworks, no build step, no accounts, no bac
 │   ├── arcade.test.js
 │   ├── graph.js                  # the SVG graph engine — markets are data
 │   └── graph.test.js
+├── .gitignore
 ├── CLAUDE.md                     # the build contract
 ├── GAME_PLAN.md                  # the full spec
 └── README.md
@@ -47,7 +48,11 @@ node --test shared/*.test.js games/*.test.js
 
 ## Student URL
 
-The arcade deploys as a static site to Vercel (team `dbassin12s-projects`, free tier) — every push to
-the deploy branch redeploys in about 20 seconds. The student-facing URL will be
-`https://drs-econ-arcade.vercel.app` and gets pinned in Schoology → Materials plus a QR poster for the
-board. Once it is live, the real URL goes here.
+**Live now (GitHub Pages):** <https://dbassin12.github.io/drs-econ-arcade/> — every push to `main`
+republishes in about a minute.
+
+**Vercel (planned primary host):** import this repo at <https://vercel.com/new> (team
+`dbassin12s-projects`, framework preset **Other**, no build command), or run `npx vercel login` and then
+`npx vercel --prod` from the repo root. Once it is live, the `*.vercel.app` URL goes here. Either URL
+gets pinned in Schoology → Materials plus a QR poster for the board; both work on phones over cellular
+if school Wi-Fi blocks one of them.
