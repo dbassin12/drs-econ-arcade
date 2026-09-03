@@ -23,3 +23,4 @@
 
 - **The class leaderboard is the one network call.** `shared/leaderboard.js` posts a new personal best — initials, game, level, score, title points, title — to the Apps Script endpoint named at its top, and the hub reads the board back through it; `leaderboard/apps-script.js` is that endpoint, `leaderboard/SETUP.md` its deployment. Every page's `connect-src` names its two hosts and nothing else. No other request, ever; with no URL configured the arcade is exactly as local as before.
 - Initials only on the board, never names. The Sheet is the moderation tool.
+- **Shared assets are versioned.** Every page names `shared/*.js`, `shared/arcade.css` and its `*.model.js` with `?v=STAMP`. After any change under `shared/` or to a model, run `node tools/bump-assets.js` before committing; the test suite checks the pages agree. GitHub Pages caches every file for ten minutes, and a reload refreshes the page but not the scripts it names.

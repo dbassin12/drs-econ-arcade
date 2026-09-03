@@ -45,6 +45,8 @@ teacher owns that receives initials and scores on every new personal best.
 │   ├── apps-script.test.js
 │   ├── fake-gas.js               # the four Google services, stubbed, so the script runs under node
 │   └── SETUP.md                  # how the teacher deploys it
+├── tools/
+│   └── bump-assets.js            # stamps ?v= on every shared-asset reference; run after a shared/ change
 ├── .gitignore
 ├── vercel.json                   # security headers for the static deploy — no build settings
 ├── CLAUDE.md                     # the build contract

@@ -902,3 +902,24 @@ test('bests reads a hand-edited record back the way saveBest would have written 
   assert.deepEqual(Arcade.bests('spec-junk'), { score: 7, initials: 'DSB', level: 3, date: '2026-09-03T00:00:00.000Z' });
   Arcade.store.remove('arcade.spec-junk.best');
 });
+
+/* ===== the asset stamp every page carries ===== */
+
+test('every page names the shared scripts and stylesheet with one and the same asset version', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.join(__dirname, '..');
+  const pages = ['index.html'].concat(fs.readdirSync(path.join(root, 'games')).filter((f) => f.endsWith('.html')).map((f) => 'games/' + f));
+  const stamps = new Set();
+  pages.forEach((p) => {
+    const html = fs.readFileSync(path.join(root, p), 'utf8');
+    const refs = html.match(/(?:src|href)="[^"]*(?:shared\/[a-z-]+\.(?:js|css)|[a-z-]+\.model\.js)(?:\?[^"]*)?"/g) || [];
+    assert.ok(refs.length >= 3, p + ' loads the stylesheet, the engine and the board');
+    refs.forEach((r) => {
+      const m = r.match(/\?v=([A-Za-z0-9.-]+)"$/);
+      assert.ok(m, p + ': ' + r + ' carries no ?v= stamp (run node tools/bump-assets.js)');
+      stamps.add(m[1]);
+    });
+  });
+  assert.equal(stamps.size, 1, 'one stamp everywhere, found: ' + [...stamps].join(', '));
+});

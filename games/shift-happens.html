@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
 </head>
 <body>
 
@@ -447,9 +447,9 @@ const JUICE = {
 <!-- The boss's entrance slams over the graph and leaves; the Fed's gavel stamp, borrowed. -->
 <div class="fomc-mount" id="stampMount" hidden aria-hidden="true"><div class="fomc-stamp" id="stampText"></div></div>
 
-<script src="../shared/arcade.js"></script>
-<script src="../shared/leaderboard.js"></script>
-<script src="../shared/graph.js"></script>
+<script src="../shared/arcade.js?v=20260903b"></script>
+<script src="../shared/leaderboard.js?v=20260903b"></script>
+<script src="../shared/graph.js?v=20260903b"></script>
 
 <script>
 /* ================================================================================
@@ -2014,7 +2014,7 @@ const JUICE = {
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
-  Arcade.mountSwitcher({ current: 'shift' });
+  if (Arcade.mountSwitcher) Arcade.mountSwitcher({ current: 'shift' });   // absent only on an engine a cache held back
   sheetBtn.style.display = 'none';
   mountGraph('adas');                            // the AD–AS board is up and locked before any level
 

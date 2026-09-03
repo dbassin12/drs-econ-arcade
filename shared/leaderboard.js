@@ -64,7 +64,7 @@ var Leaderboard = (function () {
   /** What one best becomes on the wire: the record plus the career it sits in.
    *  @param {string} game @param {{score:number, initials:string, level?:number}} rec @returns {any} */
   function entryFor(game, rec) {
-    var c = A ? A.career() : { points: 0, name: '' };
+    var c = A && typeof A.career === 'function' ? A.career() : { points: 0, name: '' };
     return { initials: rec.initials, game: game, level: rec.level === undefined || rec.level === null ? 1 : rec.level, score: rec.score, points: c.points, title: c.name };
   }
 
@@ -216,7 +216,7 @@ var Leaderboard = (function () {
   }
 
   function wire() {
-    if (wired || !A) return;
+    if (wired || !A || typeof A.onBest !== 'function') return;   // an engine a cache held back has no hook yet
     wired = true;
     A.onBest(function (game, rec) {
       if (!configured() || !GAMES[game]) return;

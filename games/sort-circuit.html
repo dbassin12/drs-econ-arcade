@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
 </head>
 <body>
 
@@ -281,8 +281,8 @@ const INTRO = [
   </div>
 </div>
 
-<script src="../shared/arcade.js"></script>
-<script src="../shared/leaderboard.js"></script>
+<script src="../shared/arcade.js?v=20260903b"></script>
+<script src="../shared/leaderboard.js?v=20260903b"></script>
 
 <script>
 /* ================================================================================
@@ -1013,7 +1013,7 @@ const INTRO = [
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
-  Arcade.mountSwitcher({ current: 'sort' });
+  if (Arcade.mountSwitcher) Arcade.mountSwitcher({ current: 'sort' });   // absent only on an engine a cache held back
   sheetBtn.style.display = 'none';
   paintIntro();
 
