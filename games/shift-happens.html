@@ -347,6 +347,7 @@ const JUICE = {
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
         <h2 class="panel-title" tabindex="-1" data-focus>Levels</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
         <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
       </header>
       <!-- Practice is a mode, not a level: it is set here and read by every run until it is unset. -->
@@ -362,6 +363,7 @@ const JUICE = {
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
         <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
       </header>
       <div class="panel stack">
         <div class="howto-demo" id="howtoDemo"></div>
@@ -412,6 +414,7 @@ const JUICE = {
         <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the level list">←</button>
         <h2 class="panel-title" tabindex="-1" data-focus>Exam Sprint</h2>
         <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
         <button type="button" class="btn btn-ghost howto-btn" id="examHowto" aria-label="How to play">?</button>
       </header>
       <div class="timer-bar" id="examTimer"></div>
@@ -1736,7 +1739,8 @@ const JUICE = {
       note: rec.medal === 'gold' ? '' : 'Gold needs 95% on the level and 2 of 3 here.',
       buttons: [
         { label: 'Levels', primary: true, onClick: goSelect },
-        { label: 'Run it again', onClick: function () { startExam(L.n); } }
+        { label: 'Run it again', onClick: function () { startExam(L.n); } },
+        ARCADE_BUTTON
       ]
     });
     showTitle(panel, beforeTitle);
@@ -1879,6 +1883,7 @@ const JUICE = {
     var buttons = [{ label: 'Play the level', primary: true, onClick: function () { startLevel(L.n); } }];
     if (again.length) buttons.push({ label: 'Drill the ' + again.length + ' still missed', variant: 'blue', onClick: function () { startDrill(L, again); } });
     buttons.push({ label: 'Levels', onClick: goSelect });
+    buttons.push(ARCADE_BUTTON);
     var panel = Arcade.endScreen(screens.end, {
       title: again.length ? 'DRILL DONE' : 'ALL CLEARED', sub: 'Level ' + L.n + ' · the cards you missed · no clock, no hearts',
       score: run.score, accuracy: acc, medal: null,
@@ -1913,7 +1918,8 @@ const JUICE = {
         buttons: withDrill(L, [
           { label: 'Play for real', primary: true, onClick: function () { setPractice(false); startLevel(L.n); } },
           { label: 'Levels', onClick: goSelect },
-          { label: 'Practice again', onClick: function () { startLevel(L.n); } }
+          { label: 'Practice again', onClick: function () { startLevel(L.n); } },
+          ARCADE_BUTTON
         ])
       });
       showMissed(practicePanel);
@@ -1937,7 +1943,8 @@ const JUICE = {
       buttons: withDrill(L, [
         { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { startExam(L.n); } },
         { label: 'Levels', onClick: goSelect },
-        { label: 'Replay', onClick: function () { startLevel(L.n); } }
+        { label: 'Replay', onClick: function () { startLevel(L.n); } },
+        ARCADE_BUTTON
       ])
     });
     showTitle(panel, beforeTitle);
@@ -1959,7 +1966,8 @@ const JUICE = {
       stats: runStats(),
       buttons: withDrill(L, [
         { label: 'Retry', primary: true, onClick: function () { startLevel(L.n); } },
-        { label: 'Levels', onClick: goSelect }
+        { label: 'Levels', onClick: goSelect },
+        ARCADE_BUTTON
       ])
     });
     showMissed(panel);
@@ -1972,6 +1980,10 @@ const JUICE = {
     paintSelect();
     show('select');
   }
+
+  /** Back to the hub — the other games are one tap from there. Every end screen offers it. */
+  function goHome() { window.location.href = '../index.html'; }
+  var ARCADE_BUTTON = { label: 'Arcade', onClick: goHome };
 
   /* ===== BOOT ===== */
 

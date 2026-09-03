@@ -469,6 +469,21 @@ body {
 .hist-key.actual { color: var(--gold); border-top-style: dashed; }
 
 /* ===== HUB KIT — .game-card and .heat-cell compose with .panel ===== */
+/* The hub is one column with a slower rhythm than a game screen: 24 px between the blocks, 14 px
+   between cards, a labelled section for what can be played and one for what cannot yet, and the
+   player's chrome kept clear of the first card. */
+.hub { display: flex; flex-direction: column; gap: 24px; }
+.hub-head { gap: 6px; }
+.hub-head p { margin: 0; }
+.hub-tagline { font-weight: 700; }
+.hub-intro { font-size: .95rem; line-height: 1.45; }
+.hub-controls { gap: 10px; }
+.section-title { margin: 0; font-size: .8rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); }
+.games { gap: 14px; }
+.game-card { position: relative; padding-right: 34px; transition: transform .06s; }
+.game-card:active { transform: translateY(2px); }
+/* A chevron says "this opens": the card is a link, and a link should look like one. */
+.game-go { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; font-weight: 900; line-height: 1; color: var(--text3); }
 .marquee { overflow: hidden; }
 .marquee-inner { display: inline-block; white-space: nowrap; animation: marquee 22s linear infinite; }
 .game-card { display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none; }
@@ -481,8 +496,10 @@ body {
 .game-best { font-family: var(--font-mono); font-size: 1rem; }
 .game-card .tag { font-size: .75rem; }
 .game-card .medal { width: 3.5rem; height: 3.5rem; font-size: 1rem; }
-/* Seven levels' medals on one card: small pips, the level number where there is no medal yet. */
-.game-card .medal.mini { width: 1.7rem; height: 1.7rem; font-size: .75rem; border-width: 2px; }
+/* Seven levels' medals on one card: small pips, the level number where there is no medal yet, tight
+   enough that all seven sit on one row beside a 360 px phone's emoji and chevron. */
+.game-card .medal.mini { width: 1.5rem; height: 1.5rem; font-size: .7rem; border-width: 2px; }
+.medal-row { gap: 4px; }
 .game-card.soon { opacity: .5; }
 .heat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .heat-cell {
@@ -733,6 +750,10 @@ html.big-type .podium { display: block; order: -1; }
 .topbar .howto-btn { width: 48px; height: 48px; flex: 0 0 48px; padding: 0; }
 /* A topbar title takes the slack, so the ? beside it lands on the right edge and not on its heels. */
 .topbar .panel-title { flex: 1 1 auto; min-width: 0; }
+/* The home button beside it: the hub, and so the other game, is one tap from any menu screen. */
+.topbar .home-btn { text-decoration: none; font-size: 20px; }
+/* Fed Chair's turn label sits between ← and two icon buttons now; it wraps to two short lines. */
+.topbar .turn-when { flex: 1 1 auto; min-width: 0; }
 
 /* ===== WHAT IS THIS? — the purpose panel on a title screen, one emoji and one sentence a line ===== */
 .intro-title { font-weight: 900; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }

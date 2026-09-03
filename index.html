@@ -19,27 +19,31 @@
 </head>
 <body>
 
-<main class="app">
+<main class="app hub">
 
   <div class="marquee" aria-hidden="true">
     <div class="marquee-inner">SHIFT HAPPENS · FED CHAIR · THE INVESTOR · CRISIS COUNTRY · SORT CIRCUIT · CALC BLITZ · GRAPH DOCTOR · SHIFT HAPPENS · FED CHAIR · THE INVESTOR · CRISIS COUNTRY · SORT CIRCUIT · CALC BLITZ · GRAPH DOCTOR · </div>
   </div>
 
-  <header class="stack">
+  <header class="stack hub-head">
     <h1 class="h1">DRS ECON ARCADE</h1>
-    <p class="muted">AP Macro · train the skills the exam grades</p>
+    <p class="muted hub-tagline">AP Macro · train the skills the exam grades</p>
     <p class="muted hub-intro">Every game here is a skill the AP Macro exam grades — moving graphs, judging policy, reading consequences. Play, read the WHY line, and watch your readiness map fill in.</p>
   </header>
 
-  <div class="row wrap">
-    <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+  <!-- The player's chrome: who they are and the three switches on one row, their rank on the next. -->
+  <div class="stack hub-controls">
+    <div class="row wrap">
+      <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+      <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+      <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      <button type="button" class="btn btn-ghost" id="bigTypeBtn" aria-label="Arcade Night big-type mode" aria-pressed="false">📺</button>
+    </div>
     <span class="title-chip" id="titleChip"></span>
-    <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
-    <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
-    <button type="button" class="btn btn-ghost" id="bigTypeBtn" aria-label="Arcade Night big-type mode" aria-pressed="false">📺</button>
   </div>
 
-  <div class="stack">
+  <section class="stack games" aria-labelledby="playTitle">
+    <h2 class="section-title" id="playTitle">Play now</h2>
 
     <a class="panel game-card" href="games/shift-happens.html">
       <div class="game-emoji" aria-hidden="true">🧠</div>
@@ -48,9 +52,10 @@
         <div class="game-blurb">You are a graph surgeon: drag the curve the headline moves, from AD–AS to the Phillips curve</div>
         <div class="row">
           <span class="game-best" id="bestShift">No score yet</span>
-          <span class="row" id="medalsShift"></span>
+          <span class="row medal-row" id="medalsShift"></span>
         </div>
       </div>
+      <span class="game-go" aria-hidden="true">›</span>
     </a>
 
     <a class="panel game-card" href="games/fed-chair.html">
@@ -63,7 +68,12 @@
           <span class="tag">1975 preview</span>
         </div>
       </div>
+      <span class="game-go" aria-hidden="true">›</span>
     </a>
+  </section>
+
+  <section class="stack games" aria-labelledby="soonTitle">
+    <h2 class="section-title" id="soonTitle">Coming soon</h2>
 
     <div class="panel game-card soon" aria-disabled="true">
       <div class="game-emoji" aria-hidden="true">📈</div>
@@ -109,22 +119,21 @@
         <div class="row"><span class="tag">Coming soon</span></div>
       </div>
     </div>
+  </section>
 
-    <section class="panel readiness stack">
-      <h2 class="panel-title">My AP Readiness</h2>
-      <div class="stack" id="readinessBody">Play a level to see your heat map</div>
-    </section>
+  <section class="panel readiness stack">
+    <h2 class="panel-title">My AP Readiness</h2>
+    <div class="stack" id="readinessBody">Play a level to see your heat map</div>
+  </section>
 
-    <!-- Arcade Night. The CSS shows it only under html.big-type; the podium rows are rendered always. -->
-    <section class="panel podium stack" id="podium">
-      <h2 class="panel-title">Arcade Night</h2>
-      <div class="muted">Top scores on this device.</div>
-      <div class="stack" id="podiumBody"></div>
-    </section>
+  <!-- Arcade Night. The CSS shows it only under html.big-type; the podium rows are rendered always. -->
+  <section class="panel podium stack" id="podium">
+    <h2 class="panel-title">Arcade Night</h2>
+    <div class="muted">Top scores on this device.</div>
+    <div class="stack" id="podiumBody"></div>
+  </section>
 
-    <footer class="muted">No accounts. Scores live on this device.</footer>
-
-  </div>
+  <footer class="muted">No accounts. Scores live on this device.</footer>
 
 </main>
 
