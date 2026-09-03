@@ -487,7 +487,11 @@ var ArcadeGraph = (function () {
     var gaugeHost = o.gauges === true ? mount : (o.gauges || null);
     if (gaugeHost) {
       strip = el('svg', { viewBox: '0 0 ' + (GAUGE_W * market.gauges.length) + ' ' + GAUGE_H });
-      strip.style.width = '100%';
+      // Every dial is the size the three-gauge AD–AS strip gives it. A market with one gauge used
+      // to scale that one up to the full width — a 250 px dial that pushed the money market's
+      // board off the bottom of a phone.
+      strip.style.width = Math.round(100 * Math.min(3, market.gauges.length) / 3) + '%';
+      strip.style.margin = '0 auto';
       strip.style.height = 'auto';
       strip.style.display = 'block';
       market.gauges.forEach(function (spec, i) {

@@ -481,6 +481,8 @@ body {
 .game-best { font-family: var(--font-mono); font-size: 1rem; }
 .game-card .tag { font-size: .75rem; }
 .game-card .medal { width: 3.5rem; height: 3.5rem; font-size: 1rem; }
+/* Seven levels' medals on one card: small pips, the level number where there is no medal yet. */
+.game-card .medal.mini { width: 1.7rem; height: 1.7rem; font-size: .75rem; border-width: 2px; }
 .game-card.soon { opacity: .5; }
 .heat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .heat-cell {

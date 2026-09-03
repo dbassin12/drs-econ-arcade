@@ -45,7 +45,7 @@
       <div class="game-emoji" aria-hidden="true">🧠</div>
       <div class="game-info">
         <div class="game-title">Shift Happens</div>
-        <div class="game-blurb">You are a graph surgeon: drag AD and SRAS to match breaking news</div>
+        <div class="game-blurb">You are a graph surgeon: drag the curve the headline moves, from AD–AS to the Phillips curve</div>
         <div class="row">
           <span class="game-best" id="bestShift">No score yet</span>
           <span class="row" id="medalsShift"></span>
@@ -160,6 +160,9 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
   var GOOD = 0.80;                    // the heat map's three bands
   var WARN = 0.60;
   var RANKS = ['🥇', '🥈', '🥉'];
+  var SHIFT_LEVELS = 7;               // Shift Happens levels, for the medal row
+  /** Which CED unit each Shift level's Exam Sprint certifies. @type {Record<number, number>} */
+  var LEVEL_UNIT = { 1: 3, 2: 3, 3: 3, 4: 4, 5: 5, 6: 6, 7: 5 };
 
   /* ===== ELEMENTS ===== */
 
@@ -207,10 +210,10 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
 
     var levels = shiftLevels();
     medalsShift.textContent = '';
-    for (var n = 1; n <= 3; n += 1) {
+    for (var n = 1; n <= SHIFT_LEVELS; n += 1) {
       var rec = levels[String(n)];
       var medal = Arcade.safeMedal(rec && rec.medal);   // stored strings never pick their own class
-      var pip = chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase());
+      var pip = chip('medal mini ' + medal, medal === 'none' ? String(n) : medal.charAt(0).toUpperCase());
       pip.setAttribute('aria-label', 'Level ' + n + ': ' + (medal === 'none' ? 'no medal yet' : medal + ' medal'));
       medalsShift.appendChild(pip);
     }
@@ -236,16 +239,19 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
     return 'bad';
   }
 
-  /** The units wearing an "Exam Ready" ribbon: a clean Exam Sprint on any level of that unit.
-   *  Shift Happens' three levels are all Unit 3 content.
+  /** The units wearing an "Exam Ready" ribbon: a clean Exam Sprint on a level of that unit.
+   *  Levels 1–3 are Unit 3, the money market is Unit 4, loanable funds and the Phillips curve are
+   *  Unit 5, and the dollar market is Unit 6.
    *  @returns {number[]} */
   function examReadyUnits() {
     var levels = shiftLevels();
-    for (var n = 1; n <= 3; n += 1) {
+    var out = [];
+    for (var n = 1; n <= SHIFT_LEVELS; n += 1) {
       var rec = levels[String(n)];
-      if (rec && rec.examPerfect) return [3];
+      var unit = LEVEL_UNIT[n];
+      if (rec && rec.examPerfect && out.indexOf(unit) < 0) out.push(unit);
     }
-    return [];
+    return out.sort();
   }
 
   /** The expansion under a tapped cell: every topic of that unit the student has answered.

@@ -214,9 +214,11 @@ test('playNext routes the weakest topic to the level that drills it', () => {
   assert.equal(next('3.8').level, 1);
   assert.equal(next('3.6').level, 2);
   for (const ced of ['3.4', '3.5', '3.7', '3.9']) assert.equal(next(ced).level, 3);
-  for (const ced of ['4.5', '4.7', '5.1', '5.2', '5.3']) assert.equal(next(ced).game, 'fed');
-  // Unit 6 rides Level 1's net-export cards until Level 6 exists
-  for (const ced of ['6.1', '6.2', '6.3', '6.4', '6.5', '6.6']) assert.equal(next(ced).level, 1);
+  assert.equal(next('4.5').level, 4, 'the money market');
+  for (const ced of ['4.7', '5.4', '5.5', '6.6']) assert.equal(next(ced).level, 5, ced + ' is loanable funds');
+  for (const ced of ['6.1', '6.2', '6.3', '6.4', '6.5']) assert.equal(next(ced).level, 6, ced + ' is the dollar market');
+  for (const ced of ['5.2', '5.3']) assert.equal(next(ced).level, 7, ced + ' is the Phillips curve');
+  assert.equal(next('5.1').game, 'fed', 'policy in the short run is the Fed\'s game');
   // a still-unmapped topic falls through to the hardest shift level
   assert.deepEqual(next('2.3'), {
     game: 'shift', level: 3, url: 'games/shift-happens.html?level=3', label: 'Shift Happens · Level 3'
@@ -766,4 +768,11 @@ test('weightedSample draws in proportion, without replacement, and never a zero-
   let firstIsA = 0;
   for (let i = 0; i < 4000; i += 1) if (Arcade.weightedSample(['a', 'b'], [3, 1], 1, rng)[0] === 'a') firstIsA += 1;
   assert.ok(firstIsA > 2850 && firstIsA < 3150, 'a 3:1 weight draws first about 75% of the time: ' + firstIsA);
+});
+
+test('titlePoints counts a medal on any of the seven levels', () => {
+  const seven = progressOf({ medals: ['gold', 'gold', 'gold', 'gold', 'gold', 'gold', 'gold'] });
+  assert.equal(Arcade.titleFor(seven).name, 'MAESTRO', 'seven golds are 21 points');
+  const late = progressOf({ medals: [null, null, null, 'bronze', 'silver'] });
+  assert.equal(Arcade.titleFor(late).name, 'Analyst', 'a bronze and a silver on Levels 4 and 5 are 3 points');
 });

@@ -432,11 +432,13 @@ var Arcade = (function () {
     '3.3': { game: 'shift', level: 2 }, '3.6': { game: 'shift', level: 2 },
     '3.4': { game: 'shift', level: 3 }, '3.5': { game: 'shift', level: 3 },
     '3.7': { game: 'shift', level: 3 }, '3.9': { game: 'shift', level: 3 },
-    '4.5': { game: 'fed', level: 1 }, '4.6': { game: 'fed', level: 1 }, '4.7': { game: 'fed', level: 1 },
-    '5.1': { game: 'fed', level: 1 }, '5.2': { game: 'fed', level: 1 }, '5.3': { game: 'fed', level: 1 },
-    // Unit 6 lands on Level 1's net-export cards until Level 6 FOREX Floor exists
-    '6.1': { game: 'shift', level: 1 }, '6.2': { game: 'shift', level: 1 }, '6.3': { game: 'shift', level: 1 },
-    '6.4': { game: 'shift', level: 1 }, '6.5': { game: 'shift', level: 1 }, '6.6': { game: 'shift', level: 1 }
+    '4.5': { game: 'shift', level: 4 },                                        // the money market
+    '4.6': { game: 'fed', level: 1 }, '5.1': { game: 'fed', level: 1 },        // policy is the Fed's game
+    '4.7': { game: 'shift', level: 5 }, '5.4': { game: 'shift', level: 5 },    // loanable funds, deficits,
+    '5.5': { game: 'shift', level: 5 }, '6.6': { game: 'shift', level: 5 },    // crowding out, capital flows
+    '6.1': { game: 'shift', level: 6 }, '6.2': { game: 'shift', level: 6 }, '6.3': { game: 'shift', level: 6 },
+    '6.4': { game: 'shift', level: 6 }, '6.5': { game: 'shift', level: 6 },    // the dollar market
+    '5.2': { game: 'shift', level: 7 }, '5.3': { game: 'shift', level: 7 }     // the Phillips curve
   };
 
   /** Record one scored answer.
@@ -1065,14 +1067,15 @@ var Arcade = (function () {
 
   /** @typedef {{shift?: {levels?: Record<string, any>}|null, fed?: {score?: number}|null}} TitleProgress */
 
-  /** Career points: a medal on each of Shift's three levels (max 9), two more for every level whose
-   *  Exam Sprint was perfect (max 6), and the Fed Chair best stamp (1-5).
-   *  @param {TitleProgress} p @returns {number} 0-20 */
+  /** Career points: a medal on each of Shift's seven levels, two more for every level whose Exam
+   *  Sprint was perfect, and the Fed Chair best stamp (1-5). The ladder tops out at 19, so seven
+   *  golds alone make MAESTRO — as they should.
+   *  @param {TitleProgress} p @returns {number} */
   function titlePoints(p) {
     var shift = p.shift;
     var levels = shift && shift.levels && typeof shift.levels === 'object' ? shift.levels : {};
     var points = 0;
-    for (var n = 1; n <= 3; n += 1) {
+    for (var n = 1; n <= 7; n += 1) {
       var rec = levels[String(n)];
       if (!rec || typeof rec !== 'object') continue;
       // Own properties only: a stored medal of "toString" resolved through Object.prototype to a

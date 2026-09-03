@@ -39,7 +39,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
    ================================================================================ */
 const LEVELS = [
   {
-    n: 1, name: 'Demand Rookie', blurb: 'AD only — the C, I, G and Xn stories', ready: true,
+    n: 1, name: 'Demand Rookie', blurb: 'AD only — the C, I, G and Xn stories', ready: true, market: 'adas',
     draggable: ['AD'], showLRAS: false,
     pool: [
       { id: 'l1-c-confidence', kind: 'shift', head: 'CONSUMER CONFIDENCE CRASHES', sub: 'Cedarhurst merchants say the wallets snapped shut overnight.', emoji: '😟', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'AD', dir: 'L', gap: null, trick: false, why: 'Falling consumer confidence decreases consumption spending, so aggregate demand shifts left; the price level falls and real GDP decreases.', ced: '3.1', skill: 4 },
@@ -68,7 +68,7 @@ const LEVELS = [
     ]
   },
   {
-    n: 2, name: 'Supply Side', blurb: 'SRAS joins AD — costs, expectations and the price-level trap', ready: true,
+    n: 2, name: 'Supply Side', blurb: 'SRAS joins AD — costs, expectations and the price-level trap', ready: true, market: 'adas',
     draggable: ['AD', 'SRAS'], showLRAS: false,
     pool: [
       { id: 'l2-s-oil', kind: 'shift', head: 'OIL PRICES SPIKE', sub: 'Every delivery van on Rockaway Turnpike just got more expensive to run.', emoji: '🛢️', graph: 'adas', start: { AD: 0, SRAS: 0 }, curve: 'SRAS', dir: 'L', gap: null, trick: false, why: 'A rise in the price of a key input raises per-unit production costs, so short-run aggregate supply shifts left; the price level rises and real GDP decreases.', ced: '3.3', skill: 4 },
@@ -97,7 +97,7 @@ const LEVELS = [
     ]
   },
   {
-    n: 3, name: 'Gap Attack', blurb: 'LRAS is on — shift it, then name the gap you left behind', ready: true,
+    n: 3, name: 'Gap Attack', blurb: 'LRAS is on — shift it, then name the gap you left behind', ready: true, market: 'adas',
     draggable: ['AD', 'SRAS'], showLRAS: true,
     pool: [
       { id: 'l3-f-infra', kind: 'shift', head: 'INFRASTRUCTURE BILL PASSES', sub: 'The LIRR viaduct at Lawrence finally gets its rebuild, and the crews need the work.', emoji: '🚧', graph: 'adas', start: { AD: -12, SRAS: 0 }, curve: 'AD', dir: 'R', gap: 'none', trick: false, why: 'An increase in government purchases increases aggregate demand, shifting it right; the price level rises and real GDP increases.', ced: '3.8', skill: 4 },
@@ -125,10 +125,122 @@ const LEVELS = [
       { stem: 'Assume that an economy’s short-run equilibrium level of real output is greater than its full-employment level of output. Which of the following best describes this economy?', choices: ['It has a recessionary gap, and the unemployment rate is above the natural rate', 'It has an inflationary gap, and the unemployment rate is below the natural rate', 'It is in long-run equilibrium, and the unemployment rate equals the natural rate', 'It has an inflationary gap, and the unemployment rate is above the natural rate'], answer: 1, why: 'Short-run equilibrium real GDP above full-employment output is an inflationary gap, and because output exceeds the full-employment level the unemployment rate is below the natural rate of unemployment.', ced: '3.5', skill: 2 }
     ]
   },
-  { n: 4, name: 'Money Market', ready: false },
-  { n: 5, name: 'Loanable Funds', ready: false },
-  { n: 6, name: 'FOREX Floor', ready: false },
-  { n: 7, name: 'Phillips Finale', ready: false }
+  {
+    n: 4, name: 'Money Market', blurb: 'MS is vertical and the Fed sets it; MD slopes down — the nominal rate is the price of holding money', ready: true, market: 'money',
+    draggable: ['MS', 'MD'], showLRAS: false,
+    pool: [
+      { id: 'l4-md-pl', kind: 'shift', head: 'FIVE TOWNS PRICES JUMP', sub: 'Same Central Avenue shopping, more dollars for every bagel and gallon.', emoji: '🏷️', graph: 'money', start: {}, curve: 'MD', dir: 'R', gap: null, trick: true, why: 'A higher price level raises the amount of money people need for the same transactions, so money demand shifts right; the nominal interest rate rises.', ced: '4.5', skill: 4 },
+      { id: 'l4-md-gdp', kind: 'shift', head: 'REAL GDP JUMPS', sub: 'Lawrence is hiring and Cedarhurst registers are ringing: more transactions.', emoji: '📈', graph: 'money', start: {}, curve: 'MD', dir: 'R', gap: null, trick: false, why: 'An increase in real GDP raises the volume of transactions and the demand for money, so money demand shifts right; the nominal interest rate rises.', ced: '4.5', skill: 4 },
+      { id: 'l4-md-slump', kind: 'shift', head: 'RECESSION: SPENDING SLUMPS', sub: 'Rockaway Turnpike storefronts report their slowest quarter in years.', emoji: '📉', graph: 'money', start: {}, curve: 'MD', dir: 'L', gap: null, trick: false, why: 'A fall in real income reduces the transactions demand for money, so money demand shifts left; the nominal interest rate falls.', ced: '4.5', skill: 4 },
+      { id: 'l4-md-tap', kind: 'shift', head: 'TAP-TO-PAY TAKES OVER', sub: 'Nobody at the Woodmere bagel counter carries cash; a phone does the job.', emoji: '📱', graph: 'money', start: {}, curve: 'MD', dir: 'L', gap: null, trick: false, why: 'New payment technology lets people carry out the same transactions while holding less money, so money demand shifts left; the nominal interest rate falls.', ced: '4.5', skill: 4 },
+      { id: 'l4-md-deflation', kind: 'shift', head: 'THE PRICE LEVEL FALLS', sub: 'The same Sunday shopping in Hewlett takes fewer dollars.', emoji: '🏷️', graph: 'money', start: {}, curve: 'MD', dir: 'L', gap: null, trick: true, why: 'A lower price level reduces the money needed for a given volume of transactions, so money demand shifts left; the nominal interest rate falls.', ced: '4.5', skill: 4 },
+      { id: 'l4-md-atm', kind: 'shift', head: 'AN ATM ON EVERY CORNER', sub: 'Cash is a block away at any hour, so shoppers carry less of it.', emoji: '🏧', graph: 'money', start: {}, curve: 'MD', dir: 'L', gap: null, trick: false, why: 'Easier access to cash lets people hold less money for the same transactions, so money demand shifts left; the nominal interest rate falls.', ced: '4.5', skill: 4 },
+      { id: 'l4-md-nominal', kind: 'shift', head: 'NOMINAL GDP CLIMBS', sub: 'Wages and prices are both up; the dollar value of everything sold has grown.', emoji: '💵', graph: 'money', start: {}, curve: 'MD', dir: 'R', gap: null, trick: false, why: 'A rise in nominal GDP raises the money needed for transactions, so money demand shifts right; the nominal interest rate rises.', ced: '4.5', skill: 4 },
+      { id: 'l4-ms-buy', kind: 'shift', head: 'THE FED BUYS BONDS', sub: 'The New York desk buys Treasuries from the banks and pays in new reserves.', emoji: '🏦', graph: 'money', start: {}, curve: 'MS', dir: 'R', gap: null, trick: false, why: 'When the Fed buys bonds in a limited-reserves system, bank reserves and the money supply increase, so the money supply curve shifts right; the nominal interest rate falls.', ced: '4.6', skill: 4 },
+      { id: 'l4-ms-sell', kind: 'shift', head: 'THE FED SELLS BONDS', sub: 'The desk sells Treasuries to the banks, draining reserves out of the system.', emoji: '🏦', graph: 'money', start: {}, curve: 'MS', dir: 'L', gap: null, trick: false, why: 'When the Fed sells bonds in a limited-reserves system, bank reserves and the money supply decrease, so the money supply curve shifts left; the nominal interest rate rises.', ced: '4.6', skill: 4 },
+      { id: 'l4-ms-expand', kind: 'shift', head: 'FED EXPANDS THE MONEY SUPPLY', sub: 'The FOMC votes to grow the money supply to fight a slowdown.', emoji: '🖨️', graph: 'money', start: {}, curve: 'MS', dir: 'R', gap: null, trick: false, why: 'An increase in the money supply shifts the vertical money supply curve right; at the old interest rate there is an excess supply of money, so the nominal interest rate falls.', ced: '4.6', skill: 4 },
+      { id: 'l4-ms-tighten', kind: 'shift', head: 'FED SHRINKS THE MONEY SUPPLY', sub: 'Inflation is running hot and the FOMC pulls money out of the system.', emoji: '🧊', graph: 'money', start: {}, curve: 'MS', dir: 'L', gap: null, trick: false, why: 'A decrease in the money supply shifts the vertical money supply curve left; at the old interest rate there is an excess demand for money, so the nominal interest rate rises.', ced: '4.6', skill: 4 },
+      { id: 'l4-md-cards', kind: 'shift', head: 'CREDIT CARDS TAKE OVER', sub: 'Cash-only shops now take plastic, and customers carry less currency.', emoji: '💳', graph: 'money', start: {}, curve: 'MD', dir: 'L', gap: null, trick: false, why: 'Wider use of credit cards reduces the money people hold for transactions, so money demand shifts left; the nominal interest rate falls.', ced: '4.5', skill: 4 }
+    ],
+    boss: { id: 'l4-boss', kind: 'boss', head: 'Real GDP booms — and the Fed sells bonds to cool it', sub: 'Two moves, both on the nominal rate. Either order.', emoji: '🚨', graph: 'money', start: {}, gap: null, trick: false, anyOrder: true, ced: '4.6', skill: 4,
+      moves: [
+        { curve: 'MD', dir: 'R', head: 'REAL GDP BOOMS', why: 'Higher real GDP raises the transactions demand for money, so money demand shifts right and the nominal interest rate rises.' },
+        { curve: 'MS', dir: 'L', head: 'THE FED SELLS BONDS', why: 'The bond sale drains reserves and shrinks the money supply, so the money supply curve shifts left and the nominal interest rate rises.' }
+      ],
+      why: 'Money demand shifts right and the money supply shifts left, so the nominal interest rate rises for both reasons, while the quantity of money falls with the money supply.' },
+    exam: [
+      { stem: 'Assume the price level in an economy increases. In the money market, which of the following will most likely occur?', choices: ['Money demand shifts left and the nominal interest rate falls', 'Money demand shifts right and the nominal interest rate rises', 'The money supply shifts right and the nominal interest rate falls', 'The money supply shifts left and the nominal interest rate rises'], answer: 1, why: 'A higher price level increases the money needed for transactions, so money demand shifts right; with a fixed money supply the nominal interest rate rises.', ced: '4.5', skill: 1 },
+      { stem: 'Assume the banking system has limited reserves and the central bank sells government bonds on the open market. In the short run, which of the following will occur?', choices: ['The money supply increases and the nominal interest rate falls', 'The money supply decreases and the nominal interest rate rises', 'Money demand decreases and the nominal interest rate falls', 'The money supply is unchanged and the nominal interest rate rises'], answer: 1, why: 'An open-market sale removes reserves from the banking system, decreasing the money supply; the money supply curve shifts left and the nominal interest rate rises.', ced: '4.6', skill: 1 },
+      { stem: 'Assume the banking system has ample reserves. Which of the following is the primary way the central bank raises the nominal interest rate?', choices: ['Selling government bonds to reduce the money supply', 'Raising the reserve requirement', 'Raising the interest rate it pays on reserve balances', 'Lowering the discount rate'], answer: 2, why: 'With ample reserves, changes in the money supply do not effectively change the nominal interest rate; the central bank raises the rate by raising its administered rates, chiefly the interest rate paid on reserve balances.', ced: '4.6', skill: 1 }
+    ]
+  },
+  {
+    n: 5, name: 'Loanable Funds', blurb: 'Savers supply, borrowers demand, and the price is the real interest rate', ready: true, market: 'lf',
+    draggable: ['S', 'D'], showLRAS: false,
+    pool: [
+      { id: 'l5-d-deficit', kind: 'shift', head: 'CONGRESS RUNS A BIG DEFICIT', sub: 'Washington borrows to cover the gap, and the Treasury out-borrows everyone.', emoji: '🏛️', graph: 'lf', start: {}, curve: 'D', dir: 'R', gap: null, trick: true, why: 'Government borrowing to finance a deficit increases the demand for loanable funds, so demand shifts right; the real interest rate rises and some private investment is crowded out.', ced: '5.5', skill: 4 },
+      { id: 'l5-d-optimism', kind: 'shift', head: 'FIRMS RUSH TO BUILD', sub: 'Three Woodmere warehouses want construction loans this quarter.', emoji: '🏗️', graph: 'lf', start: {}, curve: 'D', dir: 'R', gap: null, trick: false, why: 'More optimistic expectations of profit increase the demand for loanable funds to finance investment, so demand shifts right; the real interest rate rises.', ced: '4.7', skill: 4 },
+      { id: 'l5-d-pessimism', kind: 'shift', head: 'FIRMS SHELVE EXPANSION PLANS', sub: 'The Inwood freight yard cancels its expansion and the loan with it.', emoji: '🗄️', graph: 'lf', start: {}, curve: 'D', dir: 'L', gap: null, trick: false, why: 'Less optimistic profit expectations reduce the demand for loanable funds to finance investment, so demand shifts left; the real interest rate falls.', ced: '4.7', skill: 4 },
+      { id: 'l5-d-credit', kind: 'shift', head: 'NEW INVESTMENT TAX CREDIT', sub: 'Cedarhurst dentists finance new chairs now that Washington pays part.', emoji: '🧾', graph: 'lf', start: {}, curve: 'D', dir: 'R', gap: null, trick: false, why: 'An investment tax credit raises the after-tax return on capital, increasing borrowing to finance investment; the demand for loanable funds shifts right and the real interest rate rises.', ced: '4.7', skill: 4 },
+      { id: 'l5-d-homes', kind: 'shift', head: 'MORTGAGE APPLICATIONS SURGE', sub: 'Every open house in Hewlett has a line, and every buyer needs a mortgage.', emoji: '🏠', graph: 'lf', start: {}, curve: 'D', dir: 'R', gap: null, trick: false, why: 'Households borrowing more increases the demand for loanable funds, so demand shifts right; the real interest rate rises.', ced: '4.7', skill: 4 },
+      { id: 'l5-s-save', kind: 'shift', head: 'HOUSEHOLDS SAVE MORE', sub: 'Five Towns families put a bigger slice of every paycheck into savings.', emoji: '🐖', graph: 'lf', start: {}, curve: 'S', dir: 'R', gap: null, trick: false, why: 'An increase in household saving increases the supply of loanable funds, so supply shifts right; the real interest rate falls.', ced: '4.7', skill: 4 },
+      { id: 'l5-s-spend', kind: 'shift', head: 'SAVINGS RATE HITS A RECORD LOW', sub: 'Lawrence households are spending everything they earn and then some.', emoji: '🛍️', graph: 'lf', start: {}, curve: 'S', dir: 'L', gap: null, trick: false, why: 'A fall in household saving decreases the supply of loanable funds, so supply shifts left; the real interest rate rises.', ced: '4.7', skill: 4 },
+      { id: 'l5-s-foreign', kind: 'shift', head: 'FOREIGN SAVERS BUY U.S. BONDS', sub: 'Savings from Tokyo and Frankfurt are landing in Treasury auctions.', emoji: '🌐', graph: 'lf', start: {}, curve: 'S', dir: 'R', gap: null, trick: false, why: 'Capital inflows from abroad increase the supply of loanable funds, so supply shifts right; the real interest rate falls.', ced: '6.6', skill: 4 },
+      { id: 'l5-s-flight', kind: 'shift', head: 'FOREIGN CAPITAL FLEES', sub: 'Overseas savers pull out of U.S. bonds for better returns at home.', emoji: '✈️', graph: 'lf', start: {}, curve: 'S', dir: 'L', gap: null, trick: false, why: 'Capital outflows reduce the supply of loanable funds, so supply shifts left; the real interest rate rises.', ced: '6.6', skill: 4 },
+      { id: 'l5-d-surplus', kind: 'shift', head: 'GOVERNMENT RUNS A SURPLUS', sub: 'Tax receipts beat spending; the Treasury borrows the least in a decade.', emoji: '🏛️', graph: 'lf', start: {}, curve: 'D', dir: 'L', gap: null, trick: true, why: 'A budget surplus means the government borrows less, so the demand for loanable funds decreases; demand shifts left and the real interest rate falls.', ced: '5.4', skill: 4 },
+      { id: 'l5-s-retire', kind: 'shift', head: 'TAX BREAK FOR SAVERS', sub: 'A new deduction has every Central Avenue accountant pushing IRAs.', emoji: '🧓', graph: 'lf', start: {}, curve: 'S', dir: 'R', gap: null, trick: false, why: 'A tax incentive to save increases household saving and the supply of loanable funds, so supply shifts right; the real interest rate falls.', ced: '4.7', skill: 4 },
+      { id: 'l5-s-drawdown', kind: 'shift', head: 'RETIREES SPEND THEIR SAVINGS', sub: 'Hewlett retirees are spending their nest eggs rather than adding to them.', emoji: '🏖️', graph: 'lf', start: {}, curve: 'S', dir: 'L', gap: null, trick: false, why: 'Households drawing down savings reduce the supply of loanable funds, so supply shifts left; the real interest rate rises.', ced: '4.7', skill: 4 }
+    ],
+    boss: { id: 'l5-boss', kind: 'boss', head: 'The deficit balloons — and foreign investors rush in to fund it', sub: 'Two moves on two curves. Either order — then read the rate.', emoji: '🚨', graph: 'lf', start: {}, gap: null, trick: false, anyOrder: true, ced: '5.5', skill: 4,
+      moves: [
+        { curve: 'D', dir: 'R', head: 'THE DEFICIT BALLOONS', why: 'Government borrowing increases the demand for loanable funds, so demand shifts right and the real interest rate rises.' },
+        { curve: 'S', dir: 'R', head: 'FOREIGN INVESTORS RUSH IN', why: 'Capital inflows increase the supply of loanable funds, so supply shifts right and the real interest rate falls.' }
+      ],
+      why: 'Government borrowing shifts the demand for loanable funds right and the capital inflow shifts supply right, so the quantity of loanable funds rises unambiguously while the effect on the real interest rate is indeterminate.' },
+    exam: [
+      { stem: 'Assume the government increases its borrowing to finance a larger budget deficit. In the loanable funds market, which of the following will most likely occur?', choices: ['The supply of loanable funds increases and the real interest rate falls', 'The demand for loanable funds increases and the real interest rate rises', 'The demand for loanable funds decreases and private investment increases', 'The real interest rate falls and private investment increases'], answer: 1, why: 'Government borrowing increases the demand for loanable funds, so the real interest rate rises and interest-sensitive private investment is crowded out.', ced: '5.5', skill: 1 },
+      { stem: 'Assume households in an economy decide to save a larger share of their income. Which of the following best describes the effect in the loanable funds market?', choices: ['The real interest rate rises and the quantity of loanable funds falls', 'The real interest rate falls and the quantity of loanable funds rises', 'The demand for loanable funds increases and the real interest rate rises', 'The real interest rate is unchanged and investment falls'], answer: 1, why: 'Higher saving increases the supply of loanable funds; supply shifts right, the real interest rate falls and the quantity of loanable funds increases.', ced: '4.7', skill: 1 },
+      { stem: 'Assume the real interest rate in the United States rises relative to real interest rates in other countries. Which of the following will most likely occur?', choices: ['Financial capital flows out of the United States and the supply of loanable funds falls', 'Financial capital flows into the United States and the supply of loanable funds rises', 'The demand for loanable funds in the United States decreases', 'Foreign investors sell dollars and the real interest rate rises further'], answer: 1, why: 'A relatively higher real interest rate attracts foreign financial capital, which increases the supply of loanable funds in the United States and moderates the rise in the real interest rate.', ced: '6.6', skill: 1 }
+    ]
+  },
+  {
+    n: 6, name: 'FOREX Floor', blurb: 'The market for dollars — appreciate, depreciate, and what it does to net exports', ready: true, market: 'forex',
+    draggable: ['S', 'D'], showLRAS: false,
+    pool: [
+      { id: 'l6-d-rates', kind: 'shift', head: 'U.S. INTEREST RATES RISE', sub: 'Frankfurt and Tokyo investors want Treasuries, and need dollars to buy them.', emoji: '📈', graph: 'forex', start: {}, curve: 'D', dir: 'R', gap: null, trick: false, why: 'A higher U.S. interest rate attracts foreign financial investment, increasing the demand for dollars; the dollar appreciates and U.S. net exports fall.', ced: '6.4', skill: 4 },
+      { id: 'l6-d-income', kind: 'shift', head: 'EUROPEAN INCOMES SURGE', sub: 'Richer Europeans buy American software, jets and wine — in dollars.', emoji: '🇪🇺', graph: 'forex', start: {}, curve: 'D', dir: 'R', gap: null, trick: false, why: 'Higher foreign income raises demand for U.S. exports and therefore for dollars, so the demand for dollars shifts right; the dollar appreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-d-taste', kind: 'shift', head: 'THE WORLD WANTS U.S. SNEAKERS', sub: 'From Seoul to São Paulo, a Five Towns brand is the thing to own — in dollars.', emoji: '👟', graph: 'forex', start: {}, curve: 'D', dir: 'R', gap: null, trick: false, why: 'A change in tastes toward U.S. goods raises foreign demand for U.S. exports and for dollars, so the demand for dollars shifts right; the dollar appreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-s-imports', kind: 'shift', head: 'AMERICANS BUY IMPORTED CARS', sub: 'Rockaway Turnpike sells German sedans, and every sale sends dollars abroad.', emoji: '🚗', graph: 'forex', start: {}, curve: 'S', dir: 'R', gap: null, trick: true, why: 'Americans buying more imports supply more dollars to the foreign exchange market to obtain foreign currency, so the supply of dollars shifts right; the dollar depreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-s-travel', kind: 'shift', head: 'LAWRENCE FAMILIES FLY TO PARIS', sub: 'Summer abroad is the plan, and the euros are bought with dollars.', emoji: '🗼', graph: 'forex', start: {}, curve: 'S', dir: 'R', gap: null, trick: false, why: 'Americans traveling abroad supply dollars to buy foreign currency, so the supply of dollars shifts right; the dollar depreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-s-rates-abroad', kind: 'shift', head: 'INTEREST RATES RISE ABROAD', sub: 'Hewlett investors chase European bonds and sell dollars to buy them.', emoji: '🌍', graph: 'forex', start: {}, curve: 'S', dir: 'R', gap: null, trick: false, why: 'Higher foreign interest rates lead U.S. investors to buy foreign assets, supplying more dollars to the foreign exchange market; the dollar depreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-d-inflation', kind: 'shift', head: 'U.S. INFLATION OUTRUNS EUROPE', sub: 'American goods cost more abroad every month; foreign shoppers look elsewhere.', emoji: '🔥', graph: 'forex', start: {}, curve: 'D', dir: 'L', gap: null, trick: true, why: 'Relatively higher U.S. inflation makes U.S. goods more expensive to foreigners, reducing demand for U.S. exports and for dollars; the dollar depreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-d-recession', kind: 'shift', head: 'RECESSION IN ASIA', sub: 'Orders for American machinery dry up from Osaka to Jakarta.', emoji: '📉', graph: 'forex', start: {}, curve: 'D', dir: 'L', gap: null, trick: false, why: 'A fall in foreign income reduces demand for U.S. exports and therefore for dollars, so the demand for dollars shifts left; the dollar depreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-s-tariff', kind: 'shift', head: 'U.S. SLAPS TARIFFS ON IMPORTS', sub: 'Imports cost more, Americans buy fewer, and fewer dollars go abroad.', emoji: '🚧', graph: 'forex', start: {}, curve: 'S', dir: 'L', gap: null, trick: false, why: 'A tariff reduces U.S. imports, so Americans supply fewer dollars to the foreign exchange market; the supply of dollars shifts left and the dollar appreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-d-speculation', kind: 'shift', head: 'TRADERS BET ON A RISING DOLLAR', sub: 'Currency desks buy dollars now to sell them dearer later.', emoji: '🎲', graph: 'forex', start: {}, curve: 'D', dir: 'R', gap: null, trick: false, why: 'Expectations that the dollar will appreciate increase the demand for dollars now, so the demand for dollars shifts right; the dollar appreciates.', ced: '6.4', skill: 4 },
+      { id: 'l6-d-fedcut', kind: 'shift', head: 'THE FED CUTS RATES', sub: 'Lower U.S. returns send foreign investors looking elsewhere.', emoji: '🏦', graph: 'forex', start: {}, curve: 'D', dir: 'L', gap: null, trick: false, why: 'A lower U.S. interest rate reduces foreign financial investment in the United States, decreasing the demand for dollars; the dollar depreciates and U.S. net exports rise.', ced: '6.4', skill: 4 },
+      { id: 'l6-s-income', kind: 'shift', head: 'U.S. INCOMES RISE', sub: 'Richer households buy more of everything, including what is made abroad.', emoji: '💵', graph: 'forex', start: {}, curve: 'S', dir: 'R', gap: null, trick: false, why: 'Higher U.S. income raises imports, so Americans supply more dollars to the foreign exchange market; the supply of dollars shifts right and the dollar depreciates.', ced: '6.4', skill: 4 }
+    ],
+    boss: { id: 'l6-boss', kind: 'boss', head: 'The Fed hikes — and Americans stop buying imports', sub: 'Two moves on two curves, either order. Then say what the dollar did.', emoji: '🚨', graph: 'forex', start: {}, gap: null, trick: false, anyOrder: true, ced: '6.4', skill: 4,
+      moves: [
+        { curve: 'D', dir: 'R', head: 'THE FED HIKES', why: 'Higher U.S. interest rates attract foreign financial investment, so the demand for dollars shifts right and the dollar appreciates.' },
+        { curve: 'S', dir: 'L', head: 'AMERICANS STOP BUYING IMPORTS', why: 'Fewer imports mean Americans supply fewer dollars, so the supply of dollars shifts left and the dollar appreciates.' }
+      ],
+      why: 'Higher U.S. interest rates increase the demand for dollars and fewer imports decrease the supply of dollars, so the dollar appreciates unambiguously while the effect on the quantity of dollars traded is indeterminate.' },
+    exam: [
+      { stem: 'Assume the real interest rate in the United States rises relative to the real interest rate in Japan. Which of the following will most likely occur in the foreign exchange market?', choices: ['The demand for dollars decreases and the dollar depreciates', 'The demand for dollars increases and the dollar appreciates', 'The supply of dollars increases and the dollar depreciates', 'The supply of yen decreases and the yen appreciates'], answer: 1, why: 'A relatively higher U.S. real interest rate attracts Japanese financial investment; the demand for dollars increases, so the dollar appreciates and the yen depreciates.', ced: '6.4', skill: 1 },
+      { stem: 'Assume the dollar depreciates against the currencies of its trading partners. In the short run, which of the following will most likely occur in the United States?', choices: ['Net exports decrease and aggregate demand shifts left', 'Net exports increase and aggregate demand shifts right', 'Imports increase and the price level falls', 'Exports decrease and real output falls'], answer: 1, why: 'A depreciated dollar makes U.S. exports cheaper to foreigners and imports more expensive to Americans, so net exports increase and aggregate demand shifts right.', ced: '6.5', skill: 1 },
+      { stem: 'Which of the following would most likely cause the supply of dollars in the foreign exchange market to increase?', choices: ['An increase in foreign demand for United States exports', 'An increase in United States imports', 'An increase in the United States interest rate', 'A decrease in United States income'], answer: 1, why: 'Americans supply dollars when they buy foreign goods, services and assets, so an increase in U.S. imports increases the supply of dollars and the dollar depreciates.', ced: '6.3', skill: 1 }
+    ]
+  },
+  {
+    n: 7, name: 'Phillips Finale', blurb: 'The trap level — AD moves you along the curve; only supply and expectations move the curve', ready: true, market: 'phillips',
+    draggable: ['SRPC'], showLRAS: false,
+    pool: [
+      { id: 'l7-ad-spend', kind: 'move', head: 'CONSUMER SPENDING SURGES', sub: 'Central Avenue’s best Sunday in years. Costs and expectations: unchanged.', emoji: '🛍️', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'up', gap: null, trick: true, why: 'An increase in aggregate demand raises the price level and lowers unemployment, which is a movement up along the short-run Phillips curve to lower unemployment and higher inflation; the curve itself does not shift.', ced: '5.2', skill: 4 },
+      { id: 'l7-ad-invest', kind: 'move', head: 'INVESTMENT COLLAPSES', sub: 'Every Woodmere expansion is on hold. Costs and expectations: unchanged.', emoji: '🏚️', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'down', gap: null, trick: true, why: 'A decrease in aggregate demand lowers the price level and raises unemployment, which is a movement down along the short-run Phillips curve to higher unemployment and lower inflation; the curve itself does not shift.', ced: '5.2', skill: 4 },
+      { id: 'l7-ad-fiscal', kind: 'move', head: 'CONGRESS PASSES A BIG STIMULUS', sub: 'Checks land from Inwood to Hewlett and the spending starts the same weekend.', emoji: '💸', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'up', gap: null, trick: true, why: 'Expansionary fiscal policy increases aggregate demand, moving the economy up along the short-run Phillips curve to lower unemployment and higher inflation.', ced: '5.1', skill: 4 },
+      { id: 'l7-ad-fed', kind: 'move', head: 'THE FED HIKES HARD', sub: 'Borrowing costs jump and spending slows. Expectations have not moved.', emoji: '🏦', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'down', gap: null, trick: true, why: 'Contractionary monetary policy decreases aggregate demand, moving the economy down along the short-run Phillips curve to higher unemployment and lower inflation.', ced: '5.1', skill: 4 },
+      { id: 'l7-ad-money', kind: 'move', head: 'MONEY SUPPLY GROWTH DOUBLES', sub: 'Faster money growth, more spending: the short run first.', emoji: '🖨️', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'up', gap: null, trick: true, why: 'Faster money growth increases aggregate demand: in the short run the economy moves up along the short-run Phillips curve to lower unemployment and higher inflation; in the long run only inflation is higher and unemployment returns to the natural rate.', ced: '5.3', skill: 4 },
+      { id: 'l7-s-oil', kind: 'shift', head: 'OIL PRICES SPIKE', sub: 'Diesel jumps forty cents, and every price that rides a truck follows.', emoji: '🛢️', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'R', gap: null, trick: false, why: 'A negative supply shock shifts short-run aggregate supply left, raising inflation at every unemployment rate, so the short-run Phillips curve shifts right (outward).', ced: '5.2', skill: 4 },
+      { id: 'l7-s-tech', kind: 'shift', head: 'PRODUCTIVITY BOOM', sub: 'Lawrence firms make more with the same workers; costs per unit fall.', emoji: '⚙️', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'L', gap: null, trick: false, why: 'Higher productivity lowers per-unit costs and shifts short-run aggregate supply right, lowering inflation at every unemployment rate, so the short-run Phillips curve shifts left (inward).', ced: '5.2', skill: 4 },
+      { id: 'l7-e-up', kind: 'shift', head: 'WORKERS EXPECT MORE INFLATION', sub: 'Hewlett unions demand raises to beat the inflation they see coming.', emoji: '📊', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'R', gap: null, trick: false, why: 'Higher expected inflation raises nominal wage demands, shifting short-run aggregate supply left and the short-run Phillips curve outward: each unemployment rate now comes with higher inflation.', ced: '5.2', skill: 4 },
+      { id: 'l7-e-down', kind: 'shift', head: 'THE FED EARNS ITS CREDIBILITY', sub: 'After years on target, nobody in the Five Towns is pricing in a spiral.', emoji: '⚓', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'L', gap: null, trick: false, why: 'Lower expected inflation reduces nominal wage demands, shifting short-run aggregate supply right and the short-run Phillips curve inward: each unemployment rate now comes with lower inflation.', ced: '5.2', skill: 4 },
+      { id: 'l7-s-harvest', kind: 'shift', head: 'BUMPER HARVEST CUTS PRICES', sub: 'Wholesale flour is the cheapest the Woodmere bagel bakers have seen in years.', emoji: '🌾', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'L', gap: null, trick: false, why: 'A positive supply shock lowers per-unit costs and shifts short-run aggregate supply right, so the short-run Phillips curve shifts inward: lower inflation at every unemployment rate.', ced: '5.2', skill: 4 },
+      { id: 'l7-s-wages', kind: 'shift', head: 'UNIONS WIN INDEXED RAISES', sub: 'Every contract now indexes pay to prices, and per-unit costs jump.', emoji: '✊', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'R', gap: null, trick: false, why: 'Higher nominal wages raise per-unit production costs, shifting short-run aggregate supply left, so the short-run Phillips curve shifts outward.', ced: '5.2', skill: 4 },
+      { id: 'l7-ad-exports', kind: 'move', head: 'EXPORT ORDERS SURGE', sub: 'The Inwood freight yards are booked solid; nothing about costs changed.', emoji: '🚢', graph: 'phillips', start: {}, curve: 'SRPC', dir: 'up', gap: null, trick: true, why: 'Higher net exports increase aggregate demand, moving the economy up along the short-run Phillips curve to lower unemployment and higher inflation; the curve itself does not shift.', ced: '5.2', skill: 4 }
+    ],
+    boss: { id: 'l7-boss', kind: 'boss', head: 'Oil shock — then the Fed stimulates to fight the recession', sub: 'Shift first, then slide. In that order: the 1970s in one graph.', emoji: '🚨', graph: 'phillips', start: {}, gap: null, trick: false, anyOrder: false, ced: '5.2', skill: 4,
+      moves: [
+        { curve: 'SRPC', dir: 'R', head: 'OIL SHOCK', why: 'A negative supply shock shifts short-run aggregate supply left, so the short-run Phillips curve shifts outward: higher inflation at every unemployment rate.' },
+        { kind: 'move', curve: 'SRPC', dir: 'up', head: 'THE FED STIMULATES', why: 'Expansionary monetary policy increases aggregate demand, moving the economy up along the new, higher short-run Phillips curve to lower unemployment and even higher inflation.' }
+      ],
+      why: 'The supply shock shifts the short-run Phillips curve outward, and the Fed’s stimulus then moves the economy up along that higher curve: lower unemployment bought with still higher inflation.' },
+    exam: [
+      { stem: 'Assume an economy moves from one point on its short-run Phillips curve to another point with lower unemployment and higher inflation. Which of the following is the most likely cause?', choices: ['An increase in expected inflation', 'A negative supply shock', 'An increase in aggregate demand', 'A decrease in the money supply'], answer: 2, why: 'A movement along the short-run Phillips curve to lower unemployment and higher inflation is caused by an increase in aggregate demand; supply shocks and expectations shift the curve instead.', ced: '5.2', skill: 2 },
+      { stem: 'An increase in expected inflation will most likely cause which of the following?', choices: ['A movement down along the short-run Phillips curve', 'The short-run Phillips curve to shift to the right', 'The long-run Phillips curve to shift to the left', 'A movement up along the long-run Phillips curve'], answer: 1, why: 'Higher expected inflation shifts the short-run Phillips curve to the right (outward), so each unemployment rate is associated with higher inflation; the long-run Phillips curve is vertical at the natural rate.', ced: '5.2', skill: 1 },
+      { stem: 'Assume the central bank permanently increases the growth rate of the money supply. In the long run, which of the following will most likely result?', choices: ['Lower unemployment and higher inflation', 'Higher inflation and no change in unemployment', 'Lower inflation and lower unemployment', 'No change in inflation and lower unemployment'], answer: 1, why: 'In the long run the economy returns to the natural rate of unemployment on the vertical long-run Phillips curve, so faster money growth raises inflation without lowering unemployment.', ced: '5.3', skill: 1 }
+    ]
+  }
 ];
 
 /* ================================================================================
@@ -138,8 +250,8 @@ const LEVELS = [
    total.  Numbers are seconds.
    ================================================================================ */
 const TIMING = {
-  cardSeconds: { 1: 30, 2: 26, 3: 24 },   // one BREAKING card, per level
-  bossSeconds: { 1: 45, 2: 42, 3: 45 },   // the whole boss — both headlines on one clock
+  cardSeconds: { 1: 30, 2: 26, 3: 24, 4: 26, 5: 26, 6: 26, 7: 26 },   // one BREAKING card, per level
+  bossSeconds: { 1: 45, 2: 42, 3: 45, 4: 42, 5: 42, 6: 42, 7: 45 },   // the whole boss — both headlines on one clock
   gapSeconds: 15,                         // the Level 3 "name the gap" tap
   extendSeconds: 3,                       // the one grace period a drag still in flight at zero earns
   warnSeconds: 5,                         // when the bar turns red and the tick/tock starts
@@ -167,8 +279,12 @@ const HOWTO = [
   { emoji: '\u{1F449}', head: 'Tap the graph to skip ahead', body: 'After every answer the graph plays what really happened. One tap on it jumps straight to the end of that animation.' },
   { emoji: '\u{1F4C8}', head: 'SRAS joins AD', body: 'Two curves are live now, and the headline decides which one moves. This is also where the trick cards start.', levels: [2] },
   { emoji: '\u{1F4CF}', head: 'LRAS appears, then you name the gap', body: 'The purple line is full-employment output, Yf. After every shift you tap the gap: left of Yf is recessionary, right of Yf is inflationary, and the line itself means no gap at all.', levels: [3] },
-  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, one after the other: the second lights up when the first is solved. Find both before the clock runs out.', levels: [1] },
-  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, both curves, either order, one clock. Find both before it runs out.', levels: [2, 3] },
+  { emoji: '\u{1F3E6}', head: 'The money market', body: 'Money supply is vertical: the Fed sets it. Money demand slopes down, because the nominal interest rate is the cost of holding money. Prices, real GDP and payment tech move MD; the Fed moves MS.', levels: [4] },
+  { emoji: '\u{1F4B0}', head: 'The loanable funds market', body: 'Savers supply funds, borrowers demand them, and the price is the REAL interest rate. Government borrowing is demand — that is the crowding-out trap.', levels: [5] },
+  { emoji: '\u{1F4B1}', head: 'The market for dollars', body: 'Foreigners who want American things demand dollars; Americans who want foreign things supply them. The price is the dollar itself: up is appreciation, and appreciation hurts net exports.', levels: [6] },
+  { emoji: '\u{1F4C9}', head: 'The Phillips trap', body: 'Anything that shifts AD moves you ALONG the curve — slide the dot. Only supply shocks and expectations move the curve itself. The purple line is the natural rate.', levels: [7] },
+  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, one after the other: the second lights up when the first is solved. Find both before the clock runs out.', levels: [1, 7] },
+  { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, both curves, either order, one clock. Find both before it runs out.', levels: [2, 3, 4, 5, 6] },
   { emoji: '\u{1F4DD}', head: 'Then the Exam Sprint', body: 'Three questions in the exam\u2019s own voice at the exam\u2019s own pace. It is optional \u2014 but a gold medal needs it.' }
 ];
 
@@ -179,7 +295,7 @@ const HOWTO = [
 const INTRO = [
   { emoji: '\u{1F4F0}', text: 'BREAKING news hits the economy. You show what it does to the AD\u2013AS graph by dragging the curve that really moves \u2014 the exact move the AP exam asks for.' },
   { emoji: '\u{1F393}', text: 'Every headline is an exam question in disguise: the graph you draw is the FRQ point, and the WHY line under it is the sentence that earns it.' },
-  { emoji: '\u{1F3AE}', text: 'Three levels, eight headlines and a boss each, hearts and a streak. No multiple choice until the optional Exam Sprint at the end.' }
+  { emoji: '\u{1F3AE}', text: 'Seven levels — AD–AS, the money market, loanable funds, the dollar, the Phillips curve — eight headlines and a boss each, hearts and a streak. No multiple choice until the optional Exam Sprint at the end.' }
 ];
 
 /* ================================================================================
@@ -406,7 +522,29 @@ const JUICE = {
   var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), howtoDemoEl = byId('howtoDemo');
   var modeTag = byId('modeTag'), practiceBtn = byId('practiceBtn'), introEl = byId('intro');
 
-  var graph = ArcadeGraph.create(graphWrap, { market: 'adas', gauges: true, readout: graphRead });
+  /** The live graph, and the market it is drawing. Each level mounts its own market from the
+   *  engine's data — the same svg and hit plane, re-labelled — so Level 4 is a money market and
+   *  Level 7 a Phillips curve without a line of graph code in this file.
+   *  @type {any} */
+  var graph = null;
+  var graphMarket = '';
+
+  /** @param {string} market an ArcadeGraph.MARKETS key @returns {any} the graph, mounted and locked */
+  function mountGraph(market) {
+    if (graph && graphMarket === market) return graph;
+    if (graph) graph.destroy();
+    graph = ArcadeGraph.create(graphWrap, { market: market, gauges: true, readout: graphRead });
+    graphMarket = market;
+    graph.lock();
+    return graph;
+  }
+
+  /** @param {string} name a curve @returns {string} what the graph calls it — "S$", not "S" */
+  function curveLabel(name) {
+    var mk = ArcadeGraph.MARKETS[graphMarket] || ArcadeGraph.MARKETS.adas;
+    var c = mk.curves[name];
+    return c && c.label ? c.label : name;
+  }
 
   /** The run in progress. `token` is what tells an awaiting round it has been abandoned. */
   var run = null;
@@ -593,15 +731,35 @@ const JUICE = {
    *  @param {{kind?:string}} m a card or one boss move @returns {string} 'shift' or 'move' */
   function kindOf(m) { return m && m.kind === 'move' ? 'move' : 'shift'; }
 
+  /** Where a card starts every curve of its market: what it says, else zero.
+   *  @param {any} card @param {string} market @returns {Object<string, number>} */
+  function startShifts(card, market) {
+    var out = {};
+    Object.keys(ArcadeGraph.MARKETS[market].curves).forEach(function (name) {
+      out[name] = card.start && typeof card.start[name] === 'number' ? card.start[name] : 0;
+    });
+    return out;
+  }
+
+  /** @param {string} market @returns {string} the market's first draggable, sloped curve — where a
+   *  'any' movement along is drawn (AD on the AD–AS graph) */
+  function firstSloped(market) {
+    var curves = ArcadeGraph.MARKETS[market].curves;
+    var names = Object.keys(curves);
+    for (var i = 0; i < names.length; i += 1) if (curves[names[i]].draggable && !curves[names[i]].vertical) return names[i];
+    return names[0];
+  }
+
   /** The true outcome of a card, played after every answer whether or not the student found it.
    *  A shift lands the curve 12 units left or right of where the card started it; a movement along
-   *  slides the dot 10 units up-left on AD (up-right on SRAS), and the mirror image for 'down'.
-   *  A boss applies its moves in turn, so a boss that mixes shifts with a movement along ends on
-   *  the dot slid away from the equilibrium its shifts produced.
-   *  @param {any} card @returns {{shifts:Object<string, number>, point?:{curve:string, x:number}}} */
-  function computeResult(card) {
-    var start = { AD: 0, SRAS: 0 };
-    Object.keys(card.start || {}).forEach(function (name) { start[name] = card.start[name]; });
+   *  slides the dot 10 units along its curve — up the curve for 'up', the same rule the engine's
+   *  own drag uses — and a boss applies its moves in turn, so a boss that mixes a shift with a
+   *  movement along ends on the dot slid away from where its shift put the curve.
+   *  @param {any} card @param {string} market the level's ArcadeGraph.MARKETS key
+   *  @returns {{shifts:Object<string, number>, point?:{curve:string, x:number}}} */
+  function computeResult(card, market) {
+    var mk = ArcadeGraph.MARKETS[market];
+    var start = startShifts(card, market);
     var moves = card.kind === 'boss' ? card.moves : [card];
     var slide = null;
     moves.forEach(function (m) {
@@ -609,10 +767,30 @@ const JUICE = {
       start[m.curve] += (m.dir === 'R' ? SHIFT_UNITS : -SHIFT_UNITS);
     });
     if (!slide) return { shifts: start };
-    var curve = slide.curve === 'any' ? 'AD' : slide.curve;   // 'any' accepts either; the truth is drawn on AD
-    var eq = ArcadeGraph.intersect('adas', start) || { x: 50, y: 50 };
-    var away = (curve === 'AD' ? -1 : 1) * (slide.dir === 'up' ? 1 : -1);
-    return { shifts: start, point: { curve: curve, x: eq.x + SLIDE_UNITS * away } };
+    var curve = slide.curve === 'any' ? firstSloped(market) : slide.curve;   // 'any' accepts either
+    var c = mk.curves[curve];
+    // the dot starts where the market keeps it: at the crossing, or at the fixed point a Phillips
+    // curve is read at
+    var fromX = mk.point ? mk.point.x : (ArcadeGraph.intersect(market, start) || { x: 50 }).x;
+    var away = (c.m > 0 ? 1 : -1) * (slide.dir === 'up' ? 1 : -1);
+    return { shifts: start, point: { curve: curve, x: fromX + SLIDE_UNITS * away } };
+  }
+
+  /** The reading a market gives at a state: its outputs at the crossing, at the point a movement
+   *  along left the dot, or at a Phillips curve's fixed point.
+   *  @param {string} market @param {Object<string, number>} shifts @param {{curve:string, x:number}|null} point
+   *  @returns {Object<string, number>} */
+  function readingAt(market, shifts, point) {
+    var mk = ArcadeGraph.MARKETS[market];
+    var at = point || mk.point || null;
+    var pt;
+    if (at) {
+      var c = mk.curves[at.curve];
+      pt = { x: at.x, y: c.m * (at.x - (shifts[at.curve] || 0)) + c.b };
+    } else {
+      pt = ArcadeGraph.intersect(market, shifts) || { x: 50, y: 50 };
+    }
+    return ArcadeGraph.outputs(market, pt);
   }
 
   /** @param {any} ans a graph `release` payload, or null when the clock won
@@ -628,9 +806,9 @@ const JUICE = {
   /** @param {{kind?:string, curve:string, dir:string}} card @returns {string} what it asked for */
   function truthOf(card) {
     if (kindOf(card) === 'move') {
-      return 'Movement along ' + (card.curve === 'any' ? 'the curve' : card.curve) + ', ' + card.dir;
+      return 'Movement along ' + (card.curve === 'any' ? 'the curve' : curveLabel(card.curve)) + ', ' + card.dir;
     }
-    return card.curve + ' shifts ' + (card.dir === 'R' ? 'right' : 'left');
+    return curveLabel(card.curve) + ' shifts ' + (card.dir === 'R' ? 'right' : 'left');
   }
 
   /** The gap the graph is showing right now, read with the same test the engine grades a tap by, so
@@ -665,27 +843,24 @@ const JUICE = {
     return shuffled(tricks.concat(picked));
   }
 
-  /** The consequence, read off a card's true outcome: which way the price level, real GDP and
-   *  unemployment moved between where the card started and where it ends. A boss reads its whole
-   *  outcome, so two shifts that cancel on the price level say so.
-   *  @param {any} card @returns {string[]} three read-outs, e.g. "PL ▲" */
-  function chipsFor(card) {
-    var start = { AD: 0, SRAS: 0 };
-    Object.keys(card.start || {}).forEach(function (name) { start[name] = card.start[name]; });
-    var before = ArcadeGraph.outputs('adas', ArcadeGraph.intersect('adas', start) || { x: 50, y: 50 });
-    var result = card.result;
-    var end;
-    if (result.point) {
-      var c = ArcadeGraph.MARKETS.adas.curves[result.point.curve];
-      end = { x: result.point.x, y: c.m * (result.point.x - (result.shifts[result.point.curve] || 0)) + c.b };
-    } else {
-      end = ArcadeGraph.intersect('adas', result.shifts) || { x: 50, y: 50 };
+  /** The consequence, read off a card's true outcome: which way each of the market's gauges moved
+   *  between where the card started and where it ends. A boss reads its whole outcome, so two
+   *  shifts that cancel on the price level say so. The dollar market adds the two words the exam
+   *  wants — appreciates or depreciates — and what that does to net exports.
+   *  @param {any} card @param {string} market @returns {string[]} read-outs, e.g. "Price Level ▲" */
+  function chipsFor(card, market) {
+    var mk = ArcadeGraph.MARKETS[market];
+    var before = readingAt(market, startShifts(card, market), null);
+    var after = readingAt(market, card.result.shifts, card.result.point || null);
+    /** @param {number} d @returns {string} */
+    function arrow(d) { return d > 0.05 ? '▲' : d < -0.05 ? '▼' : '—'; }
+    var chips = mk.gauges.map(function (spec) { return spec.label + ' ' + arrow(after[spec.from] - before[spec.from]); });
+    if (market === 'forex') {
+      var d = after.e - before.e;
+      chips.push(d > 0.05 ? '$ appreciates ▲' : d < -0.05 ? '$ depreciates ▼' : '$ unchanged —');
+      chips.push('Net exports ' + arrow(-d));
     }
-    var after = ArcadeGraph.outputs('adas', end);
-    return [['PL', 'PL'], ['Y', 'Real GDP'], ['u', 'Unemployment']].map(function (pair) {
-      var d = after[pair[0]] - before[pair[0]];
-      return pair[1] + ' ' + (d > 0.05 ? '▲' : d < -0.05 ? '▼' : '—');
-    });
+    return chips;
   }
 
   /* ===== ROUND CHROME — the breaking card, the verdict sheet and the clock ===== */
@@ -1013,8 +1188,9 @@ const JUICE = {
     showKbdGap(false);
     kbdRow.textContent = '';
     L.draggable.forEach(function (curve) {
-      kbdRow.appendChild(kbdBtn(curve + ' ←', curve + ' shifts left', function () { graph.answer('shift', curve, 'L'); }));
-      kbdRow.appendChild(kbdBtn(curve + ' →', curve + ' shifts right', function () { graph.answer('shift', curve, 'R'); }));
+      var label = curveLabel(curve);
+      kbdRow.appendChild(kbdBtn(label + ' ←', label + ' shifts left', function () { graph.answer('shift', curve, 'L'); }));
+      kbdRow.appendChild(kbdBtn(label + ' →', label + ' shifts right', function () { graph.answer('shift', curve, 'R'); }));
     });
     if (L.pool.some(function (card) { return card.kind === 'move'; })) {
       var along = L.draggable[0];
@@ -1319,7 +1495,7 @@ const JUICE = {
     var ok = judge(ans, card);
     run.asked += 1;
     Arcade.track(card.ced, card.skill, ok);   // before the sheet and the consequence; see playGap
-    var chips = chipsFor(card);
+    var chips = chipsFor(card, L.market);
     if (ok) {
       Arcade.sfx.play('correct');
       award(Math.round((100 + speedBonus(left, L.time, 50)) * run.streak.mult));
@@ -1443,7 +1619,7 @@ const JUICE = {
     run.clock.stop();
     graph.lock();
     if (dead) return;                              // playLevel's hearts check routes straight to FAIL
-    var chips = chipsFor(card);
+    var chips = chipsFor(card, L.market);
     if (accepted === card.moves.length) {
       Arcade.sfx.play('win');
       award(Math.round((300 + speedBonus(left, card.time, 100)) * run.streak.mult));
@@ -1621,9 +1797,10 @@ const JUICE = {
     run.streak.render(comboEl);
     scoreEl.textContent = '0';
     hideSheet();
+    mountGraph(L.market);                        // the level's own market, before anything reads it
     buildKbdRow(L);
-    graph.setVisible('LRAS', !!L.showLRAS);
-    graph.setCard({ start: { AD: 0, SRAS: 0 }, draggable: L.draggable, dotGrab: L.dotGrab });
+    if (L.market === 'adas') graph.setVisible('LRAS', !!L.showLRAS);
+    graph.setCard({ start: {}, draggable: L.draggable, dotGrab: L.dotGrab });
 
     // The first time anyone reaches Level 1, one card with nothing at stake comes before the eight.
     if (!run.drill && L.n === 1 && !tutorialDone()) {
@@ -1800,10 +1977,11 @@ const JUICE = {
 
   LEVELS.forEach(function (L) {                  // every card's true outcome, computed once at load
     if (!L.ready) return;
+    L.market = L.market || 'adas';
     L.time = TIMING.cardSeconds[L.n] * 1000;     // the level's clocks, from the one tunable block
     L.boss.time = TIMING.bossSeconds[L.n] * 1000;
-    L.pool.forEach(function (card) { card.result = computeResult(card); });
-    L.boss.result = computeResult(L.boss);
+    L.pool.forEach(function (card) { card.result = computeResult(card, L.market); });
+    L.boss.result = computeResult(L.boss, L.market);
     // One hint for every card in a level that hides trick cards in its pool, so the hint itself
     // never gives away which kind of card is on screen.
     L.hint = L.pool.some(function (card) { return card.trick; })
@@ -1822,7 +2000,7 @@ const JUICE = {
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
   sheetBtn.style.display = 'none';
-  graph.lock();
+  mountGraph('adas');                            // the AD–AS board is up and locked before any level
 
   initialsBtn.textContent = Arcade.initials();
   initialsBtn.addEventListener('click', function () {
