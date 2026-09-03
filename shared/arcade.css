@@ -38,6 +38,9 @@
 
 /* ===== BASE ===== */
 * { box-sizing: border-box; }
+/* `hidden` means hidden, whatever display the element's class gave it: the hearts row is a flex
+   box and the timer bar a block, and both leave the play screen in practice. */
+[hidden] { display: none !important; }
 /* No pull-to-refresh. A drag that starts on the headline card — above the graph, outside its
    touch-action:none surface — would otherwise reload the page and throw the run away mid-round. */
 html { color-scheme: dark; overscroll-behavior-y: contain; }
@@ -582,6 +585,8 @@ html.big-type .podium { display: block; order: -1; }
    animating the radius would draw a circle that lies about where the target ends. */
 .eq-halo { fill: none; stroke: var(--text2); stroke-width: 1.5; opacity: 0; pointer-events: none; }
 .dot.grabbable .eq-halo { animation: eqPulse 2.4s ease-in-out infinite; }
+/* The tutorial's "this one": the curve's own halo breathes until the curve is grabbed. */
+.curve.hinted .halo { opacity: .5; animation: haloBreathe 1.4s ease-in-out infinite; }
 .guides line { stroke: var(--text3); stroke-dasharray: 4 4; }
 .gap-shade { fill: #fff; opacity: 0; }
 .gap-shade.on { opacity: .08; }
@@ -645,6 +650,10 @@ html.big-type .podium { display: block; order: -1; }
   0%, 100% { opacity: .16; }
   50% { opacity: .40; }
 }
+@keyframes haloBreathe {
+  0%, 100% { opacity: .2; }
+  50% { opacity: .6; }
+}
 @keyframes crack {
   0% { transform: rotate(0) scale(1.3); }
   30% { transform: rotate(-12deg) scale(1.3); }
@@ -673,6 +682,7 @@ html.big-type .podium { display: block; order: -1; }
   }
   /* The ring stays — it is the affordance, not the decoration — it just stops breathing. */
   .dot.grabbable .eq-halo { animation: none; opacity: .3; }
+  .curve.hinted .halo { animation: none; opacity: .45; }
 }
 
 /* ===== KEYBOARD LAYER — the way onto the graph that is not a finger =====
@@ -709,3 +719,13 @@ html.big-type .podium { display: block; order: -1; }
 .topbar .howto-btn { width: 48px; height: 48px; flex: 0 0 48px; padding: 0; }
 /* A topbar title takes the slack, so the ? beside it lands on the right edge and not on its heels. */
 .topbar .panel-title { flex: 1 1 auto; min-width: 0; }
+
+/* ===== WHAT IS THIS? — the purpose panel on a title screen, one emoji and one sentence a line ===== */
+.intro-title { font-weight: 900; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
+.intro-line { display: flex; gap: 10px; align-items: flex-start; }
+.intro-emoji { flex: 0 0 auto; font-size: 22px; line-height: 1.2; }
+.intro-text { font-size: 15px; line-height: 1.4; }
+/* The practice switch carries a sentence, so it keeps the button's height and drops its shouting. */
+.practice-btn { text-transform: none; letter-spacing: normal; font-size: 15px; }
+/* Where the hearts were: a blue tag, because it is a state, not a warning. */
+.mode-tag { background: var(--blue); color: var(--text); }

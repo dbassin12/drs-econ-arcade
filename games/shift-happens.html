@@ -138,9 +138,9 @@ const LEVELS = [
    total.  Numbers are seconds.
    ================================================================================ */
 const TIMING = {
-  cardSeconds: { 1: 20, 2: 18, 3: 16 },   // one BREAKING card, per level
-  bossSeconds: { 1: 30, 2: 28, 3: 30 },   // the whole boss — both headlines on one clock
-  gapSeconds: 12,                         // the Level 3 "name the gap" tap
+  cardSeconds: { 1: 30, 2: 26, 3: 24 },   // one BREAKING card, per level
+  bossSeconds: { 1: 45, 2: 42, 3: 45 },   // the whole boss — both headlines on one clock
+  gapSeconds: 15,                         // the Level 3 "name the gap" tap
   extendSeconds: 3,                       // the one grace period a drag still in flight at zero earns
   warnSeconds: 5,                         // when the bar turns red and the tick/tock starts
   cardInSeconds: 0.3,                     // the card's slide-in; the clock waits for it to land
@@ -157,7 +157,8 @@ const TIMING = {
    ================================================================================ */
 const HOWTO = [
   { emoji: '\u{1F4F0}', head: 'Read the headline, move the graph', body: 'A BREAKING card lands. Make the graph do what that news really does to the economy — not what you wish it did.' },
-  { emoji: '\u{1F446}', head: 'Drag the curve that moves', body: 'Grab the curve the headline pushes and drag it left or right. Let go and it snaps into place.' },
+  { emoji: '\u{1F446}', head: 'Drag the curve that moves', body: 'Grab the curve the headline pushes — anywhere along it; near the bottom is easiest one-handed — and drag it left or right. Let go and it snaps into place.' },
+  { emoji: '\u{1F9D8}', head: 'Practice mode has no clock', body: 'Flip it on the level list to play with no bar and no hearts. It still teaches and still fills your readiness map — it just saves no score, medal or unlock.' },
   { emoji: '\u{1F3A3}', head: 'Sometimes nothing shifts', body: 'If only the price level changed, no curve moves at all. Slide the dot along the curve instead — that is the trick card.', levels: [2, 3] },
   { emoji: '\u{23F1}\uFE0F', head: 'The bar at the top is the clock', body: 'It empties while you think, turns red near the end and starts ticking. Still dragging when it hits zero? You get one short extension, once.' },
   { emoji: '\u2764\uFE0F', head: 'Three hearts, and a streak', body: 'A wrong answer costs a heart, and three lost ends the level. Three right in a row starts a multiplier that climbs to \u00D75.' },
@@ -168,6 +169,29 @@ const HOWTO = [
   { emoji: '\u{1F6A8}', head: 'The boss takes two headlines', body: 'Two shocks, both curves, either order, one clock. Find both before it runs out.', levels: [2, 3] },
   { emoji: '\u{1F4DD}', head: 'Then the Exam Sprint', body: 'Three questions in the exam\u2019s own voice at the exam\u2019s own pace. It is optional \u2014 but a gold medal needs it.' }
 ];
+
+/* ================================================================================
+   WHAT IS THIS GAME? \u2014 the purpose, before the rules.  Three lines on the title
+   screen: what happens, why it is worth a senior's time in May, and what a run is.
+   ================================================================================ */
+const INTRO = [
+  { emoji: '\u{1F4F0}', text: 'BREAKING news hits the economy. You show what it does to the AD\u2013AS graph by dragging the curve that really moves \u2014 the exact move the AP exam asks for.' },
+  { emoji: '\u{1F393}', text: 'Every headline is an exam question in disguise: the graph you draw is the FRQ point, and the WHY line under it is the sentence that earns it.' },
+  { emoji: '\u{1F3AE}', text: 'Three levels, eight headlines and a boss each, hearts and a streak. No multiple choice until the optional Exam Sprint at the end.' }
+];
+
+/* ================================================================================
+   TUTORIAL \u2014 the one headline every student plays before the first real card of
+   Level 1: no clock, no hearts, the right curve breathing until it is grabbed.
+   `cardId` names a Level 1 pool card; the lines are what the sheet says.
+   ================================================================================ */
+const TUTORIAL = {
+  cardId: 'l1-c-taxcut',
+  hint: 'No clock. Grab the blue AD line \u2014 anywhere along it \u2014 and drag it to the right.',
+  miss: 'Fatter paychecks mean more consumption spending, so aggregate demand shifts RIGHT, toward more real GDP. Try again.',
+  show: 'Watch: AD slides right, and the price level and real GDP both rise. Now you make it.',
+  done: 'That is the whole game. From here the clock runs and the hearts count.'
+};
 </script>
 
 <main class="app" id="app">
@@ -184,6 +208,8 @@ const HOWTO = [
       </div>
       <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
       <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <!-- the purpose, painted from INTRO: what the game is for, before any rule -->
+      <section class="panel stack intro" id="intro" aria-labelledby="introTitle"></section>
       <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
     </div>
   </section>
@@ -196,6 +222,8 @@ const HOWTO = [
         <h2 class="panel-title" tabindex="-1" data-focus>Levels</h2>
         <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
       </header>
+      <!-- Practice is a mode, not a level: it is set here and read by every run until it is unset. -->
+      <button type="button" class="btn btn-ghost btn-sm btn-block practice-btn" id="practiceBtn" aria-pressed="false">🧘 Practice mode · no clock, no hearts</button>
       <div class="stack" id="levelList"></div>
     </div>
   </section>
@@ -223,6 +251,8 @@ const HOWTO = [
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the level list">←</button>
         <div class="hearts" id="hearts"></div>
+        <!-- takes the hearts' place when there are none to lose: the tutorial, and practice -->
+        <span class="tag mode-tag" id="modeTag" hidden>Practice</span>
         <div class="topbar-stats">
           <span class="combo" id="combo"></span>
           <span class="score" id="score">0</span>
@@ -356,6 +386,7 @@ const HOWTO = [
   var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
   var kbdRow = byId('kbdRow'), graphRead = byId('graphRead');
   var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), howtoDemoEl = byId('howtoDemo');
+  var modeTag = byId('modeTag'), practiceBtn = byId('practiceBtn'), introEl = byId('intro');
 
   var graph = ArcadeGraph.create(graphWrap, { market: 'adas', gauges: true, readout: graphRead });
 
@@ -620,13 +651,14 @@ const HOWTO = [
   }
 
   /** @param {any} card @param {boolean[]|null} done which boss moves are solved, null for a card.
-   *  A boss that takes its moves in either order shows every unsolved headline as live. */
-  function paintCard(card, done) {
+   *  A boss that takes its moves in either order shows every unsolved headline as live.
+   *  @param {string} [label] what the red tag says instead of "Breaking" — the tutorial's card */
+  function paintCard(card, done, label) {
     breakingEmoji.textContent = card.emoji;
     breakingBody.textContent = '';
     var tag = document.createElement('span');
     tag.className = 'tag';
-    tag.textContent = card.kind === 'boss' ? 'Breaking · Boss' : 'Breaking';
+    tag.textContent = label || (card.kind === 'boss' ? 'Breaking · Boss' : 'Breaking');
     breakingBody.appendChild(tag);
     if (card.kind === 'boss' && done) {
       var next = firstPending(done);
@@ -684,16 +716,29 @@ const HOWTO = [
     return wait(450).then(hideSheet);
   }
 
+  /** The clock a practice or tutorial round runs on: it never starts, never ends and never paints,
+   *  so a round of the untimed kind waits for a real release and nothing else. It answers every call
+   *  a timerBar answers, which is what lets roundClock and gapClock keep one code path each.
+   *  @param {number} ms what a full bar would have been @returns {any} */
+  function idleClock(ms) {
+    return {
+      start: function () { }, stop: function () { }, pause: function () { }, resume: function () { },
+      remaining: function () { return ms; }, extend: function () { }
+    };
+  }
+
   /** The round clock wired to the graph's release stream. `next()` resolves with the student's next
    *  release, or null once the clock runs out. A drag still in flight at zero buys one extension, so
    *  the answer already under the finger is never stolen; one clock serves all of a boss's moves.
-   *  @param {number} ms @returns {any} */
-  function roundClock(ms) {
+   *  @param {number} ms @param {{untimed?:boolean}} [opts] `untimed` never runs out: practice and
+   *    the tutorial @returns {any} */
+  function roundClock(ms, opts) {
+    var untimed = !!(opts && opts.untimed);
     var expired = false, dragging = false, extended = false;
     /** @type {((value:any) => void)|null} */ var waiting = null;
     /** @type {any} */ var startHandle = null;   // the slide-in beat, before the clock is running
     var waitingToStart = false;                  // …and the same beat, paused by the ? button
-    var timer = Arcade.timerBar(timerEl, ms, {
+    var timer = untimed ? idleClock(ms) : Arcade.timerBar(timerEl, ms, {
       warnAt: WARN_MS, onEnd: atZero, onTick: function (left) { if (left <= 0) atZero(); }
     });
 
@@ -775,14 +820,17 @@ const HOWTO = [
     };
   }
 
-  /** The five-second clock the gap tap runs on. `answer` resolves with the graph's `gap` payload, or
-   *  null when the clock wins; `stop()` ends it as a timeout, which is also how a quit unwinds it.
-   *  @param {number} ms @returns {{answer:Promise<any>, stop:() => void}} */
-  function gapClock(ms) {
+  /** The clock the gap tap runs on. `answer` resolves with the graph's `gap` payload, or null when
+   *  the clock wins; `stop()` ends it as a timeout, which is also how a quit unwinds it.
+   *  @param {number} ms @param {{untimed?:boolean}} [opts] `untimed` never runs out: practice
+   *  @returns {{answer:Promise<any>, stop:() => void}} */
+  function gapClock(ms, opts) {
     /** @type {(value:any) => void} */ var settle = function () { };
     var answer = new Promise(function (resolve) { settle = resolve; });
     var done = false;
-    var timer = Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: function () { finish(null); } });
+    var timer = opts && opts.untimed
+      ? idleClock(ms)
+      : Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: function () { finish(null); } });
     /** @param {any} value */
     function finish(value) {
       if (done) return;
@@ -813,11 +861,12 @@ const HOWTO = [
     if (exam && exam.resume) exam.resume();
   }
 
-  /** Everything a wrong answer costs, before the WHY line. */
+  /** Everything a wrong answer costs, before the WHY line. Practice keeps the shake and the broken
+   *  streak — the answer was still wrong — but has no hearts to lose. */
   function punish() {
     Arcade.shake(graphWrap);
     Object.keys(graph.gauges).forEach(function (id) { graph.gauges[id].flash('red'); });
-    run.hearts.lose();
+    if (!run.practice) run.hearts.lose();
     run.streak.miss();
   }
 
@@ -837,6 +886,7 @@ const HOWTO = [
    *  @param {number} left ms on the clock @param {number} total @param {number} cap
    *  @returns {number} the speed bonus, banked for the end screen */
   function speedBonus(left, total, cap) {
+    if (run.practice) return 0;         // no clock, so nothing to be quick against
     var window = total - GRACE_MS;      // the part of the clock the bonus actually decays across
     var frac = window > 0
       ? Math.min(1, Math.max(0, left / window))
@@ -995,6 +1045,120 @@ const HOWTO = [
     if (go) go();
   }
 
+  /* ===== MODES — a real run, practice, or the tutorial =====
+     Practice is the level with the stakes taken out: no bar, no hearts, no speed bonus, and nothing
+     written to storage but arcade.mastery — the readiness map is the one thing a teacher reads, and
+     the students most afraid of the clock were contributing nothing to it. The tutorial is the same
+     board for one card, once, on the way into Level 1. */
+
+  /** @returns {boolean} */
+  function practiceOn() {
+    var saved = Arcade.store.get('arcade.shift.practice', null);
+    return !!(saved && saved.on);
+  }
+
+  /** @param {boolean} on */
+  function setPractice(on) {
+    Arcade.store.set('arcade.shift.practice', { on: !!on });
+    paintPractice();
+  }
+
+  function paintPractice() {
+    practiceBtn.setAttribute('aria-pressed', practiceOn() ? 'true' : 'false');
+  }
+
+  /** What the play screen's chrome shows: the hearts and the bar, or a tag saying why there are none.
+   *  @param {string} mode 'play' | 'practice' | 'tutorial' */
+  function setMode(mode) {
+    var timed = mode === 'play';
+    heartsEl.hidden = !timed;
+    timerEl.hidden = !timed;
+    modeTag.hidden = timed;
+    modeTag.textContent = mode === 'practice' ? 'Practice' : 'Tutorial';
+  }
+
+  /** The title screen's "what is this game?" panel, painted from INTRO. */
+  function paintIntro() {
+    introEl.textContent = '';
+    var title = fill('intro-title', 'What is this game?');
+    title.id = 'introTitle';
+    introEl.appendChild(title);
+    INTRO.forEach(function (line) {
+      var row = fill('intro-line', '');
+      var emoji = fill('intro-emoji', line.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      row.appendChild(fill('intro-text', line.text));
+      introEl.appendChild(row);
+    });
+  }
+
+  /* ===== TUTORIAL — one headline, no clock, no hearts, before the first real card =====
+     The rules screen says "drag the curve that moves"; this is where a student finds out what that
+     feels like under a finger, with nothing at stake: one card, the level's own graph, the right
+     curve breathing until it is grabbed. A miss gets the WHY and another go; a second miss gets a
+     ghost drag — the answer plays itself, springs back, and hands the gesture over. Nothing here is
+     tracked: a card a student may retry until it is right is a lesson, not a measurement. */
+
+  /** @returns {boolean} */
+  function tutorialDone() {
+    var saved = Arcade.store.get('arcade.shift.tutorial', null);
+    return !!(saved && saved.done);
+  }
+
+  /** @param {any} L Level 1 @param {number} token @returns {Promise<void>} */
+  async function playTutorial(L, token) {
+    var card = null;
+    L.pool.forEach(function (c) { if (c.id === TUTORIAL.cardId) card = c; });
+    if (!card) return;
+    setMode('tutorial');
+    graph.setCard({ start: card.start, draggable: L.draggable, dotGrab: L.dotGrab });
+    paintCard(card, null, 'Tutorial · no clock');
+    hintEl.textContent = TUTORIAL.hint;
+    graph.highlight(card.curve, true);
+    Arcade.sfx.play('card');
+    if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
+
+    var misses = 0;
+    while (true) {
+      run.clock = roundClock(0, { untimed: true });   // abortRun stops it, which resolves it null
+      var ans = await run.clock.next();
+      if (!alive(token)) return;
+      run.clock.stop();
+      graph.lock();
+      if (judge(ans, card)) break;
+      misses += 1;
+      Arcade.sfx.play('snap');
+      Arcade.sfx.play('wrong');
+      await graph.snapBack({ jolt: true });
+      if (!alive(token)) return;
+      if (misses < 2) {
+        await sheetAsk('✗ ' + truthOf(card), TUTORIAL.miss, 'Try again');
+      } else {
+        await graph.animateTo(card.result);         // the ghost drag: the answer, then back again
+        if (!alive(token)) return;
+        await wait(600);
+        if (!alive(token)) return;
+        await graph.snapBack();
+        if (!alive(token)) return;
+        await sheetAsk('Like that', TUTORIAL.show, 'Now you try');
+      }
+      if (!alive(token)) return;
+      hideSheet();
+      graph.unlock();
+    }
+
+    graph.highlight(card.curve, false);
+    Arcade.sfx.play('correct');
+    await sheetFlash('✓ ' + truthOf(card));
+    await graph.animateTo(card.result);
+    if (!alive(token)) return;
+    await sheetAsk('✓ ' + truthOf(card), card.why + ' ' + TUTORIAL.done, 'Start Level 1', 'correct');
+    if (!alive(token)) return;
+    hideSheet();
+    Arcade.store.set('arcade.shift.tutorial', { done: true });
+  }
+
   /* ===== ROUND LOOP ===== */
 
   /** The Level 3 beat: once the consequence has played, name the gap it left behind. Five seconds,
@@ -1006,7 +1170,7 @@ const HOWTO = [
     hintEl.textContent = 'Tap the gap — left of Yf, right of Yf, or the line itself';
     graph.askGap();
     showKbdGap(true);
-    run.gapClock = gapClock(GAP_MS);
+    run.gapClock = gapClock(GAP_MS, { untimed: run.practice });
     var ans = await run.gapClock.answer;
     if (!alive(token)) return;
     var ok = !!ans && ans.answer === truth;
@@ -1042,7 +1206,7 @@ const HOWTO = [
     Arcade.sfx.play('card');
     if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
 
-    run.clock = roundClock(L.time);
+    run.clock = roundClock(L.time, { untimed: run.practice });
     var ans = await run.clock.next();
     if (!alive(token)) return;
     var left = run.clock.remaining();
@@ -1116,7 +1280,7 @@ const HOWTO = [
     var dead = false;                            // the last heart went on a boss move
 
     paintCard(card, done);                       // painted first: the clock waits on this slide-in
-    run.clock = roundClock(card.time);
+    run.clock = roundClock(card.time, { untimed: run.practice });
     while (accepted < card.moves.length && !outOfTime) {
       var ans = await run.clock.next();
       if (!alive(token)) return;
@@ -1325,7 +1489,8 @@ const HOWTO = [
     var token = runToken;
     run = {
       L: L, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(),
-      score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, gapClock: null
+      score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, gapClock: null,
+      practice: practiceOn()
     };
     run.streak.render(comboEl);
     scoreEl.textContent = '0';
@@ -1333,6 +1498,13 @@ const HOWTO = [
     buildKbdRow(L);
     graph.setVisible('LRAS', !!L.showLRAS);
     graph.setCard({ start: { AD: 0, SRAS: 0 }, draggable: L.draggable, dotGrab: L.dotGrab });
+
+    // The first time anyone reaches Level 1, one card with nothing at stake comes before the eight.
+    if (L.n === 1 && !tutorialDone()) {
+      await playTutorial(L, token);
+      if (!alive(token)) return;
+    }
+    setMode(run.practice ? 'practice' : 'play');
 
     var cards = drawCards(L.pool, ROUNDS);
     for (var i = 0; i < cards.length; i += 1) {
@@ -1379,6 +1551,27 @@ const HOWTO = [
     runToken += 1;                       // the run is over; nothing still awaiting may touch it
     Arcade.voice.stop();                 // no headline keeps reading over an end screen
     sheetBtn.textContent = 'Got it';
+    if (run.practice) {
+      // A practice clear banks nothing: no best, no medal, no unlock, no title — the readiness map
+      // was written card by card as it went, and that is all practice is for.
+      show('end');
+      Arcade.endScreen(screens.end, {
+        title: 'PRACTICE DONE', sub: 'Level ' + L.n + ' · ' + L.name + ' · no clock, no hearts',
+        score: score, accuracy: acc, medal: null,
+        stats: [
+          { label: 'Right', value: run.correct + '/' + run.asked },
+          { label: 'Best streak', value: String(run.bestStreak) }
+        ],
+        note: 'Practice fills your readiness map but saves no score, medal or unlock. Play it for real when the drag feels right.',
+        buttons: [
+          { label: 'Play for real', primary: true, onClick: function () { setPractice(false); startLevel(L.n); } },
+          { label: 'Levels', onClick: goSelect },
+          { label: 'Practice again', onClick: function () { startLevel(L.n); } }
+        ]
+      });
+      Arcade.focusScreen(screens.end);
+      return;
+    }
     var beforeTitle = Arcade.titleFor();      // the rank as it stood before this run was banked
     saveProgress(L.n, score, acc);
     Arcade.saveBest('shift', { score: score, initials: Arcade.initials(), level: L.n });
@@ -1471,6 +1664,9 @@ const HOWTO = [
   });
 
   byId('examPace').textContent = TIMING.examSeconds + ' s';
+  paintIntro();
+  paintPractice();
+  practiceBtn.addEventListener('click', function () { setPractice(!practiceOn()); });
 
   byId('playBtn').addEventListener('click', goSelect);
   byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });

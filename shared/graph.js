@@ -1006,7 +1006,7 @@ var ArcadeGraph = (function () {
         shifts[n] = c.start && typeof c.start[n] === 'number' ? c.start[n] : 0;
         cardStart[n] = shifts[n];
         accepted[n] = false;
-        parts[n].g.classList.remove('accepted', 'grabbed');
+        parts[n].g.classList.remove('accepted', 'grabbed', 'hinted');
       });
       point = market.point ? { curve: market.point.curve, x: market.point.x } : null;
       draggable = Array.isArray(c.draggable)
@@ -1022,6 +1022,14 @@ var ArcadeGraph = (function () {
       if (!parts[curve]) return;
       accepted[curve] = true;
       parts[curve].g.classList.add('accepted');
+    }
+
+    /** Make a curve breathe — the tutorial's "this one" — without changing what it can do. The
+     *  stylesheet paints .hinted on the halo; the next setCard() clears it with the other marks.
+     *  @param {string} curve @param {boolean} on */
+    function highlight(curve, on) {
+      if (!parts[curve]) return;
+      parts[curve].g.classList.toggle('hinted', !!on);
     }
 
     /** @param {string} curve @param {boolean} shown */
@@ -1069,7 +1077,7 @@ var ArcadeGraph = (function () {
       el: root, gauges: gauges,
       on: on, off: off, once: once,
       setCard: setCard, animateTo: animateTo, snapBack: snapBack,
-      accept: accept,
+      accept: accept, highlight: highlight,
       lock: function () { locked = true; endDrag(); },
       unlock: function () { locked = false; },
       askGap: askGap, markGap: markGap, setVisible: setVisible,
