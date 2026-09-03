@@ -216,9 +216,16 @@ test('playNext routes the weakest topic to the level that drills it', () => {
   for (const ced of ['3.4', '3.5', '3.7', '3.9']) assert.equal(next(ced).level, 3);
   assert.equal(next('4.5').level, 4, 'the money market');
   for (const ced of ['4.7', '5.4', '5.5', '6.6']) assert.equal(next(ced).level, 5, ced + ' is loanable funds');
-  for (const ced of ['6.1', '6.2', '6.3', '6.4', '6.5']) assert.equal(next(ced).level, 6, ced + ' is the dollar market');
+  for (const ced of ['6.2', '6.3', '6.4', '6.5']) assert.equal(next(ced).level, 6, ced + ' is the dollar market');
   for (const ced of ['5.2', '5.3']) assert.equal(next(ced).level, 7, ced + ' is the Phillips curve');
   assert.equal(next('5.1').game, 'fed', 'policy in the short run is the Fed\'s game');
+  // the sorting decks: GDP, money and the balance of payments are Sort Circuit's
+  assert.deepEqual(next('2.1'), {
+    game: 'sort', level: 1, url: 'games/sort-circuit.html?level=1', label: 'Sort Circuit · Deck 1'
+  });
+  assert.equal(next('2.2').level, 1, 'the limits of GDP sort with GDP');
+  for (const ced of ['4.3', '4.4']) assert.deepEqual([next(ced).game, next(ced).level], ['sort', 2], ced + ' is what money is');
+  assert.deepEqual([next('6.1').game, next('6.1').level], ['sort', 4], 'the balance of payments is a sorting deck');
   // a still-unmapped topic falls through to the hardest shift level
   assert.deepEqual(next('2.3'), {
     game: 'shift', level: 3, url: 'games/shift-happens.html?level=3', label: 'Shift Happens · Level 3'

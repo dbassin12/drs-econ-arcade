@@ -772,3 +772,38 @@ html.big-type .podium { display: block; order: -1; }
 /* The missed headlines on an end screen, above the buttons that offer them back. */
 .missed-list { font-size: 14px; line-height: 1.45; }
 .missed-head { font-weight: 800; }
+
+/* ===== SORT CIRCUIT — two bins and the card between them =====
+   The whole game is the card's x position: it follows the finger, the bin it leans toward
+   lights up, and a release past the commit line drops it in. */
+.sort-head { justify-content: space-between; align-items: center; }
+.tag.lightning { background: var(--gold); color: #1a1a1a; }
+.sort-table {
+  position: relative; height: 330px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.bin {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  display: flex; align-items: flex-end; justify-content: center; padding: 12px;
+  transition: border-color .15s, background .15s;
+}
+.bin-label { font-weight: 900; font-size: 15px; color: var(--text2); text-align: center; }
+.bin.near { border-color: var(--blue); background: rgba(28,176,246,.08); }
+.bin.near .bin-label { color: var(--text); }
+.bin.good { border-color: var(--green); background: var(--green-glow); }
+.bin.good .bin-label { color: var(--green); }
+.bin.bad { border-color: var(--red); background: var(--red-glow); }
+.bin.bad .bin-label { color: var(--red); }
+.sort-card {
+  position: absolute; left: 50%; top: 18px; width: 76%; margin-left: -38%; min-height: 170px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  text-align: center; cursor: grab; touch-action: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35); will-change: transform;
+}
+.sort-card.grabbed { cursor: grabbing; box-shadow: 0 14px 32px rgba(0,0,0,.45); }
+.sort-card.deal { animation: dealIn .3s ease-out; }
+@keyframes dealIn { from { opacity: 0; transform: translateY(-40px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.sort-emoji { font-size: 40px; line-height: 1; }
+.sort-text { font-weight: 800; font-size: 17px; line-height: 1.3; }
+@media (prefers-reduced-motion: reduce) { .sort-card.deal { animation: none; } }

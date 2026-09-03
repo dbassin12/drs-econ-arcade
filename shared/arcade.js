@@ -428,15 +428,18 @@ var Arcade = (function () {
 
   /** Which level drills which topic. @type {Record<string, {game:string, level:number}>} */
   var CED_TO_LEVEL = {
+    '2.1': { game: 'sort', level: 1 }, '2.2': { game: 'sort', level: 1 },    // GDP or not
     '3.1': { game: 'shift', level: 1 }, '3.2': { game: 'shift', level: 1 }, '3.8': { game: 'shift', level: 1 },
     '3.3': { game: 'shift', level: 2 }, '3.6': { game: 'shift', level: 2 },
     '3.4': { game: 'shift', level: 3 }, '3.5': { game: 'shift', level: 3 },
     '3.7': { game: 'shift', level: 3 }, '3.9': { game: 'shift', level: 3 },
+    '4.3': { game: 'sort', level: 2 }, '4.4': { game: 'sort', level: 2 },    // what money is
     '4.5': { game: 'shift', level: 4 },                                        // the money market
     '4.6': { game: 'fed', level: 1 }, '5.1': { game: 'fed', level: 1 },        // policy is the Fed's game
     '4.7': { game: 'shift', level: 5 }, '5.4': { game: 'shift', level: 5 },    // loanable funds, deficits,
     '5.5': { game: 'shift', level: 5 }, '6.6': { game: 'shift', level: 5 },    // crowding out, capital flows
-    '6.1': { game: 'shift', level: 6 }, '6.2': { game: 'shift', level: 6 }, '6.3': { game: 'shift', level: 6 },
+    '6.1': { game: 'sort', level: 4 },                                         // the balance of payments
+    '6.2': { game: 'shift', level: 6 }, '6.3': { game: 'shift', level: 6 },
     '6.4': { game: 'shift', level: 6 }, '6.5': { game: 'shift', level: 6 },    // the dollar market
     '5.2': { game: 'shift', level: 7 }, '5.3': { game: 'shift', level: 7 }     // the Phillips curve
   };
@@ -478,6 +481,9 @@ var Arcade = (function () {
     var target = (ced ? CED_TO_LEVEL[ced] : { game: 'shift', level: 1 }) || { game: 'shift', level: 3 };
     if (target.game === 'fed') {
       return { game: 'fed', level: target.level, url: 'games/fed-chair.html?era=1975', label: 'Fed Chair · 1975' };
+    }
+    if (target.game === 'sort') {
+      return { game: 'sort', level: target.level, url: 'games/sort-circuit.html?level=' + target.level, label: 'Sort Circuit · Deck ' + target.level };
     }
     return {
       game: 'shift',

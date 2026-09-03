@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sort Circuit — DRS Econ Arcade</title>
+<!-- The arcade is static pages that talk to nobody. The policy says so out loud: nothing loads
+     that is not this origin's own script and stylesheet, the two Google Fonts hosts, or a data:
+     favicon, and connect-src 'none' means no page here can ever send a student's play anywhere. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+
+<script>
+/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. */
+if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
+/* ================================================================================
+   CONTENT — every deck, card and exam question in the game, one entry per line.
+   Nothing here is logic; the game reads this and nothing else for its content.
+
+   Deck: { n, name, blurb, ced, bins:[left, right], pool[], exam[] }.  A card is
+   { id, text, emoji, bin: 0 (left) | 1 (right), why, ced, skill }.  `why` is always
+   the sentence that would earn the FRQ point.  Every clock lives in TIMING below.
+   ================================================================================ */
+const DECKS = [
+  {
+    n: 1, name: 'GDP or Not', blurb: 'What counts in GDP and what only looks like it does', ced: '2.1',
+    bins: ['Counts in GDP', 'Not in GDP'],
+    pool: [
+      { id: 'g-newcar', text: 'A Cedarhurst family buys a new car built in Ohio', emoji: '🚗', bin: 0, why: 'GDP counts the market value of final goods and services newly produced within the country during the year; a new domestically built car bought by a household is consumption spending and is included.', ced: '2.1', skill: 1 },
+      { id: 'g-usedvan', text: 'A Lawrence family buys a used minivan', emoji: '🚐', bin: 1, why: 'GDP counts only goods produced in the current period; a used vehicle was counted when it was first sold, so its resale is not included.', ced: '2.1', skill: 1 },
+      { id: 'g-flour', text: 'A Woodmere bakery buys flour to make bagels', emoji: '🥯', bin: 1, why: 'Intermediate goods are excluded to avoid double counting; the flour’s value is included in the price of the bagels it becomes.', ced: '2.1', skill: 1 },
+      { id: 'g-teachers', text: 'The Lawrence school district pays its teachers', emoji: '🏫', bin: 0, why: 'Government purchases of goods and services, including the wages of public employees, are part of GDP as G.', ced: '2.1', skill: 1 },
+      { id: 'g-ss', text: 'Social Security checks arrive in Hewlett mailboxes', emoji: '✉️', bin: 1, why: 'Transfer payments are not payments for currently produced goods or services, so they are excluded from GDP; the spending they finance is counted when it happens.', ced: '2.1', skill: 1 },
+      { id: 'g-drill', text: 'A Hewlett dentist buys a new drill made in Germany', emoji: '🦷', bin: 1, why: 'GDP measures production within the country’s borders; an imported drill is subtracted as an import (M), so it adds nothing to U.S. GDP even though it is investment spending.', ced: '2.1', skill: 2 },
+      { id: 'g-export', text: 'An Inwood factory ships machines to Brazil', emoji: '🚢', bin: 0, why: 'Exports are goods produced domestically and sold abroad; they are added to GDP as part of net exports (X − M).', ced: '2.1', skill: 1 },
+      { id: 'g-shares', text: 'A retiree sells 100 shares of a Long Island utility', emoji: '📈', bin: 1, why: 'Buying or selling financial assets transfers ownership; it produces no new good or service and is not included in GDP.', ced: '2.1', skill: 1 },
+      { id: 'g-house', text: 'A contractor builds a new house in Woodmere', emoji: '🏠', bin: 0, why: 'New residential construction is investment spending (I) and is included in GDP as newly produced output.', ced: '2.1', skill: 1 },
+      { id: 'g-lawn', text: 'A teen mows a neighbor’s lawn for cash, off the books', emoji: '🌱', bin: 1, why: 'GDP counts only production that passes through recorded markets; unreported underground work is a limitation of the measure, not part of it.', ced: '2.2', skill: 1 },
+      { id: 'g-dinner', text: 'A parent cooks dinner for the family', emoji: '🍝', bin: 1, why: 'Household production for one’s own family does not pass through a market, so it is not included in GDP — one reason GDP understates total output.', ced: '2.2', skill: 1 },
+      { id: 'g-taxreturn', text: 'A Hewlett accountant prepares a client’s tax return', emoji: '🧾', bin: 0, why: 'Services newly produced and sold within the country are included in GDP at their market value.', ced: '2.1', skill: 1 },
+      { id: 'g-inventory', text: 'A warehouse adds this year’s unsold goods to inventory', emoji: '📦', bin: 0, why: 'Goods produced but not yet sold are counted as inventory investment in the year they are produced, so they are included in GDP.', ced: '2.1', skill: 2 },
+      { id: 'g-repave', text: 'The town repaves Central Avenue', emoji: '🚧', bin: 0, why: 'Government purchases of goods and services, such as road repaving, are part of GDP as G.', ced: '2.1', skill: 1 }
+    ],
+    exam: [
+      { stem: 'Which of the following is included in the calculation of a country’s gross domestic product?', choices: ['The purchase of a used car from a neighbor', 'A Social Security payment to a retiree', 'The purchase of a newly built home', 'The sale of shares of stock on an exchange'], answer: 2, why: 'GDP counts newly produced final goods and services; a newly built home is residential investment, while used goods, transfer payments and financial transactions are excluded.', ced: '2.1', skill: 1 },
+      { stem: 'A bakery buys flour and uses it to produce bread that it sells to consumers. Including the value of the flour in GDP as well as the value of the bread would result in which of the following?', choices: ['An accurate measure of production', 'Double counting', 'An understatement of GDP', 'The exclusion of intermediate goods'], answer: 1, why: 'The flour is an intermediate good whose value is already included in the price of the bread; counting it separately would double count.', ced: '2.1', skill: 2 },
+      { stem: 'Which of the following would most likely cause measured GDP to understate a country’s total production?', choices: ['A large volume of exports', 'An increase in government purchases', 'A large amount of unpaid household production', 'A rise in the price level'], answer: 2, why: 'GDP excludes non-market production such as unpaid household work, so where such production is large, measured GDP understates total output.', ced: '2.2', skill: 1 }
+    ]
+  },
+  {
+    n: 2, name: 'M1 or Not', blurb: 'What is money right now, and what only stores it', ced: '4.3',
+    bins: ['M1 money', 'Not M1'],
+    pool: [
+      { id: 'm-cash', text: 'The twenties in your wallet', emoji: '💵', bin: 0, why: 'Currency held by the public is the most liquid form of money and is included in M1.', ced: '4.3', skill: 1 },
+      { id: 'm-coins', text: 'A jar of quarters on a Cedarhurst dresser', emoji: '🪙', bin: 0, why: 'Coins in circulation are currency, a component of M1.', ced: '4.3', skill: 1 },
+      { id: 'm-checking', text: 'The balance in a Lawrence family’s checking account', emoji: '🏦', bin: 0, why: 'Checkable (demand) deposits can be spent directly by check or debit, so they are included in M1.', ced: '4.3', skill: 1 },
+      { id: 'm-cd', text: 'A six-month certificate of deposit', emoji: '📜', bin: 1, why: 'A small time deposit cannot be spent until it matures, so it is near-money: part of M2 but not M1.', ced: '4.3', skill: 1 },
+      { id: 'm-mmf', text: 'Shares in a money market mutual fund', emoji: '💹', bin: 1, why: 'Retail money market fund balances are included in M2 as near-money but are not part of M1.', ced: '4.3', skill: 1 },
+      { id: 'm-creditline', text: 'The unused limit on a credit card', emoji: '💳', bin: 1, why: 'A credit card creates a loan when it is used; available credit is not an asset and is not money in any measure.', ced: '4.3', skill: 1 },
+      { id: 'm-stock', text: '100 shares of a Long Island utility', emoji: '📈', bin: 1, why: 'Stocks are financial assets, not a medium of exchange; they must be sold for money before they can be spent, so they are not money.', ced: '4.3', skill: 1 },
+      { id: 'm-bond', text: 'A U.S. savings bond in a Hewlett safe', emoji: '🎖️', bin: 1, why: 'A bond is a store of value but not a medium of exchange; it is not included in the money supply.', ced: '4.3', skill: 1 },
+      { id: 'm-debit', text: 'The plastic debit card itself', emoji: '🪪', bin: 1, why: 'A debit card is a way to access a checking deposit; the deposit is money, the card is not.', ced: '4.3', skill: 2 },
+      { id: 'm-gold', text: 'A gold ring', emoji: '💍', bin: 1, why: 'Gold is a commodity that stores value but is not generally accepted in exchange today, so it is not money.', ced: '4.3', skill: 1 },
+      { id: 'm-euros', text: 'Euros left over from a trip to Paris', emoji: '💶', bin: 1, why: 'Foreign currency is not part of the U.S. money supply; M1 counts dollars held by the public.', ced: '4.3', skill: 1 },
+      { id: 'm-register', text: 'The twenties in a bagel shop’s cash register', emoji: '🥯', bin: 0, why: 'Currency held by businesses outside the banking system is currency in circulation and part of M1.', ced: '4.3', skill: 1 },
+      { id: 'm-reserves', text: 'A bank’s reserve balance at the Fed', emoji: '🏛️', bin: 1, why: 'Bank reserves are part of the monetary base, not the money supply; the public cannot spend them, so they are not in M1.', ced: '4.4', skill: 2 },
+      { id: 'm-house', text: 'A house in Woodmere', emoji: '🏠', bin: 1, why: 'A house stores value but is not a medium of exchange and is far from liquid; it is wealth, not money.', ced: '4.3', skill: 1 },
+      { id: 'm-paycheck', text: 'A paycheck just direct-deposited into checking', emoji: '💰', bin: 0, why: 'Once deposited, a paycheck is a checkable deposit that can be spent at once, so it is part of M1.', ced: '4.3', skill: 1 },
+      { id: 'm-birthday', text: 'The $50 tucked into a birthday card', emoji: '🎂', bin: 0, why: 'Currency in the hands of the public is money whoever is holding it, so the birthday cash is part of M1.', ced: '4.3', skill: 1 },
+      { id: 'm-bizchecking', text: 'A Lawrence shop’s business checking account', emoji: '🏪', bin: 0, why: 'Demand deposits held by businesses are checkable deposits and are included in M1.', ced: '4.3', skill: 1 },
+      { id: 'm-mattress', text: 'A $100 bill kept under a mattress', emoji: '🛏️', bin: 0, why: 'Currency outside the banking system counts in M1 even when it is hoarded rather than spent; M1 measures what could be spent at once.', ced: '4.3', skill: 2 }
+    ],
+    exam: [
+      { stem: 'Which of the following is included in the M1 measure of the money supply?', choices: ['A six-month certificate of deposit', 'Balances in checking accounts', 'Shares of stock in a corporation', 'The unused portion of a credit card limit'], answer: 1, why: 'M1 consists of currency in circulation and checkable deposits — the most liquid forms of money that can be spent directly.', ced: '4.3', skill: 1 },
+      { stem: 'A bagel shop posts its prices in dollars. Which function of money does this best illustrate?', choices: ['Medium of exchange', 'Store of value', 'Unit of account', 'Standard of deferred payment'], answer: 2, why: 'Stating prices in dollars uses money as a unit of account, the common measure in which values are expressed.', ced: '4.3', skill: 1 },
+      { stem: 'Which of the following assets is the most liquid?', choices: ['A house', 'A checking account balance', 'A two-year certificate of deposit', 'A corporate bond'], answer: 1, why: 'Liquidity is the ease of converting an asset to a medium of exchange; a checking balance can be spent immediately, so it is the most liquid asset listed.', ced: '4.3', skill: 1 }
+    ]
+  },
+  {
+    n: 3, name: 'Expansionary or Contractionary', blurb: 'Fiscal and monetary moves, sorted by which way they push AD', ced: '3.8',
+    bins: ['Expansionary', 'Contractionary'],
+    pool: [
+      { id: 'p-taxcut', text: 'Congress cuts personal income taxes', emoji: '💸', bin: 0, why: 'A cut in personal income taxes raises disposable income and consumption spending, shifting aggregate demand right: expansionary fiscal policy.', ced: '3.8', skill: 1 },
+      { id: 'p-highways', text: 'Congress funds a national highway rebuild', emoji: '🚧', bin: 0, why: 'An increase in government purchases increases aggregate demand directly: expansionary fiscal policy.', ced: '3.8', skill: 1 },
+      { id: 'p-iorb-down', text: 'The Fed lowers the interest rate it pays on reserve balances', emoji: '🏦', bin: 0, why: 'With ample reserves, lowering the administered rate lowers the federal funds rate and other interest rates, increasing interest-sensitive spending and shifting aggregate demand right: expansionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-sell-bonds', text: 'The Fed sells government bonds on the open market', emoji: '📉', bin: 1, why: 'In a limited-reserves system an open-market sale drains reserves and decreases the money supply, raising interest rates and shifting aggregate demand left: contractionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-iorb-up', text: 'The Fed raises its policy rate by 75 basis points', emoji: '📈', bin: 1, why: 'A higher policy rate raises the real interest rate, decreases interest-sensitive consumption and investment, and shifts aggregate demand left: contractionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-defense', text: 'Congress cuts defense spending', emoji: '✂️', bin: 1, why: 'A decrease in government purchases decreases aggregate demand: contractionary fiscal policy.', ced: '3.8', skill: 1 },
+      { id: 'p-taxup', text: 'Congress raises taxes to shrink the deficit', emoji: '🏛️', bin: 1, why: 'Higher taxes reduce disposable income and consumption spending, shifting aggregate demand left: contractionary fiscal policy.', ced: '3.8', skill: 1 },
+      { id: 'p-buy-bonds', text: 'The Fed buys government bonds on the open market', emoji: '🖨️', bin: 0, why: 'In a limited-reserves system an open-market purchase adds reserves and increases the money supply, lowering interest rates and shifting aggregate demand right: expansionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-checks', text: 'Stimulus checks land in every Five Towns account', emoji: '📬', bin: 0, why: 'Transfer payments raise disposable income and consumption spending, shifting aggregate demand right: expansionary fiscal policy.', ced: '3.8', skill: 1 },
+      { id: 'p-stabilizer', text: 'A recession hits and unemployment benefits automatically rise', emoji: '🛟', bin: 0, why: 'Automatic stabilizers such as unemployment insurance increase transfer payments in a recession without new legislation, supporting consumption and aggregate demand: expansionary in effect.', ced: '3.9', skill: 2 },
+      { id: 'p-qe', text: 'The Fed launches a program of long-term bond purchases', emoji: '🏗️', bin: 0, why: 'Buying long-term assets lowers long-term interest rates and increases interest-sensitive spending, shifting aggregate demand right: expansionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-discount', text: 'The Fed raises the discount rate', emoji: '🔺', bin: 1, why: 'A higher discount rate makes borrowing reserves from the Fed more expensive, tightening credit and shifting aggregate demand left: contractionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-surplus', text: 'Congress cuts spending to run a budget surplus', emoji: '📉', bin: 1, why: 'Lower government purchases decrease aggregate demand: contractionary fiscal policy, whatever it does for the debt.', ced: '3.8', skill: 1 },
+      { id: 'p-credit', text: 'Congress passes an investment tax credit', emoji: '🧾', bin: 0, why: 'An investment tax credit raises the after-tax return on capital and increases investment spending, shifting aggregate demand right: expansionary fiscal policy.', ced: '3.8', skill: 1 }
+    ],
+    exam: [
+      { stem: 'Assume an economy is operating below full employment. Which of the following combinations of fiscal and monetary policy would be most effective in increasing real output?', choices: ['Increase taxes and sell government bonds', 'Increase government spending and lower the policy interest rate', 'Decrease government spending and buy government bonds', 'Decrease taxes and raise the policy interest rate'], answer: 1, why: 'Expansionary fiscal policy (higher government spending) and expansionary monetary policy (a lower policy rate) both shift aggregate demand right, raising real output toward full employment.', ced: '5.1', skill: 1 },
+      { stem: 'Which of the following is an example of an automatic stabilizer?', choices: ['A new law that increases highway spending during a recession', 'Unemployment insurance payments that rise as unemployment rises', 'An open-market purchase of bonds by the central bank', 'A one-time tax rebate passed by Congress'], answer: 1, why: 'Automatic stabilizers change government spending or taxes with the business cycle without new legislation; unemployment insurance payments rise automatically in a downturn.', ced: '3.9', skill: 1 },
+      { stem: 'Assume the banking system has ample reserves and the central bank wants to reduce inflation. Which of the following actions would be appropriate?', choices: ['Lowering the interest rate paid on reserve balances', 'Raising the interest rate paid on reserve balances', 'Increasing government purchases', 'Buying long-term bonds'], answer: 1, why: 'With ample reserves the central bank tightens by raising its administered rates; a higher interest rate on reserve balances raises market interest rates, lowers interest-sensitive spending and shifts aggregate demand left, reducing inflation.', ced: '4.6', skill: 1 }
+    ]
+  },
+  {
+    n: 4, name: 'Current or Financial', blurb: 'Balance of payments: which account records the deal', ced: '6.1',
+    bins: ['Current account', 'Financial account'],
+    pool: [
+      { id: 'b-export', text: 'A Lawrence firm sells machines to a buyer in Chile', emoji: '🚢', bin: 0, why: 'Exports of goods are recorded in the current account as a credit.', ced: '6.1', skill: 1 },
+      { id: 'b-tv', text: 'A Hewlett family buys a television made in Japan', emoji: '📺', bin: 0, why: 'Imports of goods are recorded in the current account as a debit.', ced: '6.1', skill: 1 },
+      { id: 'b-treasury', text: 'A German investor buys U.S. Treasury bonds', emoji: '🏛️', bin: 1, why: 'A foreign purchase of U.S. financial assets is a capital inflow, recorded in the financial account as a credit.', ced: '6.1', skill: 1 },
+      { id: 'b-korea', text: 'An American buys shares of a Korean carmaker', emoji: '📈', bin: 1, why: 'A U.S. purchase of foreign financial assets is a capital outflow, recorded in the financial account as a debit.', ced: '6.1', skill: 1 },
+      { id: 'b-hotel', text: 'Foreign tourists spend a week at a Cedarhurst hotel', emoji: '🏨', bin: 0, why: 'Services sold to foreigners are exports of services, recorded in the current account as a credit.', ced: '6.1', skill: 1 },
+      { id: 'b-remit', text: 'A Woodmere resident sends money to family abroad', emoji: '💌', bin: 0, why: 'A gift or remittance is a unilateral transfer, recorded in the current account.', ced: '6.1', skill: 1 },
+      { id: 'b-factory', text: 'A U.S. company builds a factory in Mexico', emoji: '🏭', bin: 1, why: 'Direct investment abroad is a purchase of foreign real assets, recorded in the financial account as a capital outflow.', ced: '6.1', skill: 1 },
+      { id: 'b-dividend', text: 'A Long Island investor receives dividends from a French company', emoji: '💶', bin: 0, why: 'Income earned on foreign assets is investment income, recorded in the current account as a credit.', ced: '6.1', skill: 2 },
+      { id: 'b-branch', text: 'A French bank opens a branch in New York', emoji: '🏦', bin: 1, why: 'Foreign direct investment into the United States is a capital inflow, recorded in the financial account.', ced: '6.1', skill: 1 },
+      { id: 'b-aid', text: 'The U.S. government ships grain to a country hit by famine', emoji: '🌾', bin: 0, why: 'Foreign aid is a unilateral transfer, recorded in the current account as a debit.', ced: '6.1', skill: 1 },
+      { id: 'b-tower', text: 'A Japanese firm buys a Manhattan office tower', emoji: '🏙️', bin: 1, why: 'A foreign purchase of a U.S. real asset is a capital inflow, recorded in the financial account.', ced: '6.1', skill: 1 },
+      { id: 'b-oil', text: 'A U.S. refinery imports a tanker of crude oil', emoji: '🛢️', bin: 0, why: 'Imports of goods are recorded in the current account as a debit.', ced: '6.1', skill: 1 },
+      { id: 'b-interest', text: 'The Treasury pays interest to foreign holders of U.S. bonds', emoji: '💸', bin: 0, why: 'Income paid to foreign owners of U.S. assets is investment income, recorded in the current account as a debit.', ced: '6.1', skill: 2 },
+      { id: 'b-tuition', text: 'A Lawrence student pays tuition at a British university', emoji: '🎓', bin: 0, why: 'Education bought abroad is an import of services, recorded in the current account as a debit.', ced: '6.1', skill: 1 }
+    ],
+    exam: [
+      { stem: 'Which of the following transactions would be recorded in the current account of the United States balance of payments?', choices: ['A U.S. resident buys shares of a Japanese company', 'A German firm builds a plant in Ohio', 'A U.S. firm exports software to Canada', 'A French investor buys U.S. Treasury bonds'], answer: 2, why: 'The current account records trade in goods and services, investment income and transfers; an export of software is a credit in the current account, while purchases of assets belong to the financial account.', ced: '6.1', skill: 1 },
+      { stem: 'Assume the United States runs a current account deficit. Which of the following must be true?', choices: ['The United States runs a financial account deficit of equal size', 'The United States runs a financial account surplus of equal size', 'The dollar must depreciate', 'Net exports are positive'], answer: 1, why: 'The current account and the financial account sum to zero, so a current account deficit is matched by a financial account surplus: net capital inflows finance the excess of imports over exports.', ced: '6.1', skill: 1 },
+      { stem: 'A U.S. company purchases a factory in Brazil. In the U.S. balance of payments this transaction is recorded as which of the following?', choices: ['A credit in the current account', 'A debit in the current account', 'A credit in the financial account', 'A debit in the financial account'], answer: 3, why: 'Buying a foreign real asset is a capital outflow, recorded as a debit in the financial account.', ced: '6.1', skill: 2 }
+    ]
+  }
+];
+
+/* ================================================================================
+   TIMING — Teacher-tunable: seconds students get.  Numbers are seconds.
+   ================================================================================ */
+const TIMING = {
+  cardSeconds: 15,            // one card, drag it into a bin
+  lightningSeconds: 8,        // each of the closing lightning cards
+  warnSeconds: 4,             // when the bar turns red and the tick/tock starts
+  cardInSeconds: 0.3,         // the card's slide-in; the clock waits for it to land
+  readGrace: 3,               // opening seconds that all pay the full speed bonus
+  whySeconds: 1.6,            // how long a right answer's WHY line stays up; a tap ends it
+  examSeconds: 70             // the Exam Sprint stays at the real exam's Section I pace
+};
+
+/* ================================================================================
+   HOW TO PLAY — the cards the first run of a deck opens on, and what the ? shows.
+   ================================================================================ */
+const HOWTO = [
+  { emoji: '\u{1F0CF}', head: 'One card, two bins', body: 'A card lands with a thing on it. Drag it left or right into the bin it belongs in. Let go past the edge and it snaps home; let go early and it comes back.' },
+  { emoji: '❤️', head: 'Three hearts, and a streak', body: 'A wrong sort costs a heart, and three lost ends the deck. Three right in a row starts a multiplier that climbs to ×5.' },
+  { emoji: '⚡', head: 'The bar is the clock', body: 'It empties while you decide and turns red near the end; out of time counts as wrong. The last four cards come on half the clock, for half again the points.' },
+  { emoji: '\u{1F4DD}', head: 'Then the Exam Sprint', body: 'Three questions in the exam’s own voice at the exam’s own pace. Optional — but gold needs it.' }
+];
+
+/* ================================================================================
+   WHAT IS THIS GAME? — the purpose, before the rules.
+   ================================================================================ */
+const INTRO = [
+  { emoji: '\u{1F500}', text: 'The exam is full of sorting questions in disguise: is this in GDP, is this money, is this expansionary, which account. This is those questions at speed.' },
+  { emoji: '\u{1F393}', text: 'Every card you sort gets a WHY line written the way the FRQ wants it, so the fast game and the slow answer train the same reflex.' },
+  { emoji: '\u{1F3AE}', text: 'Four decks, twelve cards and a lightning finish each, hearts and a streak. The Exam Sprint at the end is the only multiple choice.' }
+];
+</script>
+
+<main class="app" id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div class="stack">
+      <h1 class="h1" tabindex="-1" data-focus>SORT CIRCUIT</h1>
+      <p class="muted">You are a speed-sorter with an economist’s eye.</p>
+      <div class="row">
+        <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+        <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+        <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      </div>
+      <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
+      <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <section class="panel stack intro" id="intro" aria-labelledby="introTitle"></section>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+  <!-- SELECT -->
+  <section class="screen" id="screen-select">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Decks</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="stack" id="deckList"></div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="screen" id="screen-howto">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
+        <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="screen-play">
+    <div class="stack tight">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the deck list">←</button>
+        <div class="hearts" id="hearts"></div>
+        <div class="topbar-stats">
+          <span class="combo" id="combo"></span>
+          <span class="score" id="score">0</span>
+        </div>
+        <button type="button" class="btn btn-ghost howto-btn" id="playHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="timer-bar" id="timer"></div>
+      <div class="row sort-head">
+        <span class="tag" id="deckTag">Deck</span>
+        <span class="muted mono" id="cardCount"></span>
+      </div>
+      <!-- The two bins and the card between them: the whole game is the card's x position. -->
+      <div class="sort-table" id="sortTable">
+        <div class="bin left" id="binLeft" aria-hidden="true"><span class="bin-label" id="binLeftLabel"></span></div>
+        <div class="bin right" id="binRight" aria-hidden="true"><span class="bin-label" id="binRightLabel"></span></div>
+        <div class="sort-card panel" id="sortCard" tabindex="-1" data-focus>
+          <div class="sort-emoji" id="cardEmoji" aria-hidden="true"></div>
+          <div class="sort-text" id="cardText"></div>
+        </div>
+      </div>
+      <div class="muted" id="hint">Drag the card into a bin</div>
+      <div class="row wrap kbd-answers" id="kbdRow" role="group" aria-label="Answer with the keyboard"></div>
+      <div class="sr-only" id="cardRead" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- EXAM SPRINT — the one screen in the game with multiple choice -->
+  <section class="screen" id="screen-exam">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the deck list">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Exam Sprint</h2>
+        <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="timer-bar" id="examTimer"></div>
+      <div class="row">
+        <span class="tag" id="examPace">70 s</span>
+        <span class="muted" id="examSub"></span>
+      </div>
+      <div class="panel"><div class="exam-stem" id="examStem"></div></div>
+      <div class="stack" id="examChoices"></div>
+    </div>
+  </section>
+
+  <!-- CLEAR, FAIL and the sprint result all render an Arcade.endScreen panel here -->
+  <section class="screen" id="screen-end"></section>
+
+</main>
+
+<div class="sheet" id="sheet" role="status">
+  <div class="stack">
+    <div class="sheet-msg" id="sheetMsg"></div>
+    <div class="sheet-why" id="sheetWhy"></div>
+    <button type="button" class="btn btn-block" id="sheetBtn">Got it</button>
+  </div>
+</div>
+
+<script src="../shared/arcade.js"></script>
+
+<script>
+/* ================================================================================
+   SORT CIRCUIT — the game. Sections: elements · screens · progress · deck select ·
+   the card (drag) · round chrome · round loop · exam sprint · the run · end screens · boot.
+   During play the student's only input is dragging the card into a bin; multiple
+   choice appears nowhere but the Exam Sprint. Every sort calls Arcade.track once.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined') return;
+
+  var CARD_MS = TIMING.cardSeconds * 1000;
+  var LIGHTNING_MS = TIMING.lightningSeconds * 1000;
+  var WARN_MS = TIMING.warnSeconds * 1000;
+  var CARD_IN_MS = TIMING.cardInSeconds * 1000;
+  var GRACE_MS = TIMING.readGrace * 1000;
+  var WHY_MS = TIMING.whySeconds * 1000;
+  var EXAM_MS = TIMING.examSeconds * 1000;
+  var HEARTS = 3;
+  var ROUNDS = 12;            // cards drawn before the lightning finish
+  var LIGHTNING = 4;          // cards in the finish
+  var COMMIT = 0.38;          // how far across the table (as a fraction of its width) a drag must go
+  var KEYS = 'ABCD';
+  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
+
+  /* ===== ELEMENTS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {number} ms @returns {Promise<void>} */
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function fill(cls, text) { var n = document.createElement('div'); n.className = cls; n.textContent = text; return n; }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function chip(cls, text) { var n = document.createElement('span'); n.className = cls; n.textContent = text; return n; }
+
+  var screens = {
+    title: byId('screen-title'), select: byId('screen-select'), howto: byId('screen-howto'),
+    play: byId('screen-play'), exam: byId('screen-exam'), end: byId('screen-end')
+  };
+  var deckList = byId('deckList');
+  var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
+  var heartsEl = byId('hearts'), comboEl = byId('combo'), scoreEl = byId('score'), timerEl = byId('timer');
+  var deckTag = byId('deckTag'), cardCount = byId('cardCount');
+  var table = byId('sortTable'), binLeft = byId('binLeft'), binRight = byId('binRight');
+  var binLeftLabel = byId('binLeftLabel'), binRightLabel = byId('binRightLabel');
+  var cardEl = byId('sortCard'), cardEmoji = byId('cardEmoji'), cardText = byId('cardText');
+  var hintEl = byId('hint'), kbdRow = byId('kbdRow'), cardRead = byId('cardRead');
+  var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
+  var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
+  var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+  var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), introEl = byId('intro');
+
+  /** The run in progress. `token` is what tells an awaiting round it has been abandoned. */
+  var run = null;
+  var runToken = 0;
+  var exam = null;
+  var examToken = 0;
+  /** @param {number} token @returns {boolean} */
+  function alive(token) { return token === runToken; }
+  /** @param {number} token @returns {boolean} */
+  function examAlive(token) { return token === examToken; }
+
+  /* ===== SCREENS ===== */
+
+  var booted = false;
+  /** @param {string} name */
+  function show(name) {
+    Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+    if (booted) Arcade.guardTaps();
+    booted = true;
+    Arcade.focusScreen(screens[name]);
+  }
+
+  function abortRun() {
+    runToken += 1;
+    examToken += 1;
+    if (run && run.clock) run.clock.stop();
+    if (exam && exam.stop) exam.stop();
+    ackNow();
+    hideSheet();
+    settleDrag(null);
+    Arcade.voice.stop();
+  }
+
+  /* ===== PROGRESS — arcade.sort.progress ===== */
+
+  /** @returns {{unlocked:number, levels:Object<string, any>}} */
+  function loadProgress() {
+    var p = Arcade.store.get('arcade.sort.progress', null);
+    if (!p || typeof p !== 'object') p = {};
+    var levels = {};
+    var raw = p.levels && typeof p.levels === 'object' ? p.levels : {};
+    Object.keys(raw).forEach(function (key) { if (raw[key] && typeof raw[key] === 'object') levels[key] = raw[key]; });
+    return { unlocked: typeof p.unlocked === 'number' && p.unlocked >= 1 ? p.unlocked : 1, levels: levels };
+  }
+
+  /** @returns {any} */
+  function blankRecord() { return { cleared: false, acc: 0, best: 0, medal: null, exam: null, examPerfect: false }; }
+
+  /** @param {any} rec @returns {any} */
+  function rescore(rec) {
+    rec.medal = Arcade.medalFor(rec.acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) });
+    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total && rec.acc >= 0.95);
+    return rec;
+  }
+
+  /** @param {number} n @param {number} score @param {number} acc */
+  function saveProgress(n, score, acc) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    rec.cleared = true;
+    rec.acc = Math.max(rec.acc || 0, acc);
+    rec.best = Math.max(rec.best || 0, score);
+    p.levels[String(n)] = rescore(rec);
+    if (rec.acc >= 0.75) p.unlocked = Math.max(p.unlocked, n + 1);
+    Arcade.store.set('arcade.sort.progress', p);
+  }
+
+  /** @param {number} n @param {number} right @param {number} total @returns {any} */
+  function saveExam(n, right, total) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    if (!rec.exam || right > rec.exam.right) rec.exam = { right: right, total: total };
+    p.levels[String(n)] = rescore(rec);
+    Arcade.store.set('arcade.sort.progress', p);
+    return rec;
+  }
+
+  /* ===== DECK SELECT ===== */
+
+  /** @param {number} n @returns {any} */
+  function deckOf(n) { for (var i = 0; i < DECKS.length; i += 1) if (DECKS[i].n === n) return DECKS[i]; return undefined; }
+  /** @param {number} n @returns {boolean} */
+  function playable(n) { return !!deckOf(n) && n <= loadProgress().unlocked; }
+
+  /** @param {any} D @param {any} rec @param {boolean} locked @returns {any} */
+  function deckTile(D, rec, locked) {
+    var tile = document.createElement('div');
+    tile.className = 'panel level-tile' + (locked ? ' locked' : '');
+    var medal = Arcade.safeMedal(rec && rec.medal);
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'tile-open';
+    open.disabled = locked;
+    open.setAttribute('aria-label', (locked ? 'Locked: deck ' : 'Play deck ') + D.n + ', ' + D.name + (medal === 'none' ? '' : ', ' + medal + ' medal'));
+    open.appendChild(chip('level-num', String(D.n)));
+    var info = chip('tile-info', '');
+    info.appendChild(chip('tile-name', D.name + (locked ? ' 🔒' : '')));
+    var meta = chip('tile-meta', '');
+    meta.appendChild(chip('muted', rec && rec.cleared ? 'Best ' + rec.best + ' · ' + Math.round(rec.acc * 100) + '%' : locked ? 'Locked' : D.blurb));
+    if (rec && rec.exam) meta.appendChild(chip('tag', 'Sprint ' + rec.exam.right + '/' + rec.exam.total));
+    if (rec && rec.examPerfect) meta.appendChild(chip('ribbon', 'Exam Ready'));
+    info.appendChild(meta);
+    open.appendChild(info);
+    open.appendChild(chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
+    if (!locked) open.addEventListener('click', function () { startDeck(D.n); });
+    tile.appendChild(open);
+    if (rec && rec.cleared) {
+      var sprint = document.createElement('button');
+      sprint.type = 'button';
+      sprint.className = 'btn btn-ghost tile-btn';
+      sprint.textContent = 'Exam Sprint';
+      sprint.setAttribute('aria-label', 'Exam Sprint for deck ' + D.n);
+      sprint.addEventListener('click', function () { startExam(D.n); });
+      tile.appendChild(sprint);
+    }
+    return tile;
+  }
+
+  function paintSelect() {
+    var progress = loadProgress();
+    deckList.textContent = '';
+    DECKS.forEach(function (D) { deckList.appendChild(deckTile(D, progress.levels[String(D.n)] || null, D.n > progress.unlocked)); });
+  }
+
+  /* ===== THE CARD — one pointer, one axis, two bins =====
+     The card follows the finger sideways and tilts a little; past COMMIT of the table's width
+     it is released into that bin, otherwise it springs home. A tap with no drag does nothing.
+     The keyboard gets the same answer through two real buttons. */
+
+  /** @type {any} */ var drag = null;
+  /** @type {((bin:number|null) => void)|null} */ var dragResolve = null;
+  var cardLocked = true;
+
+  /** @returns {number} */
+  function tableWidth() { return Math.max(1, table.getBoundingClientRect().width); }
+
+  /** @param {number} dx px @param {boolean} animate */
+  function placeCard(dx, animate) {
+    cardEl.style.transition = animate ? 'transform .18s ease-out' : 'none';
+    cardEl.style.transform = 'translateX(' + dx.toFixed(1) + 'px) rotate(' + (dx / tableWidth() * 14).toFixed(2) + 'deg)';
+    var lean = dx / (tableWidth() * COMMIT);
+    binLeft.classList.toggle('near', lean < -0.5);
+    binRight.classList.toggle('near', lean > 0.5);
+  }
+
+  /** Finish whatever drag is in flight without a verdict. @param {any} ev */
+  function settleDrag(ev) {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    try { cardEl.releasePointerCapture(d.pointerId); } catch (err) { /* already gone */ }
+    if (ev) placeCard(0, true);
+  }
+
+  /** The next sort: resolves with 0 (left), 1 (right), or null when the clock wins.
+   *  @returns {Promise<number|null>} */
+  function nextSort() {
+    return new Promise(function (resolve) { dragResolve = resolve; });
+  }
+
+  /** @param {number|null} bin */
+  function handOver(bin) {
+    if (!dragResolve) return;
+    var resolve = dragResolve;
+    dragResolve = null;
+    resolve(bin);
+  }
+
+  cardEl.addEventListener('pointerdown', function (ev) {
+    if (cardLocked || drag) return;
+    ev.preventDefault();
+    drag = { pointerId: ev.pointerId, startX: ev.clientX, dx: 0 };
+    try { cardEl.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety */ }
+    cardEl.classList.add('grabbed');
+    Arcade.sfx.play('grab');
+  });
+  cardEl.addEventListener('pointermove', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    drag.dx = ev.clientX - drag.startX;
+    placeCard(drag.dx, false);
+  });
+  cardEl.addEventListener('pointerup', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    var dx = drag.dx;
+    settleDrag(null);
+    cardEl.classList.remove('grabbed');
+    var limit = tableWidth() * COMMIT;
+    if (Math.abs(dx) < limit) { placeCard(0, true); return; }
+    commit(dx < 0 ? 0 : 1);
+  });
+  cardEl.addEventListener('pointercancel', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    settleDrag(null);
+    cardEl.classList.remove('grabbed');
+    placeCard(0, true);
+  });
+
+  /** Fly the card into a bin and hand the answer over. @param {number} bin */
+  function commit(bin) {
+    if (cardLocked) return;
+    cardLocked = true;
+    var out = tableWidth() * (bin === 0 ? -1.1 : 1.1);
+    placeCard(out, true);
+    Arcade.sfx.play('snap');
+    handOver(bin);
+  }
+
+  /** @param {number} bin the keyboard's road to the same answer */
+  function answerKbd(bin) { if (!cardLocked && !drag) commit(bin); }
+
+  /** @param {any} D */
+  function buildKbdRow(D) {
+    kbdRow.textContent = '';
+    [0, 1].forEach(function (bin) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.textContent = (bin === 0 ? '← ' : '') + D.bins[bin] + (bin === 1 ? ' →' : '');
+      b.setAttribute('aria-label', 'Sort into ' + D.bins[bin]);
+      b.addEventListener('click', function () { answerKbd(bin); });
+      kbdRow.appendChild(b);
+    });
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    if (!run || screens.play.classList.contains('active') === false) return;
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); answerKbd(0); }
+    if (ev.key === 'ArrowRight') { ev.preventDefault(); answerKbd(1); }
+  });
+
+  /* ===== ROUND CHROME ===== */
+
+  /** @param {any} card @param {any} D @param {number} index @param {number} total @param {boolean} lightning */
+  function paintCard(card, D, index, total, lightning) {
+    cardEmoji.textContent = card.emoji;
+    cardText.textContent = card.text;
+    deckTag.textContent = lightning ? '⚡ Lightning' : D.name;
+    deckTag.classList.toggle('lightning', lightning);
+    cardCount.textContent = (index + 1) + ' / ' + total;
+    binLeftLabel.textContent = D.bins[0];
+    binRightLabel.textContent = D.bins[1];
+    binLeft.classList.remove('near', 'good', 'bad');
+    binRight.classList.remove('near', 'good', 'bad');
+    cardEl.style.transition = 'none';
+    cardEl.style.transform = 'translateX(0) rotate(0)';
+    cardEl.classList.remove('deal');
+    void cardEl.offsetWidth;
+    cardEl.classList.add('deal');
+    cardRead.textContent = card.text + '. Left: ' + D.bins[0] + '. Right: ' + D.bins[1] + '.';
+  }
+
+  /** @param {string} kind @param {string} msg @param {string} why @param {boolean} ack */
+  function paintSheet(kind, msg, why, ack) {
+    sheetMsg.textContent = msg;
+    sheetWhy.textContent = why;
+    sheetBtn.style.display = ack ? '' : 'none';
+    sheet.className = 'sheet ' + kind + ' open';
+  }
+  function hideSheet() { sheet.classList.remove('open'); sheetBtn.style.display = 'none'; }
+
+  /** @type {(() => void)|null} */ var ackResolve = null;
+  function ackNow() { if (!ackResolve) return; var r = ackResolve; ackResolve = null; r(); }
+  sheetBtn.addEventListener('click', function () { hideSheet(); ackNow(); });
+
+  /** @param {string} msg @param {string} why @param {string} [label] @param {string} [kind] @returns {Promise<void>} */
+  function sheetAsk(msg, why, label, kind) {
+    ackNow();
+    sheetBtn.textContent = label || 'Got it';
+    paintSheet(kind || 'wrong', msg, why, true);
+    return new Promise(function (resolve) { ackResolve = resolve; });
+  }
+
+  /** A moment to read, or a tap anywhere to move on. @param {number} ms @returns {Promise<void>} */
+  function readBeat(ms) {
+    return new Promise(function (resolve) {
+      var timer = setTimeout(done, ms);
+      function done() { clearTimeout(timer); document.removeEventListener('pointerdown', done); resolve(); }
+      document.addEventListener('pointerdown', done);
+    });
+  }
+
+  /** The card's clock: a bar that waits for the deal to land, then counts down.
+   *  @param {number} ms @returns {{next:() => Promise<number|null>, remaining:() => number, pause:() => void, resume:() => void, stop:() => void}} */
+  function roundClock(ms) {
+    var expired = false;
+    /** @type {any} */ var startHandle = null;
+    var waitingToStart = false;
+    var timer = Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: atZero });
+    function atZero() {
+      if (expired) return;
+      expired = true;
+      cardLocked = true;
+      settleDrag(null);
+      placeCard(0, true);
+      handOver(null);
+    }
+    function armStart() {
+      startHandle = setTimeout(function () { startHandle = null; timer.start(); }, CARD_IN_MS);
+    }
+    function disarmStart() { if (!startHandle) return false; clearTimeout(startHandle); startHandle = null; return true; }
+    armStart();
+    return {
+      next: function () { return expired ? Promise.resolve(null) : nextSort(); },
+      remaining: function () { return timer.remaining(); },
+      pause: function () { if (disarmStart()) { waitingToStart = true; return; } timer.pause(); },
+      resume: function () { if (expired) return; if (waitingToStart) { waitingToStart = false; armStart(); return; } timer.resume(); },
+      stop: function () { expired = true; disarmStart(); timer.stop(); handOver(null); }
+    };
+  }
+
+  function pauseClocks() { if (run && run.clock) run.clock.pause(); if (exam && exam.pause) exam.pause(); }
+  function resumeClocks() { if (run && run.clock) run.clock.resume(); if (exam && exam.resume) exam.resume(); }
+
+  function punish() {
+    Arcade.shake(table);
+    run.hearts.lose();
+    run.streak.miss();
+  }
+
+  /** @param {number} points */
+  function award(points) { run.score += points; scoreEl.textContent = String(run.score); }
+
+  /** @param {number} left @param {number} total @param {number} cap @returns {number} */
+  function speedBonus(left, total, cap) {
+    var window = total - GRACE_MS;
+    var frac = window > 0 ? Math.min(1, Math.max(0, left / window)) : (left > 0 ? 1 : 0);
+    var bonus = Math.round(cap * frac);
+    run.speedTotal += bonus;
+    return bonus;
+  }
+
+  /** A hit on the streak, and the call-out when it reaches a new multiplier. */
+  function streakUp() {
+    run.streak.hit();
+    run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+    var lines = { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' };
+    if (lines[run.streak.count]) Arcade.toast(lines[run.streak.count], 1400);
+  }
+
+  /** Fisher-Yates on a copy. @param {any[]} list @returns {any[]} */
+  function shuffled(list) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i -= 1) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+
+  /** The hand: ROUNDS + LIGHTNING cards, drawn by the tracker's weights so a replay leans toward
+   *  the topics the student keeps missing, with both bins represented in the first four.
+   *  @param {any} D @returns {any[]} */
+  function drawCards(D) {
+    var weights = D.pool.map(function (c) { return Arcade.cardWeight(c.ced); });
+    var picked = Arcade.weightedSample(D.pool, weights, Math.min(D.pool.length, ROUNDS + LIGHTNING));
+    var hand = shuffled(picked);
+    // never open on four of the same bin: a student who has not read the bins yet would learn
+    // the wrong lesson from a lucky streak
+    var first = hand.slice(0, 4);
+    if (first.every(function (c) { return c.bin === first[0].bin; })) {
+      for (var i = 4; i < hand.length; i += 1) if (hand[i].bin !== first[0].bin) { var t = hand[1]; hand[1] = hand[i]; hand[i] = t; break; }
+    }
+    return hand;
+  }
+
+  /* ===== ROUND LOOP ===== */
+
+  /** @param {any} card @param {any} D @param {number} index @param {number} total @param {boolean} lightning @param {number} token */
+  async function playCard(card, D, index, total, lightning, token) {
+    paintCard(card, D, index, total, lightning);
+    hintEl.textContent = lightning ? 'Fast: drag it home' : 'Drag the card into a bin';
+    Arcade.sfx.play('card');
+    if (Arcade.voice.enabled) Arcade.say(card.text, { who: 'anchor' });
+    cardLocked = false;
+    var ms = lightning ? LIGHTNING_MS : CARD_MS;
+    run.clock = roundClock(ms);
+    var ans = await run.clock.next();
+    if (!alive(token)) return;
+    var left = run.clock.remaining();
+    run.clock.stop();
+    cardLocked = true;
+
+    var ok = ans === card.bin;
+    run.asked += 1;
+    Arcade.track(card.ced, card.skill, ok);
+    var truth = D.bins[card.bin];
+    if (ok) {
+      (card.bin === 0 ? binLeft : binRight).classList.add('good');
+      Arcade.sfx.play('correct');
+      award(Math.round(((lightning ? 150 : 100) + speedBonus(left, ms, 50)) * run.streak.mult));
+      streakUp();
+      run.correct += 1;
+      paintSheet('correct', '✓ ' + truth, card.why, false);
+      await readBeat(WHY_MS);
+    } else {
+      if (ans !== null) (ans === 0 ? binLeft : binRight).classList.add('bad');
+      (card.bin === 0 ? binLeft : binRight).classList.add('good');
+      Arcade.sfx.play('wrong');
+      punish();
+      run.missed.push(card);
+      await sheetAsk(ans === null ? '✗ Out of time — ' + truth : '✗ ' + truth, card.why);
+    }
+    if (!alive(token)) return;
+    hideSheet();
+  }
+
+  /* ===== EXAM SPRINT ===== */
+
+  /** @param {any} q @param {number} index @param {number} total @param {number} token @returns {Promise<boolean>} */
+  async function askQuestion(q, index, total, token) {
+    examCountEl.textContent = (index + 1) + '/' + total;
+    examStemEl.textContent = q.stem;
+    examChoicesEl.textContent = '';
+    var buttons = q.choices.map(function (text, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-block choice';
+      b.textContent = KEYS.charAt(i) + '. ' + text;
+      examChoicesEl.appendChild(b);
+      return b;
+    });
+    var picked = await new Promise(function (resolve) {
+      var settled = false;
+      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { warnAt: WARN_MS, onEnd: function () { finish(-1); } });
+      function finish(i) { if (settled) return; settled = true; timer.stop(); resolve(i); }
+      buttons.forEach(function (b, i) { b.addEventListener('click', function () { finish(i); }); });
+      exam.stop = function () { finish(-1); };
+      exam.pause = function () { timer.pause(); };
+      exam.resume = function () { if (!settled) timer.resume(); };
+      timer.start();
+    });
+    if (!examAlive(token)) return false;
+    var ok = picked === q.answer;
+    buttons.forEach(function (b, i) { b.classList.add('marked'); if (i === q.answer) b.classList.add('right'); else if (i === picked) b.classList.add('wrong'); });
+    Arcade.sfx.play(ok ? 'correct' : 'wrong');
+    Arcade.track(q.ced, q.skill, ok);
+    await sheetAsk(ok ? '✓ Correct' : '✗ ' + KEYS.charAt(q.answer) + ' is the answer', q.why, 'Next', ok ? 'correct' : 'wrong');
+    if (!examAlive(token)) return ok;
+    hideSheet();
+    return ok;
+  }
+
+  /** @param {number} n */
+  function startExam(n) {
+    var D = deckOf(n);
+    if (!D || !D.exam || !D.exam.length) return;
+    abortRun();
+    show('exam');
+    runExam(D).catch(function () { Arcade.toast('Something went wrong — back to the decks'); goSelect(); });
+  }
+
+  /** @param {any} D */
+  async function runExam(D) {
+    examToken += 1;
+    var token = examToken;
+    exam = { D: D, stop: null };
+    examSubEl.textContent = 'Deck ' + D.n + ' · ' + D.name;
+    hideSheet();
+    var right = 0;
+    for (var i = 0; i < D.exam.length; i += 1) {
+      var ok = await askQuestion(D.exam[i], i, D.exam.length, token);
+      if (!examAlive(token)) return;
+      if (ok) right += 1;
+    }
+    examToken += 1;
+    showExamResult(D, right, D.exam.length);
+  }
+
+  /** @param {any} D @param {number} right @param {number} total */
+  function showExamResult(D, right, total) {
+    var rec = saveExam(D.n, right, total);
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'EXAM SPRINT', sub: 'Exam Sprint: ' + right + '/' + total,
+      score: rec.best || 0, accuracy: rec.acc || 0,
+      medal: rec.medal, stamp: Arcade.stampFor(rec.acc || 0),
+      ribbon: rec.examPerfect ? 'Exam Ready' : '',
+      stats: [{ label: 'Deck ' + D.n, value: D.name }, { label: 'Best sprint', value: rec.exam.right + '/' + rec.exam.total }],
+      note: rec.medal === 'gold' ? '' : 'Gold needs 95% on the deck and 2 of 3 here.',
+      buttons: [
+        { label: 'Decks', primary: true, onClick: goSelect },
+        { label: 'Run it again', onClick: function () { startExam(D.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    Arcade.focusScreen(screens.end);
+    if (right === total) Arcade.confetti();
+  }
+
+  /* ===== THE RUN ===== */
+
+  /** @param {number} n */
+  function startDeck(n) {
+    var D = deckOf(n);
+    if (!D) return;
+    abortRun();
+    if (!howtoSeen(n)) { openHowto(n, function () { markHowtoSeen(n); beginDeck(D); }, goSelect); return; }
+    beginDeck(D);
+  }
+
+  /** @param {any} D */
+  function beginDeck(D) {
+    show('play');
+    playDeck(D).catch(function () { Arcade.toast('Something went wrong — back to the decks'); goSelect(); });
+  }
+
+  /** @param {any} D */
+  async function playDeck(D) {
+    runToken += 1;
+    var token = runToken;
+    run = { D: D, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(), score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, missed: [] };
+    run.streak.render(comboEl);
+    scoreEl.textContent = '0';
+    hideSheet();
+    buildKbdRow(D);
+    var hand = drawCards(D);
+    var total = hand.length;
+    for (var i = 0; i < hand.length; i += 1) {
+      var lightning = i >= hand.length - LIGHTNING;
+      if (lightning && i === hand.length - LIGHTNING) { Arcade.sfx.play('boss'); Arcade.toast('⚡ Lightning round', 1200); await wait(500); if (!alive(token)) return; }
+      await playCard(hand[i], D, i, total, lightning, token);
+      if (!alive(token)) return;
+      if (run.hearts.get() === 0) { showFail(D); return; }
+    }
+    showClear(D);
+  }
+
+  /* ===== END SCREENS ===== */
+
+  function goHome() { window.location.href = '../index.html'; }
+  var ARCADE_BUTTON = { label: 'Arcade', onClick: goHome };
+
+  /** @returns {number} */
+  function accuracy() { return run.asked ? run.correct / run.asked : 0; }
+
+  /** @param {any} panel */
+  function showMissed(panel) {
+    if (!panel || !run.missed.length) return;
+    var list = fill('missed-list', '');
+    list.appendChild(chip('muted', 'Missed: '));
+    run.missed.forEach(function (card, i) { list.appendChild(chip('missed-head', (i ? ' · ' : '') + card.text)); });
+    panel.insertBefore(list, panel.lastElementChild);
+  }
+
+  /** @param {any} panel @param {any} before */
+  function showTitle(panel, before) {
+    if (!panel) return;
+    var after = Arcade.titleFor();
+    var rose = after.rank > before.rank;
+    var line = fill('title-chip' + (rose ? ' up' : ''), 'Title: ' + after.name + (rose ? ' · 🎉 New title!' : ''));
+    var head = panel.querySelector('.end-head');
+    head.parentNode.insertBefore(line, head.nextSibling);
+    if (rose) Arcade.sfx.play('coin');
+  }
+
+  /** @param {any} D */
+  function showClear(D) {
+    var acc = accuracy();
+    var score = run.score;
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    var beforeTitle = Arcade.titleFor();
+    saveProgress(D.n, score, acc);
+    Arcade.saveBest('sort', { score: score, initials: Arcade.initials(), level: D.n });
+    var saved = loadProgress();
+    var rec = saved.levels[String(D.n)] || {};
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: 'DECK CLEARED', sub: 'Deck ' + D.n + ' · ' + D.name,
+      score: score, accuracy: acc, stamp: Arcade.stampFor(acc),
+      medal: Arcade.medalFor(acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) }),
+      stats: [{ label: 'Best streak', value: String(run.bestStreak) }, { label: 'Speed bonus', value: '+' + run.speedTotal }],
+      note: EXAM_FRAME + (saved.unlocked > D.n ? '' : ' · Clear 75% to unlock the next deck.'),
+      buttons: [
+        { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { startExam(D.n); } },
+        { label: 'Decks', onClick: goSelect },
+        { label: 'Replay', onClick: function () { startDeck(D.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    showTitle(panel, beforeTitle);
+    showMissed(panel);
+    Arcade.focusScreen(screens.end);
+    Arcade.confetti();
+  }
+
+  /** @param {any} D */
+  function showFail(D) {
+    var acc = accuracy();
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: 'DECK FAILED', sub: 'Three wrong sorts. Retry?', tone: 'fail',
+      score: run.score, accuracy: acc, medal: null, stamp: Arcade.stampFor(acc),
+      stats: [{ label: 'Best streak', value: String(run.bestStreak) }, { label: 'Right', value: run.correct + '/' + run.asked }],
+      buttons: [
+        { label: 'Retry', primary: true, onClick: function () { startDeck(D.n); } },
+        { label: 'Decks', onClick: goSelect },
+        ARCADE_BUTTON
+      ]
+    });
+    showMissed(panel);
+    Arcade.focusScreen(screens.end);
+  }
+
+  function goSelect() {
+    abortRun();
+    sheetBtn.textContent = 'Got it';
+    paintSelect();
+    show('select');
+  }
+
+  /* ===== HOW TO PLAY ===== */
+
+  /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {(() => void)|null} */ var howtoBackTo = null;
+
+  /** @param {number} n @returns {boolean} */
+  function howtoSeen(n) {
+    var saved = Arcade.store.get('arcade.sort.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen : [];
+    return seen.indexOf(n) >= 0;
+  }
+  /** @param {number} n */
+  function markHowtoSeen(n) {
+    var saved = Arcade.store.get('arcade.sort.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen.filter(function (v) { return typeof v === 'number'; }) : [];
+    if (seen.indexOf(n) < 0) seen.push(n);
+    Arcade.store.set('arcade.sort.howto', { seen: seen });
+  }
+
+  /** @param {number} n */
+  function paintHowto(n) {
+    var D = deckOf(n);
+    howtoTitle.textContent = D ? 'How to play · ' + D.name : 'How to play';
+    howtoCards.textContent = '';
+    var cards = HOWTO.slice();
+    if (D) cards.unshift({ emoji: '\u{1F5C2}️', head: D.bins[0] + ' ← or → ' + D.bins[1], body: D.blurb + '. Left is ' + D.bins[0] + ', right is ' + D.bins[1] + '.' });
+    cards.forEach(function (card) {
+      var panel = fill('panel howto-card', '');
+      var emoji = fill('howto-emoji', card.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      panel.appendChild(emoji);
+      var body = fill('', '');
+      body.appendChild(fill('howto-head', card.head));
+      body.appendChild(fill('howto-body', card.body));
+      panel.appendChild(body);
+      howtoCards.appendChild(panel);
+    });
+  }
+
+  /** @param {number} n @param {() => void} after @param {() => void} [back] */
+  function openHowto(n, after, back) { howtoAfter = after; howtoBackTo = back || after; paintHowto(n); show('howto'); }
+  /** @param {boolean} [backwards] */
+  function closeHowto(backwards) { var go = backwards === true ? howtoBackTo : howtoAfter; howtoAfter = null; howtoBackTo = null; if (go) go(); }
+
+  function paintIntro() {
+    introEl.textContent = '';
+    var title = fill('intro-title', 'What is this game?');
+    title.id = 'introTitle';
+    introEl.appendChild(title);
+    INTRO.forEach(function (line) {
+      var row = fill('intro-line', '');
+      var emoji = fill('intro-emoji', line.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      row.appendChild(fill('intro-text', line.text));
+      introEl.appendChild(row);
+    });
+  }
+
+  /* ===== BOOT ===== */
+
+  Arcade.bigType(Arcade.store.get('arcade.bigType', false));
+  Arcade.sfx.bindMuteButton(byId('muteBtn'));
+  Arcade.voice.bindButton(byId('voiceBtn'));
+  sheetBtn.style.display = 'none';
+  paintIntro();
+
+  initialsBtn.textContent = Arcade.initials();
+  initialsBtn.addEventListener('click', function () {
+    if (!initialsPanel.hidden) { initialsPanel.hidden = true; return; }
+    initialsPanel.hidden = false;
+    Arcade.initialsEntry(initialsMount, { onDone: function (value) { initialsBtn.textContent = value; initialsPanel.hidden = true; } });
+  });
+
+  byId('examPace').textContent = TIMING.examSeconds + ' s';
+  byId('playBtn').addEventListener('click', goSelect);
+  byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
+  byId('playBack').addEventListener('click', goSelect);
+  byId('examBack').addEventListener('click', goSelect);
+  byId('howtoBack').addEventListener('click', function () { closeHowto(true); });
+  byId('howtoGo').addEventListener('click', function () { closeHowto(false); });
+  byId('selectHowto').addEventListener('click', function () { openHowto(0, function () { show('select'); }); });
+  byId('playHowto').addEventListener('click', function () {
+    if (!run) return;
+    pauseClocks();
+    openHowto(run.D.n, function () { show('play'); resumeClocks(); });
+  });
+
+  paintSelect();
+  var deepLink = parseInt(String(Arcade.qs('level', '')), 10);
+  if (Number.isFinite(deepLink)) {
+    if (playable(deepLink)) startDeck(deepLink);
+    else { show('select'); Arcade.toast(deckOf(deepLink) ? 'Deck ' + deepLink + ' is still locked' : 'No deck ' + deepLink); }
+  }
+  booted = true;
+}());
+</script>
+
+</body>
+</html>
