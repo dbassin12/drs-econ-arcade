@@ -18,11 +18,11 @@ function content() {
   const block = blocks.map((b) => b.replace(/^<script>|<\/script>$/g, '')).find((b) => /const LESIONS = /.test(b));
   assert.ok(block, 'the content block exists');
   const sandbox = { self: {}, top: {}, document: { documentElement: {} } };
-  vm.runInNewContext(block + '\n;this.__out = { LESIONS, WARDS, TIMING, HOWTO, INTRO, MARKET_CED, MARKET_NAME };', sandbox);
+  vm.runInNewContext(block + '\n;this.__out = { LESIONS, WARDS, TIMING, HOWTO, INTRO, JUICE, MARKET_CED, MARKET_NAME };', sandbox);
   return sandbox.__out;
 }
 
-const { LESIONS, WARDS, TIMING, HOWTO, INTRO, MARKET_CED, MARKET_NAME } = content();
+const { LESIONS, WARDS, TIMING, HOWTO, INTRO, JUICE, MARKET_CED, MARKET_NAME } = content();
 const KINDS = ['axisY', 'axisX', 'tag', 'missingTag', 'slope', 'vertical', 'dot', 'tick'];
 
 /** @param {any} l @returns {string} the svg piece a lesion occupies */
@@ -113,4 +113,9 @@ test('the how-to and the intro explain the game before it starts', () => {
   HOWTO.forEach((card) => assert.ok(card.emoji && card.head && card.body));
   assert.equal(INTRO.length, 3);
   INTRO.forEach((line) => assert.ok(line.emoji && line.text.length > 40));
+});
+
+test('the streak call-outs and the stamp are copy in JUICE, not buried in the code', () => {
+  [3, 6, 9].forEach((n) => assert.ok(typeof JUICE.streak[n] === 'string' && JUICE.streak[n].length > 3, 'a call-out at ' + n));
+  assert.ok(typeof JUICE.rounds === 'string' && JUICE.rounds.length > 2);
 });

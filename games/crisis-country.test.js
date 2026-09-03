@@ -19,11 +19,11 @@ function content() {
   const block = blocks.map((b) => b.replace(/^<script>|<\/script>$/g, '')).find((b) => /const CRISES = /.test(b));
   assert.ok(block, 'the content block exists');
   const sandbox = { self: {}, top: {}, document: { documentElement: {} } };
-  vm.runInNewContext(block + '\n;this.__out = { KIND_CED, CRISES, ADVISORS, EXAM_ITEMS, TIMING, HOWTO, INTRO };', sandbox);
+  vm.runInNewContext(block + '\n;this.__out = { KIND_CED, CRISES, ADVISORS, EXAM_ITEMS, TIMING, HOWTO, INTRO, JUICE };', sandbox);
   return sandbox.__out;
 }
 
-const { KIND_CED, CRISES, ADVISORS, EXAM_ITEMS, TIMING, HOWTO, INTRO } = content();
+const { KIND_CED, CRISES, ADVISORS, EXAM_ITEMS, TIMING, HOWTO, INTRO, JUICE } = content();
 const SHOCK_KEYS = ['gap', 'pi', 'exp', 'e', 'reserves', 'pop', 'pressure', 'bank'];
 const STATE_KEYS = Object.keys(M.blank());
 
@@ -107,7 +107,9 @@ test('advisors have a line for every state, and each is a sentence', () => {
   for (const a of ADVISORS) {
     assert.ok(STATE_KEYS.includes(a.when[0]), a.who + ' watches a state key: ' + a.when[0]);
     assert.ok(['>', '>=', '<', '<='].includes(a.when[1]));
-    assert.ok(a.line.length >= 30 && /[.!?]$/.test(a.line));
+    const lines = Array.isArray(a.line) ? a.line : [a.line];
+    assert.ok(lines.length >= 1);
+    lines.forEach((l) => assert.ok(typeof l === 'string' && l.length >= 30 && /[.!?]$/.test(l), a.who + ': ' + l));
   }
   for (const who of whos) {
     const fallback = ADVISORS.filter((a) => a.who === who).pop();
@@ -143,4 +145,9 @@ test('the how-to and the intro explain the game before it starts', () => {
   HOWTO.forEach((card) => assert.ok(card.emoji && card.head && card.body));
   assert.equal(INTRO.length, 3);
   INTRO.forEach((line) => assert.ok(line.emoji && line.text.length > 40));
+});
+
+test('the streak call-outs and the stamp are copy in JUICE, not buried in the code', () => {
+  [3, 6, 9].forEach((n) => assert.ok(typeof JUICE.streak[n] === 'string' && JUICE.streak[n].length > 3, 'a call-out at ' + n));
+  assert.ok(typeof JUICE.election === 'string' && JUICE.election.length > 2);
 });

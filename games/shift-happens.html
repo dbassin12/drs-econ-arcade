@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
 </head>
 <body>
 
@@ -444,12 +444,9 @@ const JUICE = {
   </div>
 </div>
 
-<!-- The boss's entrance slams over the graph and leaves; the Fed's gavel stamp, borrowed. -->
-<div class="fomc-mount" id="stampMount" hidden aria-hidden="true"><div class="fomc-stamp" id="stampText"></div></div>
-
-<script src="../shared/arcade.js?v=20260903b"></script>
-<script src="../shared/leaderboard.js?v=20260903b"></script>
-<script src="../shared/graph.js?v=20260903b"></script>
+<script src="../shared/arcade.js?v=20260903c"></script>
+<script src="../shared/leaderboard.js?v=20260903c"></script>
+<script src="../shared/graph.js?v=20260903c"></script>
 
 <script>
 /* ================================================================================
@@ -523,7 +520,7 @@ const JUICE = {
   var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
   var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
   var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
-  var sheetChips = byId('sheetChips'), stampMount = byId('stampMount'), stampText = byId('stampText');
+  var sheetChips = byId('sheetChips');
   var kbdRow = byId('kbdRow'), graphRead = byId('graphRead');
   var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), howtoDemoEl = byId('howtoDemo');
   var modeTag = byId('modeTag'), practiceBtn = byId('practiceBtn'), introEl = byId('intro');
@@ -917,17 +914,6 @@ const JUICE = {
     sheetWhy.textContent = why;
     sheetBtn.style.display = ack ? '' : 'none';
     sheet.className = 'sheet ' + kind + ' open';
-  }
-
-  /** The boss's entrance: a stamp slams over the graph and leaves. @param {string} text */
-  function slamStamp(text) {
-    stampText.textContent = text;
-    stampText.classList.remove('slam');
-    stampMount.hidden = false;
-    void stampText.offsetWidth;          // restart the slam on a stamp that is already mounted
-    stampText.classList.add('slam');
-    Arcade.sfx.play('stamp');
-    setTimeout(function () { stampMount.hidden = true; }, 700);
   }
 
   // The sheet is `position: fixed` below the viewport when it is closed, so a button left displayed
@@ -1559,7 +1545,7 @@ const JUICE = {
       ? 'Drag the curve that moves — both headlines, either order'
       : 'Drag the curve that moves — one headline at a time';
     Arcade.sfx.play('boss');
-    slamStamp(JUICE.boss);
+    Arcade.slam(JUICE.boss);                     // the boss's entrance: a stamp over the graph
     if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
 
     var done = card.moves.map(function () { return false; });
@@ -1715,8 +1701,9 @@ const JUICE = {
     examSubEl.textContent = 'Level ' + L.n + ' · ' + L.name;
     hideSheet();
     var right = 0;
-    for (var i = 0; i < L.exam.length; i += 1) {
-      var ok = await askQuestion(L.exam[i], i, L.exam.length, token);
+    var items = Arcade.shuffledExam(L.exam);   // never the same three in the same order with the same letter
+    for (var i = 0; i < items.length; i += 1) {
+      var ok = await askQuestion(items[i], i, items.length, token);
       if (!examAlive(token)) return;
       if (ok) right += 1;
     }

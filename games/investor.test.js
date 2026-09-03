@@ -19,11 +19,11 @@ function content() {
   const block = blocks.map((b) => b.replace(/^<script>|<\/script>$/g, '')).find((b) => /const SCENARIOS = /.test(b));
   assert.ok(block, 'the content block exists');
   const sandbox = { self: {}, top: {}, document: { documentElement: {} } };
-  vm.runInNewContext(block + '\n;this.__out = { ASSETS, SCENARIOS, LESSONS, BADGES, EXAM_ITEMS, TIMING, HOWTO, INTRO };', sandbox);
+  vm.runInNewContext(block + '\n;this.__out = { ASSETS, SCENARIOS, LESSONS, BADGES, EXAM_ITEMS, TIMING, HOWTO, INTRO, JUICE };', sandbox);
   return sandbox.__out;
 }
 
-const { ASSETS, SCENARIOS, LESSONS, BADGES, EXAM_ITEMS, TIMING, HOWTO, INTRO } = content();
+const { ASSETS, SCENARIOS, LESSONS, BADGES, EXAM_ITEMS, TIMING, HOWTO, INTRO, JUICE } = content();
 
 test('the five buckets are the model’s five assets, in order', () => {
   assert.deepEqual([...ASSETS.map((a) => a.id)], M.ASSET_IDS);   // spread: the sandbox's arrays are another realm's
@@ -122,4 +122,9 @@ test('the how-to and the intro explain the game before it starts', () => {
   HOWTO.forEach((card) => assert.ok(card.emoji && card.head && card.body));
   assert.equal(INTRO.length, 3);
   INTRO.forEach((line) => assert.ok(line.emoji && line.text.length > 40));
+});
+
+test('the streak call-outs and the stamp are copy in JUICE, not buried in the code', () => {
+  [3, 6, 9].forEach((n) => assert.ok(typeof JUICE.streak[n] === 'string' && JUICE.streak[n].length > 3, 'a call-out at ' + n));
+  ['hold', 'hike', 'cut'].forEach((k) => assert.ok(typeof JUICE.fomc[k] === 'string' && JUICE.fomc[k].length > 2, 'fomc ' + k));
 });

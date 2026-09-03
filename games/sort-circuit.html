@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
 </head>
 <body>
 
@@ -169,6 +169,15 @@ const INTRO = [
   { emoji: '\u{1F393}', text: 'Every card you sort gets a WHY line written the way the FRQ wants it, so the fast game and the slow answer train the same reflex.' },
   { emoji: '\u{1F3AE}', text: 'Four decks, twelve cards and a lightning finish each, hearts and a streak. The Exam Sprint at the end is the only multiple choice.' }
 ];
+
+/* ================================================================================
+   JUICE — the streak call-outs, keyed by the run length that earns them, and the lightning round's entrance.
+   Copy, not logic.
+   ================================================================================ */
+const JUICE = {
+  streak: { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' },
+  lightning: '⚡ LIGHTNING'
+};
 </script>
 
 <main class="app" id="app">
@@ -281,8 +290,8 @@ const INTRO = [
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903b"></script>
-<script src="../shared/leaderboard.js?v=20260903b"></script>
+<script src="../shared/arcade.js?v=20260903c"></script>
+<script src="../shared/leaderboard.js?v=20260903c"></script>
 
 <script>
 /* ================================================================================
@@ -671,8 +680,8 @@ const INTRO = [
   function streakUp() {
     run.streak.hit();
     run.bestStreak = Math.max(run.bestStreak, run.streak.count);
-    var lines = { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' };
-    if (lines[run.streak.count]) Arcade.toast(lines[run.streak.count], 1400);
+    var line = JUICE.streak[run.streak.count];
+    if (line) Arcade.toast(line, 1400);
   }
 
   /** Fisher-Yates on a copy. @param {any[]} list @returns {any[]} */
@@ -792,8 +801,9 @@ const INTRO = [
     examSubEl.textContent = 'Deck ' + D.n + ' · ' + D.name;
     hideSheet();
     var right = 0;
-    for (var i = 0; i < D.exam.length; i += 1) {
-      var ok = await askQuestion(D.exam[i], i, D.exam.length, token);
+    var items = Arcade.shuffledExam(D.exam);   // never the same three in the same order with the same letter
+    for (var i = 0; i < items.length; i += 1) {
+      var ok = await askQuestion(items[i], i, items.length, token);
       if (!examAlive(token)) return;
       if (ok) right += 1;
     }
@@ -853,7 +863,7 @@ const INTRO = [
     var total = hand.length;
     for (var i = 0; i < hand.length; i += 1) {
       var lightning = i >= hand.length - LIGHTNING;
-      if (lightning && i === hand.length - LIGHTNING) { Arcade.sfx.play('boss'); Arcade.toast('⚡ Lightning round', 1200); await wait(500); if (!alive(token)) return; }
+      if (lightning && i === hand.length - LIGHTNING) { Arcade.sfx.play('boss'); Arcade.slam(JUICE.lightning); await wait(700); if (!alive(token)) return; }
       await playCard(hand[i], D, i, total, lightning, token);
       if (!alive(token)) return;
       if (run.hearts.get() === 0) { showFail(D); return; }

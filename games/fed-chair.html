@@ -19,7 +19,7 @@
 <!-- Nunito and JetBrains Mono arrive with the stylesheet; the newspaper is the one screen that
      needs a serif, so Playfair Display 900 is loaded here and nowhere else in the arcade. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&display=swap">
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
 </head>
 <body>
 
@@ -779,10 +779,10 @@ const INTRO = [
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903b"></script>
-<script src="../shared/leaderboard.js?v=20260903b"></script>
-<script src="../shared/graph.js?v=20260903b"></script>
-<script src="fed-chair.model.js?v=20260903b"></script>
+<script src="../shared/arcade.js?v=20260903c"></script>
+<script src="../shared/leaderboard.js?v=20260903c"></script>
+<script src="../shared/graph.js?v=20260903c"></script>
+<script src="fed-chair.model.js?v=20260903c"></script>
 
 <script>
 /* ================================================================================
@@ -800,6 +800,7 @@ const INTRO = [
   if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined' || typeof FedModel === 'undefined') return;
 
   var TURNS = 10;                                // ten quarters, whichever crisis
+  var BRIEF_SHOWN = 4;                           // memo paragraphs above the fold; the rest sit behind one tap
   var THUMB = 48;                                // the dial thumb's width, and the axis inset
   var BEAT = TIMING.beatSeconds * 1000;          // one step of the END TURN sequence; edit TIMING
 
@@ -1901,7 +1902,20 @@ const INTRO = [
     P = FedModel.politicsFor(id);
     briefingTitle.textContent = 'Your desk, January ' + id;
     briefingText.textContent = '';
-    S.briefing.forEach(function (para) { briefingText.appendChild(fill('', para)); });
+    // The memo through the lag paragraph, then the rest behind one tap: it is worth reading, and a
+    // student on a second run should not scroll past all of it to take the gavel.
+    var more = fill('stack');
+    more.hidden = true;
+    S.briefing.forEach(function (para, i) { (i < BRIEF_SHOWN ? briefingText : more).appendChild(fill('', para)); });
+    if (S.briefing.length > BRIEF_SHOWN) {
+      var readOn = document.createElement('button');
+      readOn.type = 'button';
+      readOn.className = 'btn btn-ghost btn-block btn-sm';
+      readOn.textContent = 'Read the rest · ' + (S.briefing.length - BRIEF_SHOWN) + ' more';
+      readOn.addEventListener('click', function () { more.hidden = false; readOn.hidden = true; });
+      briefingText.appendChild(readOn);
+      briefingText.appendChild(more);
+    }
     show('briefing');
   }
 

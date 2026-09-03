@@ -923,3 +923,37 @@ test('every page names the shared scripts and stylesheet with one and the same a
   });
   assert.equal(stamps.size, 1, 'one stamp everywhere, found: ' + [...stamps].join(', '));
 });
+
+/* ===== the exam shuffle and the slam ===== */
+
+test('shuffledExam reorders the items and their choices and keeps every right answer', () => {
+  const items = [
+    { stem: 'a', choices: ['a0', 'a1', 'a2', 'a3'], answer: 2, why: 'w', ced: '3.1', skill: 1 },
+    { stem: 'b', choices: ['b0', 'b1', 'b2', 'b3'], answer: 0, why: 'w', ced: '3.1', skill: 1 },
+    { stem: 'c', choices: ['c0', 'c1', 'c2', 'c3'], answer: 3, why: 'w', ced: '3.1', skill: 1 }
+  ];
+  let seed = 7;
+  const rng = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const out = Arcade.shuffledExam(items, rng);
+  assert.equal(out.length, 3);
+  assert.deepEqual(out.map((q) => q.stem).sort(), ['a', 'b', 'c']);
+  out.forEach((q) => {
+    const src = items.find((i) => i.stem === q.stem);
+    assert.equal(q.choices[q.answer], src.choices[src.answer], q.stem + ' keeps its right answer');
+    assert.deepEqual(q.choices.slice().sort(), src.choices.slice().sort(), q.stem + ' keeps all four choices');
+    assert.equal(q.why, 'w');
+  });
+  assert.deepEqual(items[0].choices, ['a0', 'a1', 'a2', 'a3'], 'the source is untouched');
+  assert.equal(items[0].answer, 2);
+  // over many shuffles every letter and every position comes up
+  const seen = new Set();
+  for (let k = 0; k < 60; k += 1) Arcade.shuffledExam(items, rng).forEach((q, i) => seen.add(q.stem + i + ':' + q.answer));
+  assert.ok(seen.size > 20, 'the order really moves: ' + seen.size);
+  assert.deepEqual(Arcade.shuffledExam([]), []);
+  assert.deepEqual(Arcade.shuffled([1, 2, 3], () => 0), [2, 3, 1]);
+});
+
+test('slam is a safe no-op without a document', () => {
+  Arcade.slam('BOSS');
+  Arcade.slam('FOMC · HOLD', { sfx: null, ms: 10 });
+});

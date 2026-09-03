@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="shared/arcade.css?v=20260903b">
+<link rel="stylesheet" href="shared/arcade.css?v=20260903c">
 </head>
 <body>
 
@@ -41,6 +41,8 @@
       <button type="button" class="btn btn-ghost" id="bigTypeBtn" aria-label="Arcade Night big-type mode" aria-pressed="false">📺</button>
     </div>
     <span class="title-chip" id="titleChip"></span>
+    <!-- The one tap a returning student needs: the level the readiness map says to play next. -->
+    <a class="btn btn-block play-next" id="playNextTop" href="games/shift-happens.html?level=1"><span>▶ Play this next</span><span class="play-next-label" id="playNextTopLabel">Shift Happens · Level 1</span></a>
   </div>
 
   <section class="stack games" aria-labelledby="playTitle">
@@ -174,8 +176,8 @@
 if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
 </script>
 
-<script src="shared/arcade.js?v=20260903b"></script>
-<script src="shared/leaderboard.js?v=20260903b"></script>
+<script src="shared/arcade.js?v=20260903c"></script>
+<script src="shared/leaderboard.js?v=20260903c"></script>
 <script>
 /* ================================================================================
    THE HUB — the one page students bookmark. Sections: elements · game cards ·
@@ -434,6 +436,8 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
 
   function renderReadiness() {
     var r = Arcade.readiness();
+    byId('playNextTop').href = r.playNext.url;           // the same recommendation, one tap from the top
+    byId('playNextTopLabel').textContent = r.playNext.label;
     readinessBody.textContent = '';
 
     var grid = fill('heat');

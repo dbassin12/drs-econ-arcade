@@ -16,11 +16,11 @@ function content() {
   const block = blocks.map((b) => b.replace(/^<script>|<\/script>$/g, '')).find((b) => /const DECKS = /.test(b));
   assert.ok(block, 'the content block exists');
   const sandbox = { self: {}, top: {}, document: { documentElement: {} } };
-  vm.runInNewContext(block + '\n;this.__out = { DECKS, TIMING, HOWTO, INTRO };', sandbox);
+  vm.runInNewContext(block + '\n;this.__out = { DECKS, TIMING, HOWTO, INTRO, JUICE };', sandbox);
   return sandbox.__out;
 }
 
-const { DECKS, TIMING, HOWTO, INTRO } = content();
+const { DECKS, TIMING, HOWTO, INTRO, JUICE } = content();
 
 test('four decks, numbered in order, each with two bins and a CED tag', () => {
   assert.equal(DECKS.length, 4);
@@ -84,4 +84,9 @@ test('the how-to and the intro explain the game before it starts', () => {
   HOWTO.forEach((card) => assert.ok(card.emoji && card.head && card.body));
   assert.ok(INTRO.length === 3);
   INTRO.forEach((line) => assert.ok(line.emoji && line.text.length > 40));
+});
+
+test('the streak call-outs and the stamp are copy in JUICE, not buried in the code', () => {
+  [3, 6, 9].forEach((n) => assert.ok(typeof JUICE.streak[n] === 'string' && JUICE.streak[n].length > 3, 'a call-out at ' + n));
+  assert.ok(typeof JUICE.lightning === 'string' && JUICE.lightning.length > 2);
 });

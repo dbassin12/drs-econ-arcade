@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
 </head>
 <body>
 
@@ -31,7 +31,8 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
    A crisis is { n, id, name, country, blurb, ced, start (state overrides), election (turn),
    turns[12]: { headline, shock } }.  A shock may carry gap, pi, exp, e, reserves, pop,
    pressure (on the currency), bank ('hike' | 'cut' — what an independent bank does on its
-   own).  Advisors speak from the state: the first line whose `when` holds is said.
+   own).  Advisors speak from the state: the first entry whose `when` holds is said; an entry
+   whose `line` is a list says one of them at random, so the catch-alls do not repeat.
    ================================================================================ */
 const KIND_CED = { fiscal: '3.8', monetary: '4.6', exchange: '6.4', trade: '6.2', imf: '6.6', none: '3.7' };
 
@@ -122,16 +123,16 @@ const CRISES = [
 const ADVISORS = [
   { who: 'The Hawk', when: ['pi', '>=', 10], line: 'Inflation is the emergency. Every card that adds demand adds to it — tighten, and stop the presses.' },
   { who: 'The Hawk', when: ['reserves', '<', 2], line: 'Reserves are nearly gone. Whatever holds the currency now, do that: controls, the Fund, or let it float.' },
-  { who: 'The Hawk', when: ['pi', '>', 5], line: 'Prices are still running. Anything expansionary now shows up as inflation, not jobs.' },
+  { who: 'The Hawk', when: ['pi', '>', 5], line: ['Prices are still running. Anything expansionary now shows up as inflation, not jobs.', 'Five percent is not a rounding error. Tighten before the unions write it into the contracts.'] },
   { who: 'The Hawk', when: ['debt', '>', 90], line: 'Lenders are watching the debt. A smaller deficit buys us the room to act later.' },
   { who: 'The Hawk', when: ['gap', '<', -2], line: 'The gap is real, but so is the bill. If you spend, spend on something that raises potential.' },
-  { who: 'The Hawk', when: ['gap', '>=', -99], line: 'Hold course. Wages and prices are adjusting; do not undo it.' },
-  { who: 'The Populist', when: ['u', '>=', 8], line: 'Eight in a hundred are out of work. Spend, cut taxes, do something they can see.' },
+  { who: 'The Hawk', when: ['gap', '>=', -99], line: ['Hold course. Wages and prices are adjusting; do not undo it.', 'Nothing on this desk needs a card today. Let the price mechanism work.', 'Every card has a bill attached. Sit on your hands this turn.'] },
+  { who: 'The Populist', when: ['u', '>=', 8], line: ['Eight in a hundred are out of work. Spend, cut taxes, do something they can see.', 'Eight percent unemployment loses elections. Public works, and a ribbon to cut.'] },
   { who: 'The Populist', when: ['pop', '<', 40], line: 'We are losing the country. Whatever you pick, it had better be popular by election day.' },
   { who: 'The Populist', when: ['pi', '>=', 10], line: 'People cannot eat austerity. Index the wages and keep the lights on.' },
-  { who: 'The Populist', when: ['gap', '<', -1], line: 'Idle factories, idle people. Public works put both to use.' },
+  { who: 'The Populist', when: ['gap', '<', -1], line: ['Idle factories, idle people. Public works put both to use.', 'Cut taxes and let them spend it; the multiplier does the rest.'] },
   { who: 'The Populist', when: ['e', '<', 85], line: 'A cheap currency is a gift to exporters — sell it that way.' },
-  { who: 'The Populist', when: ['gap', '>=', -99], line: 'Tariffs poll well. Foreigners can pay for a change.' }
+  { who: 'The Populist', when: ['gap', '>=', -99], line: ['Tariffs poll well. Foreigners can pay for a change.', 'Do something visible. Nobody re-elects a minister who waited.', 'A photo with a shovel beats a lecture on lags.'] }
 ];
 
 /* The Exit Exam draws three of these from the cards the minister actually played. */
@@ -178,6 +179,15 @@ const INTRO = [
   { emoji: '\u{1F393}', text: 'Every card you play flips to its FRQ chain: G↑ → AD→right → PL↑, Y↑, u↓, and the FOREX leg when there is one. The model underneath is the AD–AS and FOREX model you draw in class.' },
   { emoji: '\u{1F3AE}', text: 'Advisors argue, the IMF has conditions, and an election is coming. The Exit Exam at the end is the only multiple choice.' }
 ];
+
+/* ================================================================================
+   JUICE — the call-outs for a run of turns that moved the country closer to stable, keyed by
+   its length, and election day's entrance. Copy, not logic.
+   ================================================================================ */
+const JUICE = {
+  streak: { 3: '🔥 Three turns closer to stable', 6: '🔥🔥 Six straight closer', 9: '🔥🔥🔥 Nine straight · a steady hand' },
+  election: '🗳 ELECTION DAY'
+};
 </script>
 
 <main class="app" id="app">
@@ -282,9 +292,9 @@ const INTRO = [
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903b"></script>
-<script src="../shared/leaderboard.js?v=20260903b"></script>
-<script src="crisis.model.js?v=20260903b"></script>
+<script src="../shared/arcade.js?v=20260903c"></script>
+<script src="../shared/leaderboard.js?v=20260903c"></script>
+<script src="crisis.model.js?v=20260903c"></script>
 
 <script>
 /* ================================================================================
@@ -507,7 +517,7 @@ const INTRO = [
       if (a.who !== who) continue;
       var v = s[a.when[0]], op = a.when[1], x = a.when[2];
       var ok = op === '>' ? v > x : op === '>=' ? v >= x : op === '<' ? v < x : op === '<=' ? v <= x : v === x;
-      if (ok) return a.line;
+      if (ok) return Array.isArray(a.line) ? a.line[Math.floor(Math.random() * a.line.length)] : a.line;   // an advisor with more than one line does not repeat himself every turn
     }
     return '';
   }
@@ -678,6 +688,7 @@ const INTRO = [
     electionTag.textContent = isElection ? '🗳 Election' : C.election > i + 1 ? '🗳 in ' + (C.election - i - 1) : '';
     paintDash(s, run.prev);
     headlineEl.textContent = (isElection ? '🗳 ' : '📰 ') + t.headline;
+    if (isElection) Arcade.slam(JUICE.election, { sfx: 'boss' });
     advisor1.innerHTML = '';
     var h1 = document.createElement('b'); h1.textContent = 'Hawk: '; advisor1.appendChild(h1); advisor1.appendChild(document.createTextNode(advice(s, 'The Hawk')));
     advisor2.innerHTML = '';
@@ -707,6 +718,7 @@ const INTRO = [
     var closer = distance(next) < distance(s) - 0.01 || M.stable(next).ok;
     run.asked += 1;
     if (closer) run.correct += 1;
+    run.closerRun = closer ? (run.closerRun || 0) + 1 : 0;
     Arcade.track(KIND_CED[card.kind] || '3.7', 2, closer);
     paintDash(next, s);
     var st = M.stable(next);
@@ -714,6 +726,8 @@ const INTRO = [
     var broke = next.broke && !s.broke ? ' The peg broke: reserves hit zero.' : '';
     var read = (closer ? '▲ Closer to stable' : '▼ Further from stable') + ' · inflation ' + next.pi.toFixed(1) + '% · unemployment ' + next.u.toFixed(1) + '% · reserves ' + next.reserves.toFixed(1) + ' mo';
     Arcade.sfx.play(closer ? 'correct' : 'wrong');
+    var beat = closer && JUICE.streak[run.closerRun];
+    if (beat) Arcade.toast(beat, 1600);
     paintSheet(closer ? 'correct' : 'wrong', read, (st.ok ? 'Stable on every count.' : 'Still off: ' + [!st.inflation ? 'inflation' : '', !st.jobs ? 'unemployment' : '', !st.reserves ? 'reserves' : ''].filter(Boolean).join(', ') + '.') + bankLine + broke, false);
     await readBeat(RESULT_MS);
     if (!alive(token)) return;
@@ -730,7 +744,7 @@ const INTRO = [
     if (pool.length < 3) pool = EXAM_ITEMS.slice();
     var out = [];
     while (out.length < 3 && pool.length) { var k = Math.floor(Math.random() * pool.length); out.push(pool.splice(k, 1)[0]); }
-    return out;
+    return Arcade.shuffledExam(out);   // a fresh order of choices too
   }
 
   /** @param {any} q @param {number} index @param {number} total @param {number} token @returns {Promise<boolean>} */

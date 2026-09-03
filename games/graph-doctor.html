@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
 </head>
 <body>
 
@@ -148,6 +148,15 @@ const INTRO = [
   { emoji: '\u{1F393}', text: 'Every error you find heals into the correct drawing with the sentence that earns the point, so the eye you train is the grader’s.' },
   { emoji: '\u{1F3AE}', text: 'Three wards of five charts, hearts and a streak, a grand-rounds finale. The Exam Sprint at the end is the only multiple choice.' }
 ];
+
+/* ================================================================================
+   JUICE — the streak call-outs, keyed by the run length that earns them, and grand rounds' entrance.
+   Copy, not logic.
+   ================================================================================ */
+const JUICE = {
+  streak: { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' },
+  rounds: '👑 GRAND ROUNDS'
+};
 </script>
 
 <main class="app" id="app">
@@ -260,9 +269,9 @@ const INTRO = [
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903b"></script>
-<script src="../shared/leaderboard.js?v=20260903b"></script>
-<script src="../shared/graph.js?v=20260903b"></script>
+<script src="../shared/arcade.js?v=20260903c"></script>
+<script src="../shared/leaderboard.js?v=20260903c"></script>
+<script src="../shared/graph.js?v=20260903c"></script>
 
 <script>
 /* ================================================================================
@@ -553,7 +562,13 @@ const INTRO = [
     graph = ArcadeGraph.create(graphWrap, { market: market });
     graph.lock();
     var parts = partsOf(graph.el);
-    var pool = LESIONS[market].map(function (l) { return { l: l, w: Arcade.cardWeight(l.ced) }; });
+    // A ward draws each market's lesions fresh first, so one error is not planted twice in a run while
+    // others are waiting; once a market is used up, everything in it is fresh again.
+    var used = run && run.used ? run.used : {};
+    var fresh = LESIONS[market].filter(function (l) { return !used[l.id]; });
+    var source = fresh.length > count ? fresh : LESIONS[market];
+    if (source !== fresh) LESIONS[market].forEach(function (l) { delete used[l.id]; });
+    var pool = source.map(function (l) { return { l: l, w: Arcade.cardWeight(l.ced) }; });
     var picked = [];
     var slots = {};
     var guard = 0;
@@ -565,6 +580,7 @@ const INTRO = [
       var planted = plant(one.l, parts);
       if (!planted) continue;
       slots[slotOf(one.l)] = true;
+      used[one.l.id] = true;
       picked.push({ lesion: one.l, target: planted.target, undo: planted.undo, found: false });
     }
     var targets = targetsOf(market, parts);
@@ -808,8 +824,8 @@ const INTRO = [
   function streakUp() {
     run.streak.hit();
     run.bestStreak = Math.max(run.bestStreak, run.streak.count);
-    var lines = { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' };
-    if (lines[run.streak.count]) Arcade.toast(lines[run.streak.count], 1400);
+    var line = JUICE.streak[run.streak.count];
+    if (line) Arcade.toast(line, 1400);
   }
 
   /** The ward's patients: markets in turn, the last chart carrying one extra lesion. @param {any} W @returns {{market:string, count:number}[]} */
@@ -943,8 +959,9 @@ const INTRO = [
     examSubEl.textContent = 'Ward ' + W.n + ' · ' + W.name;
     hideSheet();
     var right = 0;
-    for (var i = 0; i < W.exam.length; i += 1) {
-      var ok = await askQuestion(W.exam[i], i, W.exam.length, token);
+    var items = Arcade.shuffledExam(W.exam);   // never the same three in the same order with the same letter
+    for (var i = 0; i < items.length; i += 1) {
+      var ok = await askQuestion(items[i], i, items.length, token);
       if (!examAlive(token)) return;
       if (ok) right += 1;
     }
@@ -995,14 +1012,14 @@ const INTRO = [
   async function playWard(W) {
     runToken += 1;
     var token = runToken;
-    run = { W: W, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(), score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, missed: [] };
+    run = { W: W, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(), score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, missed: [], used: {} };
     run.streak.render(comboEl);
     scoreEl.textContent = '0';
     hideSheet();
     var plans = schedule(W);
     for (var i = 0; i < plans.length; i += 1) {
       var boss = i === plans.length - 1;
-      if (boss) { Arcade.sfx.play('boss'); Arcade.toast('👑 Grand rounds', 1200); await wait(500); if (!alive(token)) return; }
+      if (boss) { Arcade.sfx.play('boss'); Arcade.slam(JUICE.rounds); await wait(700); if (!alive(token)) return; }
       await playChart(plans[i], i, plans.length, boss, token);
       if (!alive(token)) return;
       if (run.hearts.get() === 0) { showFail(W); return; }

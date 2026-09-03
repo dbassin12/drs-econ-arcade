@@ -640,6 +640,34 @@ var Arcade = (function () {
     return out;
   }
 
+  /* ===== EXAM SHUFFLE — the same three items in the same order with the same letter every replay is
+     a pattern a student learns instead of the economics ===== */
+
+  /** Fisher-Yates on a copy. @param {any[]} list @param {() => number} [rng] default Math.random @returns {any[]} */
+  function shuffled(list, rng) {
+    var random = rng || Math.random;
+    var a = (list || []).slice();
+    for (var i = a.length - 1; i > 0; i -= 1) {
+      var j = Math.floor(random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  /** The exam's items in a fresh order, each a copy with its choices in a fresh order and `answer`
+   *  still pointing at the right one. The items themselves are never touched.
+   *  @param {{stem:string, choices:string[], answer:number}[]} items @param {() => number} [rng]
+   *  @returns {any[]} */
+  function shuffledExam(items, rng) {
+    return shuffled(items, rng).map(function (q) {
+      var order = shuffled(q.choices.map(function (c, i) { return i; }), rng);
+      var copy = Object.assign({}, q);
+      copy.choices = order.map(function (i) { return q.choices[i]; });
+      copy.answer = order.indexOf(q.answer);
+      return copy;
+    });
+  }
+
   /** @param {string} s */
   function b64encode(s) { return typeof btoa === 'function' ? btoa(s) : s; }
   /** @param {string} s */
@@ -1417,6 +1445,34 @@ var Arcade = (function () {
     for (var i = 0; i < btns.length; i += 1) btns[i].addEventListener('click', debounced(openSwitcher));
   }
 
+  /* ===== THE SLAM — a stamp that lands over the screen and leaves: BOSS, ⚡ LIGHTNING, FOMC 5.25 % ===== */
+
+  /** @type {any} */ var slamMount = null;
+  /** @type {any} */ var slamText = null;
+  var slamTimer = 0;
+
+  /** @param {string} text @param {{ms?:number, sfx?:string|null}} [opts] `sfx` defaults to the stamp; null for none */
+  function slam(text, opts) {
+    if (typeof document === 'undefined' || !document.body) return;
+    var o = opts || {};
+    if (!slamMount) {
+      slamMount = make('fomc-mount');
+      slamMount.setAttribute('aria-hidden', 'true');
+      slamMount.hidden = true;
+      slamText = make('fomc-stamp');
+      slamMount.appendChild(slamText);
+      document.body.appendChild(slamMount);
+    }
+    slamText.textContent = text;
+    slamText.classList.remove('slam');
+    slamMount.hidden = false;
+    void slamText.offsetWidth;            // restart the slam on a stamp that is already mounted
+    slamText.classList.add('slam');
+    if (o.sfx !== null) play(o.sfx === undefined ? 'stamp' : o.sfx);
+    if (slamTimer) clearTimeout(slamTimer);
+    slamTimer = setTimeout(function () { slamMount.hidden = true; }, o.ms === undefined ? 700 : o.ms);
+  }
+
   /** @param {string} msg @param {number} [ms] default 1800 @returns {any} the toast, or null off-browser */
   function toast(msg, ms) {
     if (typeof document === 'undefined' || !document.body) return null;
@@ -1547,6 +1603,7 @@ var Arcade = (function () {
     sfx: sfx, voice: voice, say: say,
     track: track, readiness: readiness, readinessCode: readinessCode, decodeReadinessCode: decodeReadinessCode,
     MIN_UNIT_ITEMS: MIN_UNIT_ITEMS, WEIGHT_MIN_ITEMS: WEIGHT_MIN_ITEMS, cardWeight: cardWeight, weightedSample: weightedSample,
+    shuffled: shuffled, shuffledExam: shuffledExam, slam: slam,
     copyText: copyText, CED_NAMES: CED_NAMES, UNIT_NAMES: UNIT_NAMES, CED_TO_LEVEL: CED_TO_LEVEL,
     SPRING: SPRING, prefersReducedMotion: prefersReducedMotion, spring: spring,
     confetti: confetti, shake: shake, flash: flash,

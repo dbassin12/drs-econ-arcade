@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903b">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
 </head>
 <body>
 
@@ -43,28 +43,28 @@ const ASSETS = [
 const SCENARIOS = [
   { n: 1, name: 'Soft Landing', blurb: 'A calm Fed eases as inflation cools — can you ride the cuts?', fed: { name: 'Chair Calm', style: 'reads the data, moves a quarter point at a time' }, rate0: 5.0, highInflation: false,
     quarters: [
-      { news: 'Inflation cools to 3.4%; hiring steady', signal: { text: 'Whispers: the Fed holds this meeting', lean: 'hold', reliable: true }, dRate: 0, inflation: 3.4, growth: 2.0 },
-      { news: 'Wage growth slows; retailers cautious', signal: { text: 'A governor hints a cut is “coming soon”', lean: 'cut', reliable: false }, dRate: 0, inflation: 3.0, growth: 1.8 },
+      { news: 'Inflation cools to 3.4%; Central Avenue is hiring', signal: { text: 'Whispers: the Fed holds this meeting', lean: 'hold', reliable: true }, dRate: 0, inflation: 3.4, growth: 2.0 },
+      { news: 'Wage growth slows; Cedarhurst shops go slow on hiring', signal: { text: 'A governor hints a cut is “coming soon”', lean: 'cut', reliable: false }, dRate: 0, inflation: 3.0, growth: 1.8 },
       { news: 'Core inflation down to 2.8%', signal: { text: 'Markets price a quarter-point cut', lean: 'cut', reliable: true }, dRate: -0.25, inflation: 2.8, growth: 1.9 },
       { news: 'Unemployment ticks up to 4.3%', signal: { text: 'Dovish minutes: another cut likely', lean: 'cut', reliable: true }, dRate: -0.25, inflation: 2.6, growth: 1.5 },
-      { news: 'Stocks rally on cheaper money', signal: { text: 'A pause while the cuts work through', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.5, growth: 2.2, shock: 'rally' },
+      { news: 'Stocks rally on cheaper money; Lawrence 401(k)s cheer', signal: { text: 'A pause while the cuts work through', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.5, growth: 2.2, shock: 'rally' },
       { news: 'Oil dips; inflation 2.3%', signal: { text: 'Hawkish op-ed: “the Fed is done cutting”', lean: 'hold', reliable: false }, dRate: -0.25, inflation: 2.3, growth: 2.4 },
-      { news: 'Housing starts jump as mortgage rates fall', signal: { text: 'Hold expected', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.4, growth: 2.6, shock: 'housingBoom' },
+      { news: 'Mortgage rates fall; Woodmere open houses have lines', signal: { text: 'Hold expected', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.4, growth: 2.6, shock: 'housingBoom' },
       { news: 'Growth 2.8%; inflation steady', signal: { text: 'Hike whispers if growth runs hot', lean: 'hike', reliable: false }, dRate: 0, inflation: 2.5, growth: 2.8 },
       { news: 'Inflation 2.2%: on target', signal: { text: 'A final cut is telegraphed', lean: 'cut', reliable: true }, dRate: -0.25, inflation: 2.2, growth: 2.5 },
-      { news: 'Calm markets, steady jobs', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.1, growth: 2.3 },
+      { news: 'Calm markets, steady jobs, quiet LIRR platforms', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.1, growth: 2.3 },
       { news: 'A soft patch: growth 1.6%', signal: { text: 'Cut chatter returns on the soft data', lean: 'cut', reliable: false }, dRate: 0, inflation: 2.0, growth: 1.6 },
       { news: 'The landing sticks', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.0, growth: 2.2 }
     ] },
   { n: 2, name: 'Inflation Scare', blurb: 'Prices take off and a hawk takes the chair — protect your real value', fed: { name: 'Chair Hawk', style: 'moves early and moves big' }, rate0: 2.0, highInflation: true,
     quarters: [
-      { news: 'Prices jump 6.1% on supply snarls', signal: { text: 'Hawkish speech: “we will act”', lean: 'hike', reliable: true }, dRate: 0.5, inflation: 6.1, growth: 2.5 },
-      { news: 'Inflation 7.0%; rents surge', signal: { text: 'Dovish whisper: “it’s transitory”', lean: 'hold', reliable: false }, dRate: 0.75, inflation: 7.0, growth: 2.0 },
+      { news: 'Prices jump 6.1%; the bagel index makes page one', signal: { text: 'Hawkish speech: “we will act”', lean: 'hike', reliable: true }, dRate: 0.5, inflation: 6.1, growth: 2.5 },
+      { news: 'Inflation 7.0%; Hewlett rents surge', signal: { text: 'Dovish whisper: “it’s transitory”', lean: 'hold', reliable: false }, dRate: 0.75, inflation: 7.0, growth: 2.0 },
       { news: 'Inflation peaks near 8%', signal: { text: 'Another big hike telegraphed', lean: 'hike', reliable: true }, dRate: 0.75, inflation: 7.8, growth: 1.2 },
-      { news: 'Mortgage rates hit 7%; home sales stall', signal: { text: 'Hike expected', lean: 'hike', reliable: true }, dRate: 0.5, inflation: 7.2, growth: 0.5, shock: 'housingBust' },
+      { news: 'Mortgage rates hit 7%; Five Towns closings stall', signal: { text: 'Hike expected', lean: 'hike', reliable: true }, dRate: 0.5, inflation: 7.2, growth: 0.5, shock: 'housingBust' },
       { news: 'Stocks crater as earnings warnings pile up', signal: { text: 'Rumor: the Fed pauses to calm markets', lean: 'hold', reliable: false }, dRate: 0.25, inflation: 6.5, growth: -0.5, shock: 'crash' },
       { news: 'Flight to safety: Treasuries rally', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 5.8, growth: -1.0, shock: 'flight' },
-      { news: 'Inflation 5.0%; unemployment 5.5%', signal: { text: 'One last small hike', lean: 'hike', reliable: true }, dRate: 0.25, inflation: 5.0, growth: 0.0 },
+      { news: 'Inflation 5.0%; Inwood warehouses cut a shift', signal: { text: 'One last small hike', lean: 'hike', reliable: true }, dRate: 0.25, inflation: 5.0, growth: 0.0 },
       { news: 'Inflation 4.2%', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 4.2, growth: 0.8 },
       { news: 'Inflation 3.6%; stocks find a floor', signal: { text: 'Whispers of a cut', lean: 'cut', reliable: false }, dRate: 0, inflation: 3.6, growth: 1.5, shock: 'rally' },
       { news: 'Inflation 3.1%', signal: { text: 'Cut likely', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 3.1, growth: 1.8 },
@@ -73,18 +73,18 @@ const SCENARIOS = [
     ] },
   { n: 3, name: 'Recession & Rescue', blurb: 'A crash, a dove at the Fed, and a recovery to catch', fed: { name: 'Chair Dove', style: 'cuts first and asks later' }, rate0: 4.5, highInflation: false,
     quarters: [
-      { news: 'Factory orders fall; layoffs begin', signal: { text: 'Emergency-cut talk', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 2.0, growth: -1.0 },
+      { news: 'Factory orders fall; the Inwood yards start layoffs', signal: { text: 'Emergency-cut talk', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 2.0, growth: -1.0 },
       { news: 'Stocks plunge 15% in a week', signal: { text: 'Another cut', lean: 'cut', reliable: true }, dRate: -0.75, inflation: 1.8, growth: -2.5, shock: 'crash' },
-      { news: 'Home prices slide', signal: { text: 'Cut', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 1.2, growth: -2.0, shock: 'housingBust' },
-      { news: 'Unemployment 7%', signal: { text: 'The Fed says it is “near the floor”', lean: 'hold', reliable: false }, dRate: -0.25, inflation: 1.0, growth: -1.0 },
+      { news: 'Home prices slide from Hewlett to Inwood', signal: { text: 'Cut', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 1.2, growth: -2.0, shock: 'housingBust' },
+      { news: 'Unemployment 7%; Lawrence High freezes hiring', signal: { text: 'The Fed says it is “near the floor”', lean: 'hold', reliable: false }, dRate: -0.25, inflation: 1.0, growth: -1.0 },
       { news: 'Green shoots: orders stabilize', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 1.0, growth: 0.5 },
       { news: 'Stocks roar back', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 1.3, growth: 2.5, shock: 'rally' },
-      { news: 'Housing recovers on cheap mortgages', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 1.6, growth: 3.2, shock: 'housingBoom' },
+      { news: 'Cheap mortgages: Woodmere builders pour foundations', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 1.6, growth: 3.2, shock: 'housingBoom' },
       { news: 'Growth 3.5%: hike talk begins', signal: { text: 'Hike whispers', lean: 'hike', reliable: false }, dRate: 0, inflation: 2.0, growth: 3.5 },
       { news: 'Inflation 2.4%', signal: { text: 'First hike', lean: 'hike', reliable: true }, dRate: 0.25, inflation: 2.4, growth: 3.0 },
       { news: 'Inflation 2.6%', signal: { text: 'Hike', lean: 'hike', reliable: true }, dRate: 0.25, inflation: 2.6, growth: 2.8 },
       { news: 'Steady as she goes', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.4, growth: 2.5 },
-      { news: 'Normal again', signal: { text: 'One more hike', lean: 'hike', reliable: false }, dRate: 0, inflation: 2.3, growth: 2.3 }
+      { news: 'Normal again on Central Avenue', signal: { text: 'One more hike', lean: 'hike', reliable: false }, dRate: 0, inflation: 2.3, growth: 2.3 }
     ] }
 ];
 
@@ -146,6 +146,15 @@ const INTRO = [
   { emoji: '\u{1F393}', text: 'The rules are the exam’s: bond prices move inverse to rates, a nominal return is not a real one, and policy reaches you through the rates you borrow and save at. Every quarter closes with the sentence that earns the point.' },
   { emoji: '\u{1F3AE}', text: 'Three Fed chairs, three stories. Your score is what your money is really worth at the end. The Exit Exam is the only multiple choice.' }
 ];
+
+/* ================================================================================
+   JUICE — the call-outs for a run of quarters ahead of cash, keyed by its length, and the
+   FOMC stamp that slams over the board when the Fed speaks. Copy, not logic.
+   ================================================================================ */
+const JUICE = {
+  streak: { 3: '🔥 Three quarters ahead of cash', 6: '🔥🔥 Six straight ahead of cash', 9: '🔥🔥🔥 Nine straight · you can read this Fed', 12: '🏆 Twelve for twelve ahead of cash' },
+  fomc: { hold: 'FOMC · HOLD', hike: 'FOMC +', cut: 'FOMC −' }
+};
 </script>
 
 <main class="app" id="app">
@@ -255,9 +264,9 @@ const INTRO = [
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903b"></script>
-<script src="../shared/leaderboard.js?v=20260903b"></script>
-<script src="investor.model.js?v=20260903b"></script>
+<script src="../shared/arcade.js?v=20260903c"></script>
+<script src="../shared/leaderboard.js?v=20260903c"></script>
+<script src="investor.model.js?v=20260903c"></script>
 
 <script>
 /* ================================================================================
@@ -687,11 +696,14 @@ const INTRO = [
     run.lessons[lessonId] = true;
     run.asked += 1;
     if (beatCash) run.correct += 1;
+    run.beatRun = beatCash ? (run.beatRun || 0) + 1 : 0;
     Arcade.track(lesson.ced, lesson.skill, beatCash);
     fedLine.textContent = fedSays(q, S) + ' · ' + whisperVerdict(src);
+    // the announcement: the FOMC stamp slams over the board before a single bucket moves
+    Arcade.slam(q.dRate === 0 ? JUICE.fomc.hold : (q.dRate > 0 ? JUICE.fomc.hike : JUICE.fomc.cut) + Math.abs(q.dRate).toFixed(2), { sfx: null });
     Arcade.sfx.play(q.dRate > 0 ? 'wrong' : q.dRate < 0 ? 'coin' : 'stamp');
     if (Arcade.voice.enabled) Arcade.say(fedSays(q, S).replace('🏛️ ', ''), { who: 'chair' });
-    await wait(450);
+    await wait(700);
     if (!alive(token)) return;
     paintReturns(result.returns);
     run.state = { value: result.value, priceLevel: result.priceLevel, cdRate: result.cdRate };
@@ -699,6 +711,8 @@ const INTRO = [
     paintBoard(run.state.value);
     paintTotals(run.state);
     Arcade.sfx.play(result.realPct >= 0 ? 'correct' : 'wrong');
+    var beat = beatCash && JUICE.streak[run.beatRun];
+    if (beat) Arcade.toast(beat, 1600);
     var head = (result.nominalPct >= 0 ? '▲ ' : '▼ ') + pct(result.nominalPct) + ' nominal · ' + pct(result.realPct) + ' real' + (q.shock ? ' · ' + shockName(q.shock) : '');
     paintSheet(result.realPct >= 0 ? 'correct' : 'wrong', head, lesson.why, false);
     await readBeat(REVEAL_MS);
@@ -719,7 +733,7 @@ const INTRO = [
     if (pool.length < 3) pool = EXAM_ITEMS.slice();
     var out = [];
     while (out.length < 3 && pool.length) { var k = Math.floor(Math.random() * pool.length); out.push(pool.splice(k, 1)[0]); }
-    return out;
+    return Arcade.shuffledExam(out);   // a fresh order of choices too
   }
 
   /** @param {any} q @param {number} index @param {number} total @param {number} token @returns {Promise<boolean>} */

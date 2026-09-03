@@ -19,7 +19,7 @@ function content() {
   const block = blocks.map((b) => b.replace(/^<script>|<\/script>$/g, '')).find((b) => /const RUNG_KINDS = /.test(b));
   assert.ok(block, 'the content block exists');
   const sandbox = { self: {}, top: {}, document: { documentElement: {} } };
-  vm.runInNewContext(block + '\n;this.__out = { RUNG_KINDS, LADDERS, TIMING, HOWTO, INTRO };', sandbox);
+  vm.runInNewContext(block + '\n;this.__out = { RUNG_KINDS, LADDERS, TIMING, HOWTO, INTRO, JUICE };', sandbox);
   return sandbox.__out;
 }
 
@@ -29,7 +29,7 @@ function lcg(seed) {
   return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
 }
 
-const { RUNG_KINDS, LADDERS, TIMING, HOWTO, INTRO } = content();
+const { RUNG_KINDS, LADDERS, TIMING, HOWTO, INTRO, JUICE } = content();
 
 /** @param {number} v @param {{min:number, max:number, step:number}} d @returns {boolean} */
 function onGrid(v, d) {
@@ -115,4 +115,9 @@ test('the how-to and the intro explain the game before it starts', () => {
   HOWTO.forEach((card) => assert.ok(card.emoji && card.head && card.body));
   assert.equal(INTRO.length, 3);
   INTRO.forEach((line) => assert.ok(line.emoji && line.text.length > 40));
+});
+
+test('the streak call-outs and the stamp are copy in JUICE, not buried in the code', () => {
+  [3, 6, 9].forEach((n) => assert.ok(typeof JUICE.streak[n] === 'string' && JUICE.streak[n].length > 3, 'a call-out at ' + n));
+  assert.ok(typeof JUICE.boss === 'string' && JUICE.boss.length > 2);
 });
