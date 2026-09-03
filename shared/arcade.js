@@ -546,6 +546,54 @@ var Arcade = (function () {
     return { answered: answered, units: units, weakest: weakest, band: band, playNext: playNext(weakest ? weakest.ced : null) };
   }
 
+  /* ===== ADAPTIVE DRAW — a pool weighted by what the tracker says is weak ===== */
+
+  /** Items a topic needs before its accuracy is allowed to steer the draw. Two answers is a coin
+   *  toss; three is the same floor the hub's "weakest topic" uses. */
+  var WEIGHT_MIN_ITEMS = 3;
+
+  /** How much a card should want to be drawn: neutral for a topic with too little data, up to
+   *  two and a half times for a topic the student keeps missing, half for one they own. Read off
+   *  arcade.mastery, so a replay of a level drills its weakest topics without anyone choosing to.
+   *  @param {string} ced @param {Record<string, {right:number, total:number}>} [mastery] defaults to the store
+   *  @returns {number} 0.5–2.5 */
+  function cardWeight(ced, mastery) {
+    var m = mastery || store.get('arcade.mastery', {}) || {};
+    var entry = m[ced];
+    var total = entry ? Math.max(0, Number(entry.total) || 0) : 0;
+    if (total < WEIGHT_MIN_ITEMS) return 1;
+    var acc = clamp01(Math.max(0, Number(entry.right) || 0) / total);
+    return 0.5 + 2 * (1 - acc);
+  }
+
+  /** Draw `count` items without replacement, each pick in proportion to its weight. An item with
+   *  no positive weight is never drawn; asking for more than there are returns what there is.
+   *  @param {any[]} items @param {number[]} weights parallel to `items`
+   *  @param {number} count @param {() => number} [rng] a 0–1 source, default Math.random
+   *  @returns {any[]} */
+  function weightedSample(items, weights, count, rng) {
+    var random = rng || Math.random;
+    var pool = items.map(function (item, i) {
+      var w = Number(weights && weights[i]);
+      return { item: item, w: w > 0 ? w : 0 };
+    });
+    var out = [];
+    while (out.length < count && pool.length) {
+      var total = 0;
+      for (var i = 0; i < pool.length; i += 1) total += pool[i].w;
+      if (total <= 0) break;
+      var r = random() * total;
+      var k = 0;
+      for (; k < pool.length - 1; k += 1) {
+        r -= pool[k].w;
+        if (r < 0) break;
+      }
+      out.push(pool[k].item);
+      pool.splice(k, 1);
+    }
+    return out;
+  }
+
   /** @param {string} s */
   function b64encode(s) { return typeof btoa === 'function' ? btoa(s) : s; }
   /** @param {string} s */
@@ -1318,7 +1366,7 @@ var Arcade = (function () {
     store: store, initials: initials, setInitials: setInitials, bests: bests, saveBest: saveBest, qs: qs,
     sfx: sfx, voice: voice, say: say,
     track: track, readiness: readiness, readinessCode: readinessCode, decodeReadinessCode: decodeReadinessCode,
-    MIN_UNIT_ITEMS: MIN_UNIT_ITEMS,
+    MIN_UNIT_ITEMS: MIN_UNIT_ITEMS, WEIGHT_MIN_ITEMS: WEIGHT_MIN_ITEMS, cardWeight: cardWeight, weightedSample: weightedSample,
     copyText: copyText, CED_NAMES: CED_NAMES, UNIT_NAMES: UNIT_NAMES, CED_TO_LEVEL: CED_TO_LEVEL,
     SPRING: SPRING, prefersReducedMotion: prefersReducedMotion, spring: spring,
     confetti: confetti, shake: shake, flash: flash,

@@ -146,7 +146,9 @@ const TIMING = {
   cardInSeconds: 0.3,                     // the card's slide-in; the clock waits for it to land
   readGrace: 5,                           // opening seconds of the clock that all pay the full
                                           // speed bonus, so reading the headline costs nothing
-  examSeconds: 70                         // the Exam Sprint stays at the real exam's Section I pace
+  examSeconds: 70,                        // the Exam Sprint stays at the real exam's Section I pace
+  whySeconds: 2                           // how long a right answer's WHY line stays up once the
+                                          // consequence has played; a tap on the graph ends it early
 };
 
 /* ================================================================================
@@ -191,6 +193,15 @@ const TUTORIAL = {
   miss: 'Fatter paychecks mean more consumption spending, so aggregate demand shifts RIGHT, toward more real GDP. Try again.',
   show: 'Watch: AD slides right, and the price level and real GDP both rise. Now you make it.',
   done: 'That is the whole game. From here the clock runs and the hearts count.'
+};
+
+/* ================================================================================
+   JUICE — the streak call-outs, keyed by the run length that earns them, and the
+   boss's entrance. Copy, not logic.
+   ================================================================================ */
+const JUICE = {
+  streak: { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' },
+  boss: 'BOSS'
 };
 </script>
 
@@ -305,10 +316,15 @@ const TUTORIAL = {
 <div class="sheet" id="sheet" role="status">
   <div class="stack">
     <div class="sheet-msg" id="sheetMsg"></div>
+    <!-- the consequence read-out: which way the price level, real GDP and unemployment went -->
+    <div class="row wrap sheet-chips" id="sheetChips" hidden></div>
     <div class="sheet-why" id="sheetWhy"></div>
     <button type="button" class="btn btn-block" id="sheetBtn">Got it</button>
   </div>
 </div>
+
+<!-- The boss's entrance slams over the graph and leaves; the Fed's gavel stamp, borrowed. -->
+<div class="fomc-mount" id="stampMount" hidden aria-hidden="true"><div class="fomc-stamp" id="stampText"></div></div>
 
 <script src="../shared/arcade.js"></script>
 <script src="../shared/graph.js"></script>
@@ -337,6 +353,7 @@ const TUTORIAL = {
   var CARD_IN_MS = TIMING.cardInSeconds * 1000;
   var GRACE_MS = TIMING.readGrace * 1000;
   var EXAM_MS = TIMING.examSeconds * 1000;
+  var WHY_MS = TIMING.whySeconds * 1000;
   var GAP_POINTS = 50;    // what naming the gap is worth, before the streak multiplier
   var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
   var HEARTS = 3;
@@ -384,6 +401,7 @@ const TUTORIAL = {
   var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
   var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
   var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+  var sheetChips = byId('sheetChips'), stampMount = byId('stampMount'), stampText = byId('stampText');
   var kbdRow = byId('kbdRow'), graphRead = byId('graphRead');
   var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), howtoDemoEl = byId('howtoDemo');
   var modeTag = byId('modeTag'), practiceBtn = byId('practiceBtn'), introEl = byId('intro');
@@ -638,8 +656,36 @@ const TUTORIAL = {
    *  @param {any[]} pool @param {number} count @returns {any[]} */
   function drawCards(pool, count) {
     var tricks = shuffled(pool.filter(function (c) { return c.trick; })).slice(0, Math.min(2, count));
-    var rest = shuffled(pool.filter(function (c) { return tricks.indexOf(c) < 0; }));
-    return shuffled(tricks.concat(rest).slice(0, count));
+    // The rest are drawn by weight: a topic the tracker has seen this student miss comes up more
+    // often, one they own comes up less, so a replay is a drill of what needs it. Two trick cards
+    // are still guaranteed, because the trap is the level's point.
+    var rest = pool.filter(function (c) { return tricks.indexOf(c) < 0; });
+    var weights = rest.map(function (c) { return Arcade.cardWeight(c.ced); });
+    var picked = Arcade.weightedSample(rest, weights, Math.max(0, count - tricks.length));
+    return shuffled(tricks.concat(picked));
+  }
+
+  /** The consequence, read off a card's true outcome: which way the price level, real GDP and
+   *  unemployment moved between where the card started and where it ends. A boss reads its whole
+   *  outcome, so two shifts that cancel on the price level say so.
+   *  @param {any} card @returns {string[]} three read-outs, e.g. "PL ▲" */
+  function chipsFor(card) {
+    var start = { AD: 0, SRAS: 0 };
+    Object.keys(card.start || {}).forEach(function (name) { start[name] = card.start[name]; });
+    var before = ArcadeGraph.outputs('adas', ArcadeGraph.intersect('adas', start) || { x: 50, y: 50 });
+    var result = card.result;
+    var end;
+    if (result.point) {
+      var c = ArcadeGraph.MARKETS.adas.curves[result.point.curve];
+      end = { x: result.point.x, y: c.m * (result.point.x - (result.shifts[result.point.curve] || 0)) + c.b };
+    } else {
+      end = ArcadeGraph.intersect('adas', result.shifts) || { x: 50, y: 50 };
+    }
+    var after = ArcadeGraph.outputs('adas', end);
+    return [['PL', 'PL'], ['Y', 'Real GDP'], ['u', 'Unemployment']].map(function (pair) {
+      var d = after[pair[0]] - before[pair[0]];
+      return pair[1] + ' ' + (d > 0.05 ? '▲' : d < -0.05 ? '▼' : '—');
+    });
   }
 
   /* ===== ROUND CHROME — the breaking card, the verdict sheet and the clock ===== */
@@ -677,12 +723,30 @@ const TUTORIAL = {
   }
 
   /** @param {string} kind 'correct' or 'wrong' @param {string} msg @param {string} why
-   *  @param {boolean} ack whether the student has to tap to continue */
-  function paintSheet(kind, msg, why, ack) {
+   *  @param {boolean} ack whether the student has to tap to continue
+   *  @param {string[]} [chips] the consequence read-out from chipsFor */
+  function paintSheet(kind, msg, why, ack, chips) {
     sheetMsg.textContent = msg;
+    sheetChips.textContent = '';
+    (chips || []).forEach(function (text) {
+      var dir = text.indexOf('▲') >= 0 ? 'up' : text.indexOf('▼') >= 0 ? 'down' : 'flat';
+      sheetChips.appendChild(chip('tag chip-' + dir, text));
+    });
+    sheetChips.hidden = !(chips && chips.length);
     sheetWhy.textContent = why;
     sheetBtn.style.display = ack ? '' : 'none';
     sheet.className = 'sheet ' + kind + ' open';
+  }
+
+  /** The boss's entrance: a stamp slams over the graph and leaves. @param {string} text */
+  function slamStamp(text) {
+    stampText.textContent = text;
+    stampText.classList.remove('slam');
+    stampMount.hidden = false;
+    void stampText.offsetWidth;          // restart the slam on a stamp that is already mounted
+    stampText.classList.add('slam');
+    Arcade.sfx.play('stamp');
+    setTimeout(function () { stampMount.hidden = true; }, 700);
   }
 
   // The sheet is `position: fixed` below the viewport when it is closed, so a button left displayed
@@ -703,10 +767,10 @@ const TUTORIAL = {
    *  @param {string} msg @param {string} why @param {string} [label] default "Got it"
    *  @param {string} [kind] 'wrong' (default) or 'correct' — the sprint marks right answers here too
    *  @returns {Promise<void>} */
-  function sheetAsk(msg, why, label, kind) {
+  function sheetAsk(msg, why, label, kind, chips) {
     ackNow();
     sheetBtn.textContent = label || 'Got it';
-    paintSheet(kind || 'wrong', msg, why, true);
+    paintSheet(kind || 'wrong', msg, why, true, chips);
     return new Promise(function (resolve) { ackResolve = resolve; });
   }
 
@@ -714,6 +778,34 @@ const TUTORIAL = {
   function sheetFlash(msg) {
     paintSheet('correct', msg, '', false);
     return wait(450).then(hideSheet);
+  }
+
+  /** The WHY beat on a right answer: the rubric sentence and the read-out, up through the
+   *  consequence and a moment after, with no button to press. Right answers used to get a 450 ms
+   *  tick and no sentence at all, which halved the rubric practice a run gives.
+   *  @param {string} msg @param {string} why @param {string[]} [chips] */
+  function sheetShow(msg, why, chips) { paintSheet('correct', msg, why, false, chips); }
+
+  /** A moment to read, or a tap anywhere to move on. @param {number} ms @returns {Promise<void>} */
+  function readBeat(ms) {
+    return new Promise(function (resolve) {
+      var timer = setTimeout(done, ms);
+      function done() { clearTimeout(timer); document.removeEventListener('pointerdown', done); resolve(); }
+      document.addEventListener('pointerdown', done);
+    });
+  }
+
+  /** The consequence, with the sheet already up: the animation plays, then the reading beat —
+   *  unless the tap that skipped the animation has already said "seen it".
+   *  @param {any} card @returns {Promise<void>} */
+  function playConsequence(card) {
+    var skipped = false;
+    function onSkip() { skipped = true; }
+    graph.on('skip', onSkip);
+    return graph.animateTo(card.result).then(function () {
+      graph.off('skip', onSkip);
+      return skipped ? undefined : readBeat(WHY_MS);
+    });
   }
 
   /** The clock a practice or tutorial round runs on: it never starts, never ends and never paints,
@@ -1074,8 +1166,19 @@ const TUTORIAL = {
     heartsEl.hidden = !timed;
     timerEl.hidden = !timed;
     modeTag.hidden = timed;
-    modeTag.textContent = mode === 'practice' ? 'Practice' : 'Tutorial';
+    modeTag.textContent = mode === 'practice' ? 'Practice' : mode === 'drill' ? 'Drill' : 'Tutorial';
   }
+
+  /** A hit on the streak, and the call-out when it reaches a new multiplier. */
+  function streakUp() {
+    run.streak.hit();
+    run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+    var line = JUICE.streak[run.streak.count];
+    if (line) Arcade.toast(line, 1400);
+  }
+
+  /** Remember a miss once, so the end screen can hand the card back as a drill. @param {any} card */
+  function noteMiss(card) { if (run.missed.indexOf(card) < 0) run.missed.push(card); }
 
   /** The title screen's "what is this game?" panel, painted from INTRO. */
   function paintIntro() {
@@ -1184,13 +1287,13 @@ const TUTORIAL = {
     if (ok) {
       Arcade.sfx.play('coin');
       award(Math.round(GAP_POINTS * run.streak.mult));
-      run.streak.hit();
-      run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+      streakUp();
       run.correct += 1;
       await sheetFlash('✓ ' + GAP_LABEL[truth]);
     } else {
       Arcade.sfx.play('wrong');
       punish();
+      noteMiss(card);
       await sheetAsk('✗ ' + GAP_LABEL[truth], GAP_WHY[truth]);
     }
     if (!alive(token)) return;
@@ -1216,25 +1319,28 @@ const TUTORIAL = {
     var ok = judge(ans, card);
     run.asked += 1;
     Arcade.track(card.ced, card.skill, ok);   // before the sheet and the consequence; see playGap
+    var chips = chipsFor(card);
     if (ok) {
       Arcade.sfx.play('correct');
       award(Math.round((100 + speedBonus(left, L.time, 50)) * run.streak.mult));
-      run.streak.hit();
-      run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+      streakUp();
       run.correct += 1;
-      await sheetFlash('✓ ' + truthOf(card));
+      sheetShow('✓ ' + truthOf(card), card.why, chips);   // stays up through the consequence
+      await playConsequence(card);
     } else {
       Arcade.sfx.play('snap');
       Arcade.sfx.play('wrong');
       await graph.snapBack({ jolt: true });
       if (!alive(token)) return;
       punish();
-      await sheetAsk('✗ ' + truthOf(card), card.why);
+      noteMiss(card);
+      await sheetAsk('✗ ' + truthOf(card), card.why, undefined, undefined, chips);
+      if (!alive(token)) return;
+      hideSheet();
+      await graph.animateTo(card.result);        // ~1.2 s of true consequence; a tap skips it
     }
     if (!alive(token)) return;
     hideSheet();
-    await graph.animateTo(card.result);          // ~1.2 s of true consequence; a tap skips it
-    if (!alive(token)) return;
     if (card.gap) await playGap(card, token);    // trick cards carry no gap, so they never ask
   }
 
@@ -1271,6 +1377,7 @@ const TUTORIAL = {
       ? 'Drag the curve that moves — both headlines, either order'
       : 'Drag the curve that moves — one headline at a time';
     Arcade.sfx.play('boss');
+    slamStamp(JUICE.boss);
     if (Arcade.voice.enabled) Arcade.say(card.head, { who: 'anchor' });
 
     var done = card.moves.map(function () { return false; });
@@ -1294,6 +1401,7 @@ const TUTORIAL = {
         await graph.snapBack({ jolt: true });    // back to where the last accepted move left it
         if (!alive(token)) return;
         punish();
+        noteMiss(card);
         run.clock.pause();                       // the WHY beat is not a speed test
         await sheetAsk('✗ ' + truthOf(missed), missed.why);
         if (!alive(token)) return;
@@ -1310,8 +1418,7 @@ const TUTORIAL = {
       frozen.push(card.moves[hit].curve);
       done[hit] = true;
       accepted += 1;
-      run.streak.hit();
-      run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+      streakUp();
       await wait(450);                           // let the green land before the next headline
       if (!alive(token)) return;
       if (accepted < card.moves.length) {
@@ -1336,17 +1443,21 @@ const TUTORIAL = {
     run.clock.stop();
     graph.lock();
     if (dead) return;                              // playLevel's hearts check routes straight to FAIL
+    var chips = chipsFor(card);
     if (accepted === card.moves.length) {
       Arcade.sfx.play('win');
       award(Math.round((300 + speedBonus(left, card.time, 100)) * run.streak.mult));
-      await sheetFlash('✓ Boss cleared');
+      sheetShow('✓ Boss cleared', card.why, chips);   // the combined outcome, in rubric words
+      await playConsequence(card);
     } else {
-      await sheetAsk('✗ Out of time', card.why);   // a boss left unfinished still earns its WHY
+      noteMiss(card);
+      await sheetAsk('✗ Out of time', card.why, undefined, undefined, chips);   // a boss left unfinished still earns its WHY
+      if (!alive(token)) return;
+      hideSheet();
+      await graph.animateTo(card.result);
     }
     if (!alive(token)) return;
     hideSheet();
-    await graph.animateTo(card.result);
-    if (!alive(token)) return;
     if (card.gap) await playGap(card, token);      // Level 3 names the gap both shocks left behind
   }
 
@@ -1483,14 +1594,29 @@ const TUTORIAL = {
     });
   }
 
-  /** @param {any} L */
-  async function playLevel(L) {
+  /** Replay the cards a run missed with nothing at stake: no clock, no hearts, nothing saved but
+   *  the tracker. A failed level used to be a dead end — retry the whole thing or leave — and the
+   *  cards that cost the hearts were the last thing a student saw and the first thing they forgot.
+   *  @param {any} L @param {any[]} cards */
+  function startDrill(L, cards) {
+    if (!cards || !cards.length) return;
+    abortRun();
+    show('play');
+    playLevel(L, { drill: cards }).catch(function () {
+      Arcade.toast('Something went wrong — back to the levels');
+      goSelect();
+    });
+  }
+
+  /** @param {any} L @param {{drill?:any[]}} [opts] `drill`: play just these cards, untimed */
+  async function playLevel(L, opts) {
+    var o = opts || {};
     runToken += 1;
     var token = runToken;
     run = {
       L: L, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(),
       score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, gapClock: null,
-      practice: practiceOn()
+      practice: !!o.drill || practiceOn(), drill: o.drill || null, missed: []
     };
     run.streak.render(comboEl);
     scoreEl.textContent = '0';
@@ -1500,18 +1626,20 @@ const TUTORIAL = {
     graph.setCard({ start: { AD: 0, SRAS: 0 }, draggable: L.draggable, dotGrab: L.dotGrab });
 
     // The first time anyone reaches Level 1, one card with nothing at stake comes before the eight.
-    if (L.n === 1 && !tutorialDone()) {
+    if (!run.drill && L.n === 1 && !tutorialDone()) {
       await playTutorial(L, token);
       if (!alive(token)) return;
     }
-    setMode(run.practice ? 'practice' : 'play');
+    setMode(run.drill ? 'drill' : run.practice ? 'practice' : 'play');
 
-    var cards = drawCards(L.pool, ROUNDS);
+    var cards = run.drill ? run.drill.slice() : drawCards(L.pool, ROUNDS);
     for (var i = 0; i < cards.length; i += 1) {
-      await playRound(cards[i], L, token);
+      if (cards[i].kind === 'boss') await playBoss(cards[i], L, token);   // a drill can hold the boss
+      else await playRound(cards[i], L, token);
       if (!alive(token)) return;
       if (run.hearts.get() === 0) { showFail(L); return; }
     }
+    if (run.drill) { showDrillDone(L); return; }
     await playBoss(L.boss, L, token);
     if (!alive(token)) return;
     if (run.hearts.get() === 0) { showFail(L); return; }
@@ -1544,6 +1672,48 @@ const TUTORIAL = {
     if (rose) Arcade.sfx.play('coin');
   }
 
+  /** The headlines the run missed, above the buttons, so the drill button has a reason.
+   *  @param {any} panel the endScreen panel */
+  function showMissed(panel) {
+    if (!panel || !run.missed.length) return;
+    var list = fill('missed-list', '');
+    list.appendChild(chip('muted', 'Missed: '));
+    run.missed.forEach(function (card, i) { list.appendChild(chip('missed-head', (i ? ' · ' : '') + card.head)); });
+    panel.insertBefore(list, panel.lastElementChild);     // endScreen puts the buttons last
+  }
+
+  /** @param {any} L @param {any[]} buttons @returns {any[]} the same buttons, with a drill of the
+   *  run's misses in second place when there were any */
+  function withDrill(L, buttons) {
+    var missed = run.missed.slice();
+    if (!missed.length) return buttons;
+    var drill = { label: 'Drill the ' + missed.length + ' you missed', variant: 'blue', onClick: function () { startDrill(L, missed); } };
+    return [buttons[0], drill].concat(buttons.slice(1));
+  }
+
+  /** @param {any} L */
+  function showDrillDone(L) {
+    var acc = accuracy();
+    var again = run.missed.slice();
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    var buttons = [{ label: 'Play the level', primary: true, onClick: function () { startLevel(L.n); } }];
+    if (again.length) buttons.push({ label: 'Drill the ' + again.length + ' still missed', variant: 'blue', onClick: function () { startDrill(L, again); } });
+    buttons.push({ label: 'Levels', onClick: goSelect });
+    var panel = Arcade.endScreen(screens.end, {
+      title: again.length ? 'DRILL DONE' : 'ALL CLEARED', sub: 'Level ' + L.n + ' · the cards you missed · no clock, no hearts',
+      score: run.score, accuracy: acc, medal: null,
+      stats: [{ label: 'Right', value: run.correct + '/' + run.asked }],
+      note: again.length ? 'The ones above are still tricky. Once more, or take them into a real run.' : 'Every one of them, right. Take that into a real run.',
+      buttons: buttons
+    });
+    showMissed(panel);
+    Arcade.focusScreen(screens.end);
+    if (!again.length) Arcade.confetti();
+  }
+
   /** @param {any} L */
   function showClear(L) {
     var acc = accuracy();
@@ -1555,7 +1725,7 @@ const TUTORIAL = {
       // A practice clear banks nothing: no best, no medal, no unlock, no title — the readiness map
       // was written card by card as it went, and that is all practice is for.
       show('end');
-      Arcade.endScreen(screens.end, {
+      var practicePanel = Arcade.endScreen(screens.end, {
         title: 'PRACTICE DONE', sub: 'Level ' + L.n + ' · ' + L.name + ' · no clock, no hearts',
         score: score, accuracy: acc, medal: null,
         stats: [
@@ -1563,12 +1733,13 @@ const TUTORIAL = {
           { label: 'Best streak', value: String(run.bestStreak) }
         ],
         note: 'Practice fills your readiness map but saves no score, medal or unlock. Play it for real when the drag feels right.',
-        buttons: [
+        buttons: withDrill(L, [
           { label: 'Play for real', primary: true, onClick: function () { setPractice(false); startLevel(L.n); } },
           { label: 'Levels', onClick: goSelect },
           { label: 'Practice again', onClick: function () { startLevel(L.n); } }
-        ]
+        ])
       });
+      showMissed(practicePanel);
       Arcade.focusScreen(screens.end);
       return;
     }
@@ -1586,13 +1757,14 @@ const TUTORIAL = {
       stats: runStats(),
       // endScreen renders `note` immediately above the buttons, so the framing sits on the sprint.
       note: EXAM_FRAME + (saved.unlocked > L.n ? '' : ' · Clear 75% to unlock the next level.'),
-      buttons: [
+      buttons: withDrill(L, [
         { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { startExam(L.n); } },
         { label: 'Levels', onClick: goSelect },
         { label: 'Replay', onClick: function () { startLevel(L.n); } }
-      ]
+      ])
     });
     showTitle(panel, beforeTitle);
+    showMissed(panel);
     Arcade.focusScreen(screens.end);
     Arcade.confetti();
   }
@@ -1604,15 +1776,16 @@ const TUTORIAL = {
     Arcade.voice.stop();
     sheetBtn.textContent = 'Got it';
     show('end');
-    Arcade.endScreen(screens.end, {
+    var panel = Arcade.endScreen(screens.end, {
       title: 'LEVEL FAILED', sub: 'The economy collapsed. Retry?', tone: 'fail',
       score: run.score, accuracy: acc, medal: null, stamp: Arcade.stampFor(acc),
       stats: runStats(),
-      buttons: [
+      buttons: withDrill(L, [
         { label: 'Retry', primary: true, onClick: function () { startLevel(L.n); } },
         { label: 'Levels', onClick: goSelect }
-      ]
+      ])
     });
+    showMissed(panel);
     Arcade.focusScreen(screens.end);
   }
 

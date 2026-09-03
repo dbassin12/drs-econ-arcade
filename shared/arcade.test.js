@@ -729,3 +729,41 @@ test('focusScreen and trapFocus are safe no-ops without a document', () => {
   assert.equal(typeof Arcade.trapFocus(null, null), 'function');
   Arcade.trapFocus(null, null)();
 });
+
+/* ===== the adaptive draw — cardWeight and weightedSample ===== */
+
+/** A seeded generator, so a sampling test is the same run every time. @param {number} seed */
+function lcgFor(seed) {
+  let s = seed >>> 0;
+  return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+test('cardWeight is neutral until a topic has three items, then rises with the misses', () => {
+  const m = {
+    '3.1': { right: 0, total: 2 },      // too thin to steer
+    '3.3': { right: 0, total: 3 },      // always wrong
+    '3.5': { right: 3, total: 3 },      // always right
+    '3.8': { right: 2, total: 4 }       // half
+  };
+  assert.equal(Arcade.WEIGHT_MIN_ITEMS, 3);
+  assert.equal(Arcade.cardWeight('6.5', m), 1, 'a topic never answered');
+  assert.equal(Arcade.cardWeight('3.1', m), 1, 'two items are not data');
+  assert.equal(Arcade.cardWeight('3.3', m), 2.5, 'every miss: the top weight');
+  assert.equal(Arcade.cardWeight('3.5', m), 0.5, 'owned: half');
+  assert.equal(Arcade.cardWeight('3.8', m), 1.5, 'half right: in the middle');
+  assert.equal(Arcade.cardWeight('3.3', { '3.3': { right: 50, total: 20 } }), 0.5, 'a hand-edited count over 100% clamps to owned');
+  assert.equal(Arcade.cardWeight('3.3', { '3.3': { right: 'x', total: 5 } }), 2.5, 'junk in right reads as zero right');
+});
+
+test('weightedSample draws in proportion, without replacement, and never a zero-weight item', () => {
+  const items = ['a', 'b', 'c', 'd'];
+  assert.deepEqual(Arcade.weightedSample(items, [1, 1, 1, 1], 4, () => 0), ['a', 'b', 'c', 'd'], 'rng at 0 walks the list in order');
+  assert.deepEqual(Arcade.weightedSample(items, [0, 1, 0, 1], 4, () => 0.999), ['d', 'b'], 'zero weights are skipped even when asked for four');
+  assert.deepEqual(Arcade.weightedSample(items, [1, 1, 1, 1], 2, () => 0.5), ['c', 'b'], 'two picks, no repeats');
+  assert.deepEqual(Arcade.weightedSample([], [], 3), [], 'nothing from nothing');
+  assert.deepEqual(Arcade.weightedSample(items, [0, 0, 0, 0], 2), [], 'nothing from all-zero weights');
+  const rng = lcgFor(7);
+  let firstIsA = 0;
+  for (let i = 0; i < 4000; i += 1) if (Arcade.weightedSample(['a', 'b'], [3, 1], 1, rng)[0] === 'a') firstIsA += 1;
+  assert.ok(firstIsA > 2850 && firstIsA < 3150, 'a 3:1 weight draws first about 75% of the time: ' + firstIsA);
+});

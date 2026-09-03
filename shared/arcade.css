@@ -741,3 +741,11 @@ html.big-type .podium { display: block; order: -1; }
 .practice-btn { text-transform: none; letter-spacing: normal; font-size: 15px; }
 /* Where the hearts were: a blue tag, because it is a state, not a warning. */
 .mode-tag { background: var(--blue); color: var(--text); }
+/* The consequence read-out on the verdict sheet: three tags, coloured by direction. */
+.sheet-chips .tag { font-size: 13px; text-transform: none; letter-spacing: normal; }
+.chip-up { color: var(--green); }
+.chip-down { color: var(--red); }
+.chip-flat { color: var(--text2); }
+/* The missed headlines on an end screen, above the buttons that offer them back. */
+.missed-list { font-size: 14px; line-height: 1.45; }
+.missed-head { font-weight: 800; }

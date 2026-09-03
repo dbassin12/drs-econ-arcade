@@ -1290,15 +1290,29 @@ const INTRO = [
   /** The player's quarters against the ten that happened. history[k] is the state observed at the
    *  start of quarter k + 1, which is exactly what HISTORY_1975[k] measures; a term the bill cut
    *  short draws the quarters it had and stops. */
+  /** What the three series are called: on the chart's aria-label, in the legend, and on the button
+   *  that brings each one up. @type {Record<string, {name:string, legend:string, next:string}>} */
+  var SERIES = {
+    pi: { name: 'Inflation', legend: 'Inflation rate (π%)', next: 'u' },
+    u: { name: 'Unemployment', legend: 'Unemployment rate (u%)', next: 'rate' },
+    rate: { name: 'The federal funds rate', legend: 'Fed funds rate (%)', next: 'pi' }
+  };
+
   function paintChart() {
     var mine = [], theirs = FedModel.HISTORY_1975[chartSeries];
     var played = Math.min(TURNS, run.history.length);
-    for (var k = 0; k < played; k += 1) mine.push(run.history[k][chartSeries]);
+    if (chartSeries === 'rate') {
+      // a quarter's rate is the one the Chair set in it, which the state after it carries; the
+      // opening state's rate is the one Burns inherited, not a decision
+      for (var q = 1; q < played; q += 1) mine.push(run.history[q].rate);
+      if (run.history[TURNS]) mine.push(run.history[TURNS].rate);
+    } else {
+      for (var k = 0; k < played; k += 1) mine.push(run.history[k][chartSeries]);
+    }
 
     var svg = svgEl('svg', { viewBox: '0 0 ' + CH.w + ' ' + CH.h }, 'hist-chart');
     svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', (chartSeries === 'pi' ? 'Inflation' : 'Unemployment')
-      + ', your Fed against 1975 to 1977, in percent');
+    svg.setAttribute('aria-label', SERIES[chartSeries].name + ', your Fed against 1975 to 1977, in percent');
     /** @param {number} x @param {number} y @param {string} anchor @param {string} text */
     function label(x, y, anchor, text) {
       var node = svgEl('text', { x: x, y: y, 'text-anchor': anchor }, 'hist-label');
@@ -1317,14 +1331,14 @@ const INTRO = [
     chartMount.textContent = '';
     chartMount.appendChild(svg);
     paintLegend();
-    chartToggle.textContent = chartSeries === 'pi' ? 'Show unemployment' : 'Show inflation';
+    chartToggle.textContent = 'Show ' + SERIES[SERIES[chartSeries].next].name.toLowerCase();
   }
 
   /** The legend names the series the chart is showing, in the CED's own words and units, then the
    *  two lines. It repaints with the chart, so the toggle renames it too. */
   function paintLegend() {
     chartLegend.textContent = '';
-    chartLegend.appendChild(chip('tag hist-series', chartSeries === 'pi' ? 'Inflation rate (π%)' : 'Unemployment rate (u%)'));
+    chartLegend.appendChild(chip('tag hist-series', SERIES[chartSeries].legend));
     chartLegend.appendChild(chip('hist-key player'));
     chartLegend.appendChild(chip('muted', 'Your Fed'));
     chartLegend.appendChild(chip('hist-key actual'));
@@ -1375,7 +1389,7 @@ const INTRO = [
   }
 
   chartToggle.addEventListener('click', function () {
-    chartSeries = chartSeries === 'pi' ? 'u' : 'pi';
+    chartSeries = SERIES[chartSeries].next;     // inflation, unemployment, the rate, and round again
     paintChart();
   });
 
