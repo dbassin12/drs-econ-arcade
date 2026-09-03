@@ -497,6 +497,9 @@ var Arcade = (function () {
     if (target.game === 'investor') {
       return { game: 'investor', level: target.level, url: 'games/investor.html?level=' + target.level, label: 'The Investor · Run ' + target.level };
     }
+    if (target.game === 'crisis') {
+      return { game: 'crisis', level: target.level, url: 'games/crisis-country.html?level=' + target.level, label: 'Crisis Country · Crisis ' + target.level };
+    }
     return {
       game: 'shift',
       level: target.level,

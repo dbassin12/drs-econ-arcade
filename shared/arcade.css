@@ -901,3 +901,53 @@ circle.healed { fill: var(--green) !important; stroke: var(--green) !important; 
 .inv-totals .nominal { color: var(--text2); font-size: 13px; }
 .inv-totals .prices { color: var(--text3); font-size: 12px; }
 .inv-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+/* ===== CRISIS COUNTRY — a dashboard, a desk, a hand of policy cards =====
+   The hand scrolls sideways under the desk; a card pressed in the hand follows the finger and
+   is enacted when it lands on the desk. */
+.cc-dash { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cc-gauge { padding: 4px 4px; border-radius: var(--radius-sm); background: var(--card); border: 2px solid var(--border); text-align: center; min-width: 0; }
+.cc-gauge-label { font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text2); white-space: nowrap; }
+.cc-gauge-value { font-family: var(--font-mono); font-weight: 900; font-size: 17px; line-height: 1.15; }
+.cc-gauge-delta { font-family: var(--font-mono); font-size: 10px; min-height: 12px; color: var(--text3); }
+.cc-gauge.good { border-color: var(--green); }
+.cc-gauge.warn { border-color: var(--orange); }
+.cc-gauge.bad { border-color: var(--red); }
+.cc-gauge.good .cc-gauge-value { color: var(--green); }
+.cc-gauge.warn .cc-gauge-value { color: var(--orange); }
+.cc-gauge.bad .cc-gauge-value { color: var(--red); }
+.cc-brief { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; }
+.cc-headline { font-weight: 900; font-size: 15px; line-height: 1.3; }
+.cc-advisor { font-size: 12px; color: var(--text2); line-height: 1.3; }
+.cc-advisor b { color: var(--text); }
+.cc-desk {
+  min-height: 64px; border: 2px dashed var(--border); border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 10px;
+  color: var(--text2); font-weight: 800; font-size: 13px; transition: border-color .12s, background .12s;
+}
+.cc-desk.over { border-color: var(--gold); background: var(--gold-glow); color: var(--text); }
+.cc-hand { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.cc-card {
+  min-height: 54px; border-radius: var(--radius-sm);
+  background: var(--card); border: 2px solid var(--border); padding: 4px 6px;
+  display: flex; flex-direction: row; align-items: center; gap: 6px; text-align: left; cursor: grab;
+  touch-action: none; user-select: none; -webkit-user-select: none; min-width: 0;
+}
+.cc-card.lifted { opacity: .35; }
+.cc-card-emoji { font-size: 20px; line-height: 1; flex: 0 0 auto; }
+.cc-card-name { font-weight: 900; font-size: 11px; line-height: 1.2; min-width: 0; }
+.cc-card-kind { display: none; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text3); }
+.cc-card.fiscal { border-color: var(--green-dark); }
+.cc-card.monetary { border-color: var(--blue-dark); }
+.cc-card.exchange { border-color: var(--purple-dark); }
+.cc-card.trade { border-color: var(--orange); }
+.cc-card.imf { border-color: var(--gold-dark); }
+.cc-token {
+  position: fixed; left: 0; top: 0; width: 120px; margin: -70px 0 0 -60px; border-radius: var(--radius-sm);
+  background: var(--card-hover); border: 2px solid var(--gold); box-shadow: 0 12px 28px rgba(0,0,0,.5);
+  padding: 8px 6px; display: flex; flex-direction: row; align-items: center; gap: 6px; text-align: left;
+  pointer-events: none; z-index: 30;
+}
+.cc-token .cc-card-emoji { font-size: 22px; }
+.cc-token .cc-card-name { font-weight: 900; font-size: 12px; }
+.cc-chain { font-size: 14px; line-height: 1.45; }

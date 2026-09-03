@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crisis Country — DRS Econ Arcade</title>
+<!-- The arcade is static pages that talk to nobody. The policy says so out loud: nothing loads
+     that is not this origin's own script and stylesheet, the two Google Fonts hosts, or a data:
+     favicon, and connect-src 'none' means no page here can ever send a student's play anywhere. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+
+<script>
+/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. */
+if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
+/* ================================================================================
+   CONTENT — every crisis, turn, advisor line and exam item, one entry per line.
+   Nothing here is logic; the game reads this and nothing else for its content. The policy
+   cards and the economy's rules live in crisis.model.js.
+
+   A crisis is { n, id, name, country, blurb, ced, start (state overrides), election (turn),
+   turns[12]: { headline, shock } }.  A shock may carry gap, pi, exp, e, reserves, pop,
+   pressure (on the currency), bank ('hike' | 'cut' — what an independent bank does on its
+   own).  Advisors speak from the state: the first line whose `when` holds is said.
+   ================================================================================ */
+const KIND_CED = { fiscal: '3.8', monetary: '4.6', exchange: '6.4', trade: '6.2', imf: '6.6', none: '3.7' };
+
+const CRISES = [
+  { n: 1, id: 'recession', name: 'The Long Slump', country: 'Republic of Woodmere', blurb: 'Output 4% below potential, unemployment at 7 — spend, cut, or wait it out?', ced: '3.8',
+    start: { gap: -4, pi: 1.5, exp: 2, u: 7, reserves: 5, debt: 60, pop: 45 }, election: 8,
+    turns: [
+      { headline: 'Factory closures spread across the north', shock: { gap: -0.5 } },
+      { headline: 'Retail sales fall for a third month', shock: { gap: -0.3 } },
+      { headline: 'The central bank cuts rates on its own', shock: { bank: 'cut' } },
+      { headline: 'Unemployment hits 8%', shock: {} },
+      { headline: 'Bank lending freezes', shock: { gap: -1 } },
+      { headline: 'Neighbors’ recovery lifts exports', shock: { gap: 0.5 } },
+      { headline: 'The central bank cuts again', shock: { bank: 'cut' } },
+      { headline: 'ELECTION DAY', shock: {} },
+      { headline: 'Confidence returns, slowly', shock: { gap: 0.3 } },
+      { headline: 'Housing steadies', shock: {} },
+      { headline: 'Hiring resumes', shock: { gap: 0.3 } },
+      { headline: 'Year’s end', shock: {} }
+    ] },
+  { n: 2, id: 'hyperinflation', name: 'The Printing Press', country: 'Bassinia', blurb: 'Prices up 18% a year and a treasury that pays its bills at the mint', ced: '4.6',
+    start: { gap: 1, pi: 18, exp: 16, u: 4, reserves: 2.5, debt: 95, pop: 50, independent: false }, election: 12,
+    turns: [
+      { headline: 'Bread costs double what it did last spring', shock: {} },
+      { headline: 'Unions win wage indexation', shock: { exp: 3 } },
+      { headline: 'Shops reprice every morning', shock: { pi: 2 } },
+      { headline: 'Foreign lenders shut the door', shock: { reserves: -0.5 } },
+      { headline: 'Dollars circulate in the markets', shock: { e: -5 } },
+      { headline: 'A currency reform is rumored', shock: {} },
+      { headline: 'Pensioners march on the treasury', shock: { pop: -4 } },
+      { headline: 'A bond auction fails', shock: { e: -3 } },
+      { headline: 'The harvest is good', shock: { gap: 0.4, pi: -0.5 } },
+      { headline: 'Neighbors offer a swap line', shock: { reserves: 0.5 } },
+      { headline: 'A new currency is printed, three zeros fewer', shock: {} },
+      { headline: 'ELECTION DAY', shock: {} }
+    ] },
+  { n: 3, id: 'currency', name: 'The Run on the Peso', country: 'Republic of Cedaria', blurb: 'A peg, two months of reserves, and speculators who have done the math', ced: '6.4',
+    start: { gap: -0.5, pi: 7.5, exp: 7, u: 6.8, reserves: 0.9, debt: 70, pop: 50, regime: 'peg', pressure: 3 }, election: 10,
+    turns: [
+      { headline: 'Speculators bet against the peg', shock: { pressure: 2 } },
+      { headline: 'Reserves fall below two months of imports', shock: { pressure: 2 } },
+      { headline: 'Contagion from a neighbor’s devaluation', shock: { pressure: 3 } },
+      { headline: 'The IMF sends a mission', shock: { pressure: 3 } },
+      { headline: 'Exporters lobby for a cheaper peso', shock: { pressure: 2 } },
+      { headline: 'Capital keeps leaving', shock: { pressure: 2 } },
+      { headline: 'The pressure eases', shock: { pressure: 1 } },
+      { headline: 'Calm returns to the exchange', shock: { pressure: 1 } },
+      { headline: 'Investors return', shock: { pressure: 0, reserves: 0.3 } },
+      { headline: 'ELECTION DAY', shock: { pressure: 0 } },
+      { headline: 'The trade balance improves', shock: { pressure: 0, reserves: 0.3 } },
+      { headline: 'Year’s end', shock: { pressure: 0 } }
+    ] },
+  { n: 4, id: 'oil', name: 'The Oil Shock', country: 'Kingdom of Hewlett', blurb: 'Stagflation: prices up, output down, and every card helps one and hurts the other', ced: '3.6',
+    start: { gap: -1.5, pi: 8.5, exp: 6, u: 6.8, reserves: 3.5, debt: 55, pop: 48 }, election: 8,
+    turns: [
+      { headline: 'Oil doubles overnight', shock: { pi: 3, gap: -1 } },
+      { headline: 'Trucking costs pass through to the shelves', shock: { pi: 1.5 } },
+      { headline: 'The central bank hikes to hold the anchor', shock: { bank: 'hike' } },
+      { headline: 'Strikes for cost-of-living raises', shock: { exp: 1, gap: -0.3 } },
+      { headline: 'Truckers strike over fuel prices', shock: { gap: -0.5 } },
+      { headline: 'Oil eases as new supply arrives', shock: { pi: -1.5 } },
+      { headline: 'Energy investment surges', shock: { gap: 0.5 } },
+      { headline: 'ELECTION DAY', shock: {} },
+      { headline: 'Prices settle', shock: { pi: -0.5 } },
+      { headline: 'The bank holds', shock: {} },
+      { headline: 'Growth resumes', shock: { gap: 0.4 } },
+      { headline: 'Year’s end', shock: {} }
+    ] },
+  { n: 5, id: 'tradewar', name: 'The Trade War', country: 'Federation of Inwood', blurb: 'A partner’s tariffs hit exports; retaliation is popular and costly', ced: '6.2',
+    start: { gap: -1.2, pi: 3.5, exp: 3.5, u: 6.6, reserves: 1.9, debt: 50, pop: 52 }, election: 8,
+    turns: [
+      { headline: 'A partner slaps tariffs on our exports', shock: { gap: -1.2, reserves: -0.3 } },
+      { headline: 'Farm exports pile up at the port', shock: { gap: -0.5, reserves: -0.2 } },
+      { headline: 'Talks collapse', shock: { gap: -0.5, reserves: -0.2 } },
+      { headline: 'Consumers feel dearer imports', shock: { pi: 0.5 } },
+      { headline: 'A third country offers a deal', shock: {} },
+      { headline: 'Truce talks begin', shock: { gap: 0.3 } },
+      { headline: 'Supply chains reroute', shock: { gap: 0.3 } },
+      { headline: 'ELECTION DAY', shock: {} },
+      { headline: 'A deal is signed at the summit', shock: { gap: 0.8, pi: -0.5, reserves: 0.4 } },
+      { headline: 'Exports recover', shock: { gap: 0.5, reserves: 0.3 } },
+      { headline: 'Steady', shock: {} },
+      { headline: 'Year’s end', shock: {} }
+    ] }
+];
+
+/* Two advisors argue every turn: the first line whose condition holds is what each says. */
+const ADVISORS = [
+  { who: 'The Hawk', when: ['pi', '>=', 10], line: 'Inflation is the emergency. Every card that adds demand adds to it — tighten, and stop the presses.' },
+  { who: 'The Hawk', when: ['reserves', '<', 2], line: 'Reserves are nearly gone. Whatever holds the currency now, do that: controls, the Fund, or let it float.' },
+  { who: 'The Hawk', when: ['pi', '>', 5], line: 'Prices are still running. Anything expansionary now shows up as inflation, not jobs.' },
+  { who: 'The Hawk', when: ['debt', '>', 90], line: 'Lenders are watching the debt. A smaller deficit buys us the room to act later.' },
+  { who: 'The Hawk', when: ['gap', '<', -2], line: 'The gap is real, but so is the bill. If you spend, spend on something that raises potential.' },
+  { who: 'The Hawk', when: ['gap', '>=', -99], line: 'Hold course. Wages and prices are adjusting; do not undo it.' },
+  { who: 'The Populist', when: ['u', '>=', 8], line: 'Eight in a hundred are out of work. Spend, cut taxes, do something they can see.' },
+  { who: 'The Populist', when: ['pop', '<', 40], line: 'We are losing the country. Whatever you pick, it had better be popular by election day.' },
+  { who: 'The Populist', when: ['pi', '>=', 10], line: 'People cannot eat austerity. Index the wages and keep the lights on.' },
+  { who: 'The Populist', when: ['gap', '<', -1], line: 'Idle factories, idle people. Public works put both to use.' },
+  { who: 'The Populist', when: ['e', '<', 85], line: 'A cheap currency is a gift to exporters — sell it that way.' },
+  { who: 'The Populist', when: ['gap', '>=', -99], line: 'Tariffs poll well. Foreigners can pay for a change.' }
+];
+
+/* The Exit Exam draws three of these from the cards the minister actually played. */
+const EXAM_ITEMS = [
+  { cards: ['spend', 'taxcut'], stem: 'An economy is in a recession. Which of the following fiscal policies would be most effective in increasing real output in the short run?', choices: ['Increasing government purchases', 'Increasing personal income taxes', 'Decreasing transfer payments', 'Selling government bonds to the public'], answer: 0, why: 'Higher government purchases increase aggregate demand directly, and by the full spending multiplier, raising real output in the short run.', ced: '3.8', skill: 2 },
+  { cards: ['spend', 'taxcut', 'austerity', 'taxup'], stem: 'Assume the government increases spending financed by borrowing. Which of the following is a likely effect in the loanable funds market?', choices: ['The real interest rate falls and private investment rises', 'The real interest rate rises and private investment falls', 'The supply of loanable funds increases', 'The demand for loanable funds decreases'], answer: 1, why: 'Government borrowing increases the demand for loanable funds, raising the real interest rate and crowding out some private investment.', ced: '5.4', skill: 2 },
+  { cards: ['taxup', 'austerity', 'imf'], stem: 'Which of the following is a short-run effect of contractionary fiscal policy?', choices: ['Aggregate demand shifts right and the price level rises', 'Aggregate demand shifts left and real output falls', 'Short-run aggregate supply shifts right', 'The unemployment rate falls'], answer: 1, why: 'Lower government spending or higher taxes reduce aggregate demand, lowering real output and the price level and raising unemployment in the short run.', ced: '3.8', skill: 2 },
+  { cards: ['hike', 'cut'], stem: 'A country’s central bank raises its policy interest rate. Which of the following is the most likely effect on the country’s currency in the foreign exchange market?', choices: ['It depreciates, because imports become cheaper', 'It appreciates, because higher returns attract capital inflows', 'It is unaffected, because interest rates do not affect exchange rates', 'It depreciates, because the money supply increases'], answer: 1, why: 'Higher interest rates attract foreign financial capital; the demand for the currency rises and it appreciates.', ced: '6.4', skill: 2 },
+  { cards: ['reform', 'lean'], stem: 'Which of the following is most likely to reduce expected inflation in an economy with a history of high inflation?', choices: ['Financing the budget deficit by creating money', 'A credible commitment by an independent central bank to a low inflation target', 'Indexing wages to the price level', 'A large increase in government purchases'], answer: 1, why: 'Expected inflation falls when the public believes the central bank will hold prices down; a credible, independent central bank shifts short-run aggregate supply right by lowering expected inflation.', ced: '5.3', skill: 2 },
+  { cards: ['print', 'lean'], stem: 'A government finances a persistent budget deficit by having its central bank create money. In the long run this will most likely result in which of the following?', choices: ['Lower unemployment and stable prices', 'A higher price level with no lasting increase in real output', 'A permanent increase in real GDP', 'Lower expected inflation'], answer: 1, why: 'Money creation shifts aggregate demand right, but as expected inflation rises short-run aggregate supply shifts left; in the long run output returns to potential at a higher price level.', ced: '5.1', skill: 2 },
+  { cards: ['float', 'defend', 'devalue', 'controls'], stem: 'A country with a fixed exchange rate faces a persistent capital outflow. To maintain the peg its central bank must', choices: ['Buy foreign currency with domestic currency', 'Sell foreign reserves and buy domestic currency', 'Lower the domestic interest rate', 'Increase the domestic money supply'], answer: 1, why: 'Defending a fixed rate against downward pressure means selling foreign reserves to buy the domestic currency, which drains reserves while the pressure lasts.', ced: '6.4', skill: 2 },
+  { cards: ['devalue', 'float'], stem: 'A country’s currency depreciates. Which of the following is the most likely effect on the country’s net exports and aggregate demand?', choices: ['Net exports fall and aggregate demand shifts left', 'Net exports rise and aggregate demand shifts right', 'Net exports are unchanged', 'Aggregate supply shifts right'], answer: 1, why: 'A cheaper currency makes exports cheaper abroad and imports dearer at home, so net exports rise and aggregate demand shifts right.', ced: '6.5', skill: 2 },
+  { cards: ['tariff', 'tradedeal'], stem: 'A country imposes tariffs on imported goods. Which of the following is a likely short-run effect?', choices: ['A lower domestic price level', 'An increase in the quantity of imports', 'Higher prices for the protected goods and retaliation by trading partners', 'An increase in the country’s comparative advantage'], answer: 2, why: 'Tariffs raise the domestic price of imports; trading partners commonly retaliate, reducing exports and undoing the short-run gain to net exports.', ced: '6.2', skill: 2 },
+  { cards: ['imf', 'controls'], stem: 'A country receives a loan from an international lender on the condition that it reduce its budget deficit. In the short run the condition is most likely to', choices: ['Increase aggregate demand and lower unemployment', 'Decrease aggregate demand and raise unemployment', 'Shift long-run aggregate supply left', 'Increase the money supply'], answer: 1, why: 'Cutting the deficit through lower spending or higher taxes reduces aggregate demand, lowering output and raising unemployment in the short run.', ced: '3.8', skill: 2 },
+  { cards: ['hold'], stem: 'An economy is in a recessionary gap and the government takes no action. In the long run, which of the following adjustments returns the economy to full employment?', choices: ['Aggregate demand shifts left as wages fall', 'Nominal wages fall, shifting short-run aggregate supply right', 'Long-run aggregate supply shifts left', 'The price level rises, shifting aggregate demand right'], answer: 1, why: 'With high unemployment nominal wages eventually fall, lowering production costs and shifting short-run aggregate supply right until output returns to potential at a lower price level.', ced: '3.7', skill: 2 }
+];
+
+/* ================================================================================
+   TIMING — Teacher-tunable: seconds students get.  Numbers are seconds.
+   ================================================================================ */
+const TIMING = {
+  turnSeconds: 60,            // to read the brief and play a card; the clock plays Hold course
+  warnSeconds: 8,             // when the bar turns red and the tick/tock starts
+  resultSeconds: 3,           // how long the turn's read-out stays up; a tap ends it
+  examSeconds: 70             // the Exit Exam stays at the real exam's Section I pace
+};
+
+/* ================================================================================
+   HOW TO PLAY — the cards the first run opens on, and what the ? shows.
+   ================================================================================ */
+const HOWTO = [
+  { emoji: '\u{1F30D}', head: 'A country in trouble', body: 'You are the finance minister. The dashboard shows inflation, unemployment, reserves, the currency, the debt and your popularity. Get inflation within 2 of target, unemployment near 5 and reserves above two months.' },
+  { emoji: '\u{1F0CF}', head: 'One card a turn', body: 'Drag a policy card from your hand onto the desk. Fiscal, monetary (if the central bank takes your orders), exchange-rate, trade, the IMF — or hold course. The card flips to show its chain in the exam’s own notation.' },
+  { emoji: '\u{1F5F3}', head: 'Advisors argue; voters decide', body: 'A hawk and a populist give opposite advice every turn. On election day, popularity under 40 ends your term. Printing money is always popular right up until it is not.' },
+  { emoji: '\u{1F3AF}', head: 'Twelve turns to stabilize', body: 'Stabilize early for a 5. Hyperinflation, a default, or an election lost ends the run.' },
+  { emoji: '\u{1F4DD}', head: 'Then the Exit Exam', body: 'Three questions in the exam’s own voice, drawn from the cards you actually played. Optional — but gold needs it.' }
+];
+
+/* ================================================================================
+   WHAT IS THIS GAME? — the purpose, before the rules.
+   ================================================================================ */
+const INTRO = [
+  { emoji: '\u{1F3DB}', text: 'Five crises — a slump, a printing press, a run on the currency, an oil shock, a trade war — and the whole policy toolkit to meet them, one card a turn.' },
+  { emoji: '\u{1F393}', text: 'Every card you play flips to its FRQ chain: G↑ → AD→right → PL↑, Y↑, u↓, and the FOREX leg when there is one. The model underneath is the AD–AS and FOREX model you draw in class.' },
+  { emoji: '\u{1F3AE}', text: 'Advisors argue, the IMF has conditions, and an election is coming. The Exit Exam at the end is the only multiple choice.' }
+];
+</script>
+
+<main class="app" id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div class="stack">
+      <h1 class="h1" tabindex="-1" data-focus>CRISIS COUNTRY</h1>
+      <p class="muted">You are the finance minister of a country in trouble.</p>
+      <div class="row">
+        <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+        <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+        <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      </div>
+      <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
+      <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <section class="panel stack intro" id="intro" aria-labelledby="introTitle"></section>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+  <!-- SELECT -->
+  <section class="screen" id="screen-select">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Crises</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="stack" id="crisisList"></div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="screen" id="screen-howto">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
+        <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="screen-play">
+    <div class="stack tight">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the crisis list">←</button>
+        <span class="tag" id="turnTag">Turn 1</span>
+        <div class="topbar-stats"><span class="mono" id="electionTag"></span></div>
+        <button type="button" class="btn btn-ghost howto-btn" id="playHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="timer-bar" id="timer"></div>
+      <div class="cc-dash" id="dash"></div>
+      <div class="muted" id="gapLine"></div>
+      <div class="panel cc-brief" id="brief">
+        <div class="cc-headline" id="headline"></div>
+        <div class="cc-advisor" id="advisor1"></div>
+        <div class="cc-advisor" id="advisor2"></div>
+      </div>
+      <div class="cc-desk" id="desk">🪑 Drop a card here to enact it</div>
+      <div class="cc-hand" id="hand" aria-label="Your hand of policy cards"></div>
+      <div class="row wrap kbd-answers" id="kbdRow" role="group" aria-label="Play a card with the keyboard"></div>
+      <div class="sr-only" id="boardRead" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- EXIT EXAM — the one screen in the game with multiple choice -->
+  <section class="screen" id="screen-exam">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the crisis list">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Exit Exam</h2>
+        <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="timer-bar" id="examTimer"></div>
+      <div class="row">
+        <span class="tag" id="examPace">70 s</span>
+        <span class="muted" id="examSub"></span>
+      </div>
+      <div class="panel"><div class="exam-stem" id="examStem"></div></div>
+      <div class="stack" id="examChoices"></div>
+    </div>
+  </section>
+
+  <!-- the end of a run and the exam result both render an Arcade.endScreen panel here -->
+  <section class="screen" id="screen-end"></section>
+
+</main>
+
+<div class="sheet" id="sheet" role="status">
+  <div class="stack">
+    <div class="sheet-msg" id="sheetMsg"></div>
+    <div class="sheet-why" id="sheetWhy"></div>
+    <button type="button" class="btn btn-block" id="sheetBtn">Got it</button>
+  </div>
+</div>
+
+<script src="../shared/arcade.js"></script>
+<script src="crisis.model.js"></script>
+
+<script>
+/* ================================================================================
+   CRISIS COUNTRY — the game. Sections: elements · screens · progress · crisis select ·
+   the dashboard · the hand and the desk (card drag) · turn loop · exit exam · the run ·
+   end screens · boot.  During play the student's only input is dragging a card onto the
+   desk; multiple choice appears nowhere but the Exit Exam. Every turn calls Arcade.track
+   once: did the card move the country closer to stability, under the card's CED topic.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined' || typeof CrisisModel === 'undefined') return;
+
+  var M = CrisisModel;
+  var TURN_MS = TIMING.turnSeconds * 1000;
+  var WARN_MS = TIMING.warnSeconds * 1000;
+  var RESULT_MS = TIMING.resultSeconds * 1000;
+  var EXAM_MS = TIMING.examSeconds * 1000;
+  var KEYS = 'ABCD';
+  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
+  var GAUGES = [
+    { key: 'pi', label: 'Inflation', unit: '%', state: function (v) { return Math.abs(v - M.PI_TARGET) <= 2 ? 'good' : Math.abs(v - M.PI_TARGET) <= 5 ? 'warn' : 'bad'; } },
+    { key: 'u', label: 'Unemployment', unit: '%', state: function (v) { return v <= M.U_STAR + 1.5 ? 'good' : v <= M.U_STAR + 4 ? 'warn' : 'bad'; } },
+    { key: 'reserves', label: 'Reserves', unit: ' mo', state: function (v) { return v >= 2 ? 'good' : v >= 1 ? 'warn' : 'bad'; } },
+    { key: 'e', label: 'Currency', unit: '', state: function (v) { return v >= 85 ? 'good' : v >= 70 ? 'warn' : 'bad'; } },
+    { key: 'debt', label: 'Debt', unit: '%', state: function (v) { return v <= 90 ? 'good' : v <= 120 ? 'warn' : 'bad'; } },
+    { key: 'pop', label: 'Popularity', unit: '', state: function (v) { return v >= 50 ? 'good' : v >= 40 ? 'warn' : 'bad'; } }
+  ];
+
+  /* ===== ELEMENTS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {number} ms @returns {Promise<void>} */
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function fill(cls, text) { var n = document.createElement('div'); n.className = cls; n.textContent = text; return n; }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function chip(cls, text) { var n = document.createElement('span'); n.className = cls; n.textContent = text; return n; }
+
+  var screens = {
+    title: byId('screen-title'), select: byId('screen-select'), howto: byId('screen-howto'),
+    play: byId('screen-play'), exam: byId('screen-exam'), end: byId('screen-end')
+  };
+  var crisisList = byId('crisisList');
+  var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
+  var turnTag = byId('turnTag'), electionTag = byId('electionTag'), timerEl = byId('timer');
+  var dash = byId('dash'), gapLine = byId('gapLine'), headlineEl = byId('headline'), advisor1 = byId('advisor1'), advisor2 = byId('advisor2');
+  var desk = byId('desk'), hand = byId('hand'), kbdRow = byId('kbdRow'), boardRead = byId('boardRead');
+  var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
+  var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
+  var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+  var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), introEl = byId('intro');
+
+  /** The run in progress. `token` is what tells an awaiting turn it has been abandoned. */
+  var run = null;
+  var runToken = 0;
+  var exam = null;
+  var examToken = 0;
+  /** @param {number} token @returns {boolean} */
+  function alive(token) { return token === runToken; }
+  /** @param {number} token @returns {boolean} */
+  function examAlive(token) { return token === examToken; }
+
+  /* ===== SCREENS ===== */
+
+  var booted = false;
+  /** @param {string} name */
+  function show(name) {
+    Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+    if (booted) Arcade.guardTaps();
+    booted = true;
+    Arcade.focusScreen(screens[name]);
+  }
+
+  function abortRun() {
+    runToken += 1;
+    examToken += 1;
+    if (run && run.clock) run.clock.stop();
+    if (exam && exam.stop) exam.stop();
+    ackNow();
+    hideSheet();
+    endDrag();
+    Arcade.voice.stop();
+  }
+
+  /* ===== PROGRESS — arcade.crisis.progress ===== */
+
+  /** @returns {{unlocked:number, levels:Object<string, any>}} */
+  function loadProgress() {
+    var p = Arcade.store.get('arcade.crisis.progress', null);
+    if (!p || typeof p !== 'object') p = {};
+    var levels = {};
+    var raw = p.levels && typeof p.levels === 'object' ? p.levels : {};
+    Object.keys(raw).forEach(function (key) { if (raw[key] && typeof raw[key] === 'object') levels[key] = raw[key]; });
+    return { unlocked: typeof p.unlocked === 'number' && p.unlocked >= 1 ? p.unlocked : 1, levels: levels };
+  }
+
+  /** @returns {any} */
+  function blankRecord() { return { cleared: false, acc: 0, best: 0, stamp: 0, medal: null, exam: null, examPerfect: false, outcome: '' }; }
+
+  /** The medal follows the stamp: a 3 is bronze, a 4 silver, a 5 with the exam gold. @param {any} rec @returns {any} */
+  function rescore(rec) {
+    var passed = !!(rec.exam && rec.exam.right >= 2);
+    rec.medal = rec.stamp >= 5 && passed ? 'gold' : rec.stamp >= 4 ? 'silver' : rec.stamp >= 3 ? 'bronze' : null;
+    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total && rec.stamp >= 5);
+    return rec;
+  }
+
+  /** @param {number} n @param {{score:number, stamp:number, acc:number, outcome:string}} result */
+  function saveProgress(n, result) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    rec.cleared = true;
+    rec.acc = Math.max(rec.acc || 0, result.acc);
+    if (result.score >= (rec.best || 0)) { rec.best = result.score; rec.outcome = result.outcome; }
+    rec.stamp = Math.max(rec.stamp || 0, result.stamp);
+    p.levels[String(n)] = rescore(rec);
+    if (rec.stamp >= 2) p.unlocked = Math.max(p.unlocked, n + 1);
+    Arcade.store.set('arcade.crisis.progress', p);
+  }
+
+  /** @param {number} n @param {number} right @param {number} total @returns {any} */
+  function saveExam(n, right, total) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    if (!rec.exam || right > rec.exam.right) rec.exam = { right: right, total: total };
+    p.levels[String(n)] = rescore(rec);
+    Arcade.store.set('arcade.crisis.progress', p);
+    return rec;
+  }
+
+  /* ===== CRISIS SELECT ===== */
+
+  /** @param {number} n @returns {any} */
+  function crisisOf(n) { for (var i = 0; i < CRISES.length; i += 1) if (CRISES[i].n === n) return CRISES[i]; return undefined; }
+  /** @param {number} n @returns {boolean} */
+  function playable(n) { return !!crisisOf(n) && n <= loadProgress().unlocked; }
+
+  /** @param {any} C @param {any} rec @param {boolean} locked @returns {any} */
+  function crisisTile(C, rec, locked) {
+    var tile = document.createElement('div');
+    tile.className = 'panel level-tile' + (locked ? ' locked' : '');
+    var medal = Arcade.safeMedal(rec && rec.medal);
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'tile-open';
+    open.disabled = locked;
+    open.setAttribute('aria-label', (locked ? 'Locked: crisis ' : 'Play crisis ') + C.n + ', ' + C.name + (medal === 'none' ? '' : ', ' + medal + ' medal'));
+    open.appendChild(chip('level-num', String(C.n)));
+    var info = chip('tile-info', '');
+    info.appendChild(chip('tile-name', C.name + (locked ? ' 🔒' : '')));
+    var meta = chip('tile-meta', '');
+    meta.appendChild(chip('muted', rec && rec.cleared ? 'Best ' + rec.best + ' · stamp ' + rec.stamp + (rec.outcome ? ' · ' + rec.outcome : '') : locked ? 'Locked' : C.blurb));
+    if (rec && rec.exam) meta.appendChild(chip('tag', 'Exam ' + rec.exam.right + '/' + rec.exam.total));
+    if (rec && rec.examPerfect) meta.appendChild(chip('ribbon', 'Exam Ready'));
+    info.appendChild(meta);
+    open.appendChild(info);
+    open.appendChild(chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
+    if (!locked) open.addEventListener('click', function () { startCrisis(C.n); });
+    tile.appendChild(open);
+    if (rec && rec.cleared) {
+      var sprint = document.createElement('button');
+      sprint.type = 'button';
+      sprint.className = 'btn btn-ghost tile-btn';
+      sprint.textContent = 'Exit Exam';
+      sprint.setAttribute('aria-label', 'Exit Exam for crisis ' + C.n);
+      sprint.addEventListener('click', function () { startExam(C.n, null); });
+      tile.appendChild(sprint);
+    }
+    return tile;
+  }
+
+  function paintSelect() {
+    var progress = loadProgress();
+    crisisList.textContent = '';
+    CRISES.forEach(function (C) { crisisList.appendChild(crisisTile(C, progress.levels[String(C.n)] || null, C.n > progress.unlocked)); });
+  }
+
+  /* ===== THE DASHBOARD ===== */
+
+  /** @type {any[]} */ var gauges = [];
+
+  function buildDash() {
+    dash.textContent = '';
+    gauges = GAUGES.map(function (g) {
+      var box = fill('cc-gauge', '');
+      var parts = { el: box, value: fill('cc-gauge-value', '—'), delta: fill('cc-gauge-delta', '') };
+      box.appendChild(fill('cc-gauge-label', g.label));
+      box.appendChild(parts.value);
+      box.appendChild(parts.delta);
+      dash.appendChild(box);
+      return parts;
+    });
+  }
+
+  /** @param {number} v @param {string} unit @returns {string} */
+  function fmt(v, unit) { return (unit === ' mo' ? v.toFixed(1) : unit === '%' ? v.toFixed(1) : Math.round(v)) + unit; }
+
+  /** @param {any} s @param {any} [prev] the state before this turn, for the deltas */
+  function paintDash(s, prev) {
+    GAUGES.forEach(function (g, i) {
+      var v = s[g.key];
+      gauges[i].value.textContent = fmt(v, g.unit);
+      gauges[i].el.className = 'cc-gauge ' + g.state(v);
+      if (prev) {
+        var d = Math.round((v - prev[g.key]) * 10) / 10;
+        gauges[i].delta.textContent = d > 0.05 ? '▲ ' + d : d < -0.05 ? '▼ ' + Math.abs(d) : '—';
+      } else gauges[i].delta.textContent = '';
+    });
+    var gapText = s.gap <= -0.5 ? 'Output ' + Math.abs(s.gap).toFixed(1) + '% below potential' : s.gap >= 0.5 ? 'Output ' + s.gap.toFixed(1) + '% above potential' : 'Output at potential';
+    gapLine.textContent = gapText + ' · ' + (s.independent ? 'central bank independent' : 'central bank takes orders') + ' · ' + (s.regime === 'peg' ? 'pegged' : 'floating');
+    boardRead.textContent = GAUGES.map(function (g, i) { return g.label + ' ' + gauges[i].value.textContent; }).join(', ') + '. ' + gapText + '.';
+  }
+
+  /** @param {any} s @param {string} who @returns {string} */
+  function advice(s, who) {
+    for (var i = 0; i < ADVISORS.length; i += 1) {
+      var a = ADVISORS[i];
+      if (a.who !== who) continue;
+      var v = s[a.when[0]], op = a.when[1], x = a.when[2];
+      var ok = op === '>' ? v > x : op === '>=' ? v >= x : op === '<' ? v < x : op === '<=' ? v <= x : v === x;
+      if (ok) return a.line;
+    }
+    return '';
+  }
+
+  /* ===== THE HAND AND THE DESK — press a card, carry it, drop it on the desk ===== */
+
+  /** @type {any} */ var drag = null;
+  /** @type {any} */ var token = null;
+  var handLocked = true;
+  /** @type {((id:string) => void)|null} */ var playResolve = null;
+
+  /** @returns {Promise<string>} the card played, or 'hold' when the clock plays it */
+  function nextCard() { return new Promise(function (resolve) { playResolve = resolve; }); }
+  /** @param {string} id */
+  function handOver(id) { if (!playResolve) return; var r = playResolve; playResolve = null; r(id); }
+
+  /** @param {string} id @returns {any} */
+  function cardNode(id) {
+    var c = M.CARDS[id];
+    var node = fill('cc-card ' + c.kind, '');
+    node.setAttribute('data-card', id);
+    node.setAttribute('role', 'listitem');
+    var emoji = fill('cc-card-emoji', c.emoji); emoji.setAttribute('aria-hidden', 'true');
+    node.appendChild(emoji);
+    node.appendChild(fill('cc-card-name', c.name));
+    node.appendChild(fill('cc-card-kind', c.kind === 'none' ? 'wait' : c.kind));
+    return node;
+  }
+
+  /** @param {any} s */
+  function paintHand(s) {
+    hand.textContent = '';
+    kbdRow.textContent = '';
+    M.hand(s).forEach(function (id) {
+      hand.appendChild(cardNode(id));
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.textContent = M.CARDS[id].name;
+      b.setAttribute('aria-label', 'Play ' + M.CARDS[id].name);
+      b.addEventListener('click', function () { if (!handLocked && !drag) commit(id); });
+      kbdRow.appendChild(b);
+    });
+  }
+
+  /** @param {string} id */
+  function commit(id) {
+    if (handLocked) return;
+    handLocked = true;
+    Arcade.sfx.play('stamp');
+    handOver(id);
+  }
+
+  function endDrag() {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    try { hand.releasePointerCapture(d.pointerId); } catch (err) { /* already gone */ }
+    if (token && token.parentNode) token.parentNode.removeChild(token);
+    token = null;
+    if (d.node) d.node.classList.remove('lifted');
+    desk.classList.remove('over');
+  }
+
+  /** @param {number} x @param {number} y @returns {boolean} */
+  function overDesk(x, y) {
+    var r = desk.getBoundingClientRect();
+    return x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 24 && y <= r.bottom + 8;
+  }
+
+  hand.addEventListener('pointerdown', function (ev) {
+    if (handLocked || drag) return;
+    var node = ev.target && ev.target.closest ? ev.target.closest('.cc-card') : null;
+    if (!node) return;
+    ev.preventDefault();
+    drag = { pointerId: ev.pointerId, node: node, id: node.getAttribute('data-card'), x0: ev.clientX, y0: ev.clientY, lifted: false };
+    try { hand.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety */ }
+  });
+  hand.addEventListener('pointermove', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    if (!drag.lifted) {
+      // a card lifts once the finger has travelled a little; a plain tap leaves it in the hand
+      if (Math.abs(ev.clientX - drag.x0) < 6 && Math.abs(ev.clientY - drag.y0) < 6) return;
+      drag.lifted = true;
+      token = cardNode(drag.id);
+      token.className = 'cc-token';
+      document.body.appendChild(token);
+      drag.node.classList.add('lifted');
+      Arcade.sfx.play('grab');
+    }
+    token.style.transform = 'translate(' + ev.clientX + 'px, ' + ev.clientY + 'px)';
+    desk.classList.toggle('over', overDesk(ev.clientX, ev.clientY - 40));
+  });
+  hand.addEventListener('pointerup', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    var lifted = drag.lifted, id = drag.id, x = ev.clientX, y = ev.clientY - 40;
+    endDrag();
+    if (lifted && overDesk(x, y)) commit(id);
+  });
+  hand.addEventListener('pointercancel', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    endDrag();
+  });
+
+  /* ===== TURN CHROME ===== */
+
+  /** @param {string} kind @param {string} msg @param {string} why @param {boolean} ack */
+  function paintSheet(kind, msg, why, ack) {
+    sheetMsg.textContent = msg;
+    sheetWhy.textContent = why;
+    sheetWhy.className = 'sheet-why' + (ack ? ' cc-chain' : '');
+    sheetBtn.style.display = ack ? '' : 'none';
+    sheet.className = 'sheet ' + kind + ' open';
+  }
+  function hideSheet() { sheet.classList.remove('open'); sheetBtn.style.display = 'none'; }
+
+  /** @type {(() => void)|null} */ var ackResolve = null;
+  function ackNow() { if (!ackResolve) return; var r = ackResolve; ackResolve = null; r(); }
+  sheetBtn.addEventListener('click', function () { hideSheet(); ackNow(); });
+
+  /** @param {string} msg @param {string} why @param {string} [label] @param {string} [kind] @returns {Promise<void>} */
+  function sheetAsk(msg, why, label, kind) {
+    ackNow();
+    sheetBtn.textContent = label || 'Got it';
+    paintSheet(kind || 'wrong', msg, why, true);
+    return new Promise(function (resolve) { ackResolve = resolve; });
+  }
+
+  /** A moment to read, or a tap anywhere to move on. @param {number} ms @returns {Promise<void>} */
+  function readBeat(ms) {
+    return new Promise(function (resolve) {
+      var timer = setTimeout(done, ms);
+      function done() { clearTimeout(timer); document.removeEventListener('pointerdown', done); resolve(); }
+      document.addEventListener('pointerdown', done);
+    });
+  }
+
+  /** The turn's clock: the bar empties and Hold course is played.
+   *  @param {number} ms @returns {{next:() => Promise<string>, pause:() => void, resume:() => void, stop:() => void}} */
+  function turnClock(ms) {
+    var done = false;
+    var timer = Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: function () { if (done) return; done = true; handLocked = true; endDrag(); handOver('hold'); } });
+    timer.start();
+    return {
+      next: function () { return done ? Promise.resolve('hold') : nextCard(); },
+      pause: function () { timer.pause(); },
+      resume: function () { if (!done) timer.resume(); },
+      stop: function () { done = true; timer.stop(); handOver('hold'); }
+    };
+  }
+
+  function pauseClocks() { if (run && run.clock) run.clock.pause(); if (exam && exam.pause) exam.pause(); }
+  function resumeClocks() { if (run && run.clock) run.clock.resume(); if (exam && exam.resume) exam.resume(); }
+
+  /** How far a state sits from stability; lower is better. @param {any} s @returns {number} */
+  function distance(s) {
+    return Math.abs(s.pi - M.PI_TARGET) * 4 + Math.max(0, s.u - M.U_STAR) * 6 + Math.max(0, 3 - s.reserves) * 8;
+  }
+
+  /* ===== TURN LOOP ===== */
+
+  /** @param {any} C @param {number} i @param {number} token */
+  async function playTurn(C, i, token) {
+    var t = C.turns[i];
+    var s = run.state;
+    var isElection = i + 1 === C.election;
+    turnTag.textContent = 'Turn ' + (i + 1) + '/' + M.TURNS;
+    electionTag.textContent = isElection ? '🗳 Election' : C.election > i + 1 ? '🗳 in ' + (C.election - i - 1) : '';
+    paintDash(s, run.prev);
+    headlineEl.textContent = (isElection ? '🗳 ' : '📰 ') + t.headline;
+    advisor1.textContent = '';
+    advisor1.appendChild(chip('', ''));
+    advisor1.innerHTML = '';
+    var h1 = document.createElement('b'); h1.textContent = 'Hawk: '; advisor1.appendChild(h1); advisor1.appendChild(document.createTextNode(advice(s, 'The Hawk')));
+    advisor2.innerHTML = '';
+    var h2 = document.createElement('b'); h2.textContent = 'Populist: '; advisor2.appendChild(h2); advisor2.appendChild(document.createTextNode(advice(s, 'The Populist')));
+    paintHand(s);
+    Arcade.sfx.play('card');
+    if (Arcade.voice.enabled) Arcade.say(t.headline, { who: 'anchor' });
+    handLocked = false;
+    run.clock = turnClock(TURN_MS);
+    var cardId = await run.clock.next();
+    if (!alive(token)) return;
+    run.clock.stop();
+    handLocked = true;
+    endDrag();
+    var card = M.CARDS[cardId];
+    run.played.push(cardId);
+
+    // the card flips to its chain
+    await sheetAsk(card.emoji + ' ' + card.name, card.chain, 'Enact', 'correct');
+    if (!alive(token)) return;
+    hideSheet();
+
+    // the country answers
+    var next = M.step(s, cardId, t.shock);
+    run.prev = s;
+    run.state = next;
+    var closer = distance(next) < distance(s) - 0.01 || M.stable(next).ok;
+    run.asked += 1;
+    if (closer) run.correct += 1;
+    Arcade.track(KIND_CED[card.kind] || '3.7', 2, closer);
+    paintDash(next, s);
+    var st = M.stable(next);
+    var bankLine = next.bank === 'hike' ? ' The central bank hiked on its own.' : next.bank === 'cut' ? ' The central bank cut on its own.' : '';
+    var broke = next.broke && !s.broke ? ' The peg broke: reserves hit zero.' : '';
+    var read = (closer ? '▲ Closer to stable' : '▼ Further from stable') + ' · inflation ' + next.pi.toFixed(1) + '% · unemployment ' + next.u.toFixed(1) + '% · reserves ' + next.reserves.toFixed(1) + ' mo';
+    Arcade.sfx.play(closer ? 'correct' : 'wrong');
+    paintSheet(closer ? 'correct' : 'wrong', read, (st.ok ? 'Stable on every count.' : 'Still off: ' + [!st.inflation ? 'inflation' : '', !st.jobs ? 'unemployment' : '', !st.reserves ? 'reserves' : ''].filter(Boolean).join(', ') + '.') + bankLine + broke, false);
+    await readBeat(RESULT_MS);
+    if (!alive(token)) return;
+    hideSheet();
+    if (isElection && next.pop < 40) run.endedBy = 'election';
+    else run.endedBy = M.ended(next);
+  }
+
+  /* ===== EXIT EXAM ===== */
+
+  /** Three items from the cards the run played (or any, for a replayed exam). @param {string[]|null} played @returns {any[]} */
+  function pickExam(played) {
+    var pool = EXAM_ITEMS.filter(function (item) { return !played || item.cards.some(function (c) { return played.indexOf(c) >= 0; }); });
+    if (pool.length < 3) pool = EXAM_ITEMS.slice();
+    var out = [];
+    while (out.length < 3 && pool.length) { var k = Math.floor(Math.random() * pool.length); out.push(pool.splice(k, 1)[0]); }
+    return out;
+  }
+
+  /** @param {any} q @param {number} index @param {number} total @param {number} token @returns {Promise<boolean>} */
+  async function askQuestion(q, index, total, token) {
+    examCountEl.textContent = (index + 1) + '/' + total;
+    examStemEl.textContent = q.stem;
+    examChoicesEl.textContent = '';
+    var buttons = q.choices.map(function (text, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-block choice';
+      b.textContent = KEYS.charAt(i) + '. ' + text;
+      examChoicesEl.appendChild(b);
+      return b;
+    });
+    var picked = await new Promise(function (resolve) {
+      var settled = false;
+      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { warnAt: WARN_MS, onEnd: function () { finish(-1); } });
+      function finish(i) { if (settled) return; settled = true; timer.stop(); resolve(i); }
+      buttons.forEach(function (b, i) { b.addEventListener('click', function () { finish(i); }); });
+      exam.stop = function () { finish(-1); };
+      exam.pause = function () { timer.pause(); };
+      exam.resume = function () { if (!settled) timer.resume(); };
+      timer.start();
+    });
+    if (!examAlive(token)) return false;
+    var ok = picked === q.answer;
+    buttons.forEach(function (b, i) { b.classList.add('marked'); if (i === q.answer) b.classList.add('right'); else if (i === picked) b.classList.add('wrong'); });
+    Arcade.sfx.play(ok ? 'correct' : 'wrong');
+    Arcade.track(q.ced, q.skill, ok);
+    await sheetAsk(ok ? '✓ Correct' : '✗ ' + KEYS.charAt(q.answer) + ' is the answer', q.why, 'Next', ok ? 'correct' : 'wrong');
+    if (!examAlive(token)) return ok;
+    hideSheet();
+    return ok;
+  }
+
+  /** @param {number} n @param {string[]|null} played */
+  function startExam(n, played) {
+    var C = crisisOf(n);
+    if (!C) return;
+    abortRun();
+    show('exam');
+    runExam(C, pickExam(played)).catch(function () { Arcade.toast('Something went wrong — back to the crises'); goSelect(); });
+  }
+
+  /** @param {any} C @param {any[]} items */
+  async function runExam(C, items) {
+    examToken += 1;
+    var token = examToken;
+    exam = { C: C, stop: null };
+    examSubEl.textContent = 'Crisis ' + C.n + ' · ' + C.name;
+    hideSheet();
+    var right = 0;
+    for (var i = 0; i < items.length; i += 1) {
+      var ok = await askQuestion(items[i], i, items.length, token);
+      if (!examAlive(token)) return;
+      if (ok) right += 1;
+    }
+    examToken += 1;
+    showExamResult(C, right, items.length);
+  }
+
+  /** @param {any} C @param {number} right @param {number} total */
+  function showExamResult(C, right, total) {
+    var rec = saveExam(C.n, right, total);
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'EXIT EXAM', sub: 'Exit Exam: ' + right + '/' + total,
+      score: rec.best || 0, accuracy: rec.acc || 0,
+      medal: rec.medal, stamp: rec.stamp || 1,
+      ribbon: rec.examPerfect ? 'Exam Ready' : '',
+      stats: [{ label: 'Crisis ' + C.n, value: C.name }, { label: 'Best exam', value: rec.exam.right + '/' + rec.exam.total }],
+      note: rec.medal === 'gold' ? '' : 'Gold needs a 5 on the crisis and 2 of 3 here.',
+      buttons: [
+        { label: 'Crises', primary: true, onClick: goSelect },
+        { label: 'Run it again', onClick: function () { startExam(C.n, null); } },
+        ARCADE_BUTTON
+      ]
+    });
+    Arcade.focusScreen(screens.end);
+    if (right === total) Arcade.confetti();
+  }
+
+  /* ===== THE RUN ===== */
+
+  /** @param {number} n */
+  function startCrisis(n) {
+    var C = crisisOf(n);
+    if (!C) return;
+    abortRun();
+    if (!howtoSeen(n)) { openHowto(n, function () { markHowtoSeen(n); beginCrisis(C); }, goSelect); return; }
+    beginCrisis(C);
+  }
+
+  /** @param {any} C */
+  function beginCrisis(C) {
+    show('play');
+    playCrisis(C).catch(function () { Arcade.toast('Something went wrong — back to the crises'); goSelect(); });
+  }
+
+  /** @param {any} C @returns {any} the opening state */
+  function opening(C) {
+    var s = M.blank();
+    Object.keys(C.start).forEach(function (key) { s[key] = C.start[key]; });
+    return s;
+  }
+
+  /** @param {any} C */
+  async function playCrisis(C) {
+    runToken += 1;
+    var token = runToken;
+    run = { C: C, state: opening(C), prev: null, played: [], asked: 0, correct: 0, clock: null, endedBy: null, stableAt: null };
+    buildDash();
+    hideSheet();
+    var held = 0;
+    for (var i = 0; i < C.turns.length; i += 1) {
+      await playTurn(C, i, token);
+      if (!alive(token)) return;
+      var ok = M.stable(run.state).ok;
+      held = ok ? held + 1 : 0;
+      if (run.stableAt === null && ok) run.stableAt = i + 1;
+      if (!ok) run.stableAt = null;
+      if (run.endedBy) break;
+      // stability has to hold for two turns, from turn four on, before the country is called stable
+      if (held >= 2 && i + 1 >= 4) { Arcade.sfx.play('win'); Arcade.toast('🎉 Stabilized on turn ' + run.stableAt, 1200); await wait(700); break; }
+    }
+    showEnd(C);
+  }
+
+  /* ===== END SCREENS ===== */
+
+  function goHome() { window.location.href = '../index.html'; }
+  var ARCADE_BUTTON = { label: 'Arcade', onClick: goHome };
+
+  /** @param {any} panel @param {any} before */
+  function showTitle(panel, before) {
+    if (!panel) return;
+    var after = Arcade.titleFor();
+    var rose = after.rank > before.rank;
+    var line = fill('title-chip' + (rose ? ' up' : ''), 'Title: ' + after.name + (rose ? ' · 🎉 New title!' : ''));
+    var head = panel.querySelector('.end-head');
+    head.parentNode.insertBefore(line, head.nextSibling);
+    if (rose) Arcade.sfx.play('coin');
+  }
+
+  /** @param {any} panel */
+  function showPlayed(panel) {
+    if (!panel || !run.played.length) return;
+    var list = fill('missed-list', '');
+    list.appendChild(chip('muted', 'Played: '));
+    run.played.forEach(function (id, i) { list.appendChild(chip('missed-head', (i ? ' · ' : '') + M.CARDS[id].emoji + ' ' + M.CARDS[id].name)); });
+    panel.insertBefore(list, panel.lastElementChild);
+  }
+
+  /** @param {any} C */
+  function showEnd(C) {
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    var s = run.state;
+    var result = M.score(s, { turnsToStable: run.stableAt, endedBy: run.endedBy });
+    var acc = run.asked ? run.correct / run.asked : 0;
+    var outcome = run.endedBy === 'election' ? 'Thrown out' : run.endedBy === 'hyperinflation' ? 'Hyperinflation' : run.endedBy === 'default' ? 'Default' : run.stableAt !== null ? 'Stabilized on turn ' + run.stableAt : 'Time ran out';
+    var title = run.endedBy === 'election' ? 'THROWN OUT' : run.endedBy === 'hyperinflation' ? 'HYPERINFLATION' : run.endedBy === 'default' ? 'DEFAULT' : run.stableAt !== null ? 'STABILIZED' : 'TIME’S UP';
+    var beforeTitle = Arcade.titleFor();
+    saveProgress(C.n, { score: result.score, stamp: result.stamp, acc: acc, outcome: outcome });
+    Arcade.saveBest('crisis', { score: result.score, initials: Arcade.initials(), level: C.n });
+    var saved = loadProgress();
+    var rec = saved.levels[String(C.n)] || {};
+    var medal = result.stamp >= 5 && rec.exam && rec.exam.right >= 2 ? 'gold' : result.stamp >= 4 ? 'silver' : result.stamp >= 3 ? 'bronze' : null;
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: title, sub: C.name + ' · ' + outcome,
+      tone: result.stamp >= 3 ? undefined : 'fail',
+      score: result.score, accuracy: acc, stamp: result.stamp, medal: medal,
+      stats: [
+        { label: 'Inflation ' + s.pi.toFixed(1) + '%', value: 'unemployment ' + s.u.toFixed(1) + '%' },
+        { label: 'Reserves ' + s.reserves.toFixed(1) + ' mo', value: 'debt ' + Math.round(s.debt) + '% · popularity ' + Math.round(s.pop) }
+      ],
+      note: EXAM_FRAME + (saved.unlocked > C.n ? '' : ' · A 2 unlocks the next crisis.'),
+      buttons: [
+        { label: 'Exit Exam →', primary: true, variant: 'gold', onClick: function () { startExam(C.n, run.played); } },
+        { label: 'Crises', onClick: goSelect },
+        { label: 'Replay', onClick: function () { startCrisis(C.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    showTitle(panel, beforeTitle);
+    showPlayed(panel);
+    Arcade.focusScreen(screens.end);
+    if (result.stamp >= 3) Arcade.confetti();
+  }
+
+  function goSelect() {
+    abortRun();
+    sheetBtn.textContent = 'Got it';
+    paintSelect();
+    show('select');
+  }
+
+  /* ===== HOW TO PLAY ===== */
+
+  /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {(() => void)|null} */ var howtoBackTo = null;
+
+  /** @param {number} n @returns {boolean} */
+  function howtoSeen(n) {
+    var saved = Arcade.store.get('arcade.crisis.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen : [];
+    return seen.indexOf(n) >= 0;
+  }
+  /** @param {number} n */
+  function markHowtoSeen(n) {
+    var saved = Arcade.store.get('arcade.crisis.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen.filter(function (v) { return typeof v === 'number'; }) : [];
+    if (seen.indexOf(n) < 0) seen.push(n);
+    Arcade.store.set('arcade.crisis.howto', { seen: seen });
+  }
+
+  /** @param {number} n */
+  function paintHowto(n) {
+    var C = crisisOf(n);
+    howtoTitle.textContent = C ? 'How to play · ' + C.name : 'How to play';
+    howtoCards.textContent = '';
+    var cards = HOWTO.slice();
+    if (C) cards.unshift({ emoji: '\u{1F4CD}', head: C.country + ' · ' + C.name, body: C.blurb + '. Election on turn ' + C.election + '.' });
+    cards.forEach(function (card) {
+      var panel = fill('panel howto-card', '');
+      var emoji = fill('howto-emoji', card.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      panel.appendChild(emoji);
+      var body = fill('', '');
+      body.appendChild(fill('howto-head', card.head));
+      body.appendChild(fill('howto-body', card.body));
+      panel.appendChild(body);
+      howtoCards.appendChild(panel);
+    });
+  }
+
+  /** @param {number} n @param {() => void} after @param {() => void} [back] */
+  function openHowto(n, after, back) { howtoAfter = after; howtoBackTo = back || after; paintHowto(n); show('howto'); }
+  /** @param {boolean} [backwards] */
+  function closeHowto(backwards) { var go = backwards === true ? howtoBackTo : howtoAfter; howtoAfter = null; howtoBackTo = null; if (go) go(); }
+
+  function paintIntro() {
+    introEl.textContent = '';
+    var title = fill('intro-title', 'What is this game?');
+    title.id = 'introTitle';
+    introEl.appendChild(title);
+    INTRO.forEach(function (line) {
+      var row = fill('intro-line', '');
+      var emoji = fill('intro-emoji', line.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      row.appendChild(fill('intro-text', line.text));
+      introEl.appendChild(row);
+    });
+  }
+
+  /* ===== BOOT ===== */
+
+  Arcade.bigType(Arcade.store.get('arcade.bigType', false));
+  Arcade.sfx.bindMuteButton(byId('muteBtn'));
+  Arcade.voice.bindButton(byId('voiceBtn'));
+  sheetBtn.style.display = 'none';
+  paintIntro();
+
+  initialsBtn.textContent = Arcade.initials();
+  initialsBtn.addEventListener('click', function () {
+    if (!initialsPanel.hidden) { initialsPanel.hidden = true; return; }
+    initialsPanel.hidden = false;
+    Arcade.initialsEntry(initialsMount, { onDone: function (value) { initialsBtn.textContent = value; initialsPanel.hidden = true; } });
+  });
+
+  byId('examPace').textContent = TIMING.examSeconds + ' s';
+  byId('playBtn').addEventListener('click', goSelect);
+  byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
+  byId('playBack').addEventListener('click', goSelect);
+  byId('examBack').addEventListener('click', goSelect);
+  byId('howtoBack').addEventListener('click', function () { closeHowto(true); });
+  byId('howtoGo').addEventListener('click', function () { closeHowto(false); });
+  byId('selectHowto').addEventListener('click', function () { openHowto(0, function () { show('select'); }); });
+  byId('playHowto').addEventListener('click', function () {
+    if (!run) return;
+    pauseClocks();
+    openHowto(run.C.n, function () { show('play'); resumeClocks(); });
+  });
+
+  paintSelect();
+  var deepLink = parseInt(String(Arcade.qs('level', '')), 10);
+  if (Number.isFinite(deepLink)) {
+    if (playable(deepLink)) startCrisis(deepLink);
+    else { show('select'); Arcade.toast(crisisOf(deepLink) ? 'Crisis ' + deepLink + ' is still locked' : 'No crisis ' + deepLink); }
+  }
+  booted = true;
+}());
+</script>
+
+</body>
+</html>
