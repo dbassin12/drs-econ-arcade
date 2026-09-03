@@ -210,7 +210,6 @@ test('playNext routes the weakest topic to the level that drills it', () => {
     game: 'fed', level: 1, url: 'games/fed-chair.html?era=1975', label: 'Fed Chair · 1975'
   });
   assert.equal(next('3.1').level, 1);
-  assert.equal(next('3.2').level, 1);
   assert.equal(next('3.8').level, 1);
   assert.equal(next('3.6').level, 2);
   for (const ced of ['3.4', '3.5', '3.7', '3.9']) assert.equal(next(ced).level, 3);
@@ -224,10 +223,17 @@ test('playNext routes the weakest topic to the level that drills it', () => {
     game: 'sort', level: 1, url: 'games/sort-circuit.html?level=1', label: 'Sort Circuit · Deck 1'
   });
   assert.equal(next('2.2').level, 1, 'the limits of GDP sort with GDP');
-  for (const ced of ['4.3', '4.4']) assert.deepEqual([next(ced).game, next(ced).level], ['sort', 2], ced + ' is what money is');
+  assert.deepEqual([next('4.3').game, next('4.3').level], ['sort', 2], '4.3 is what money is');
   assert.deepEqual([next('6.1').game, next('6.1').level], ['sort', 4], 'the balance of payments is a sorting deck');
+  // the ladders: measurements, multipliers, and money arithmetic are Calc Blitz's
+  assert.deepEqual(next('2.4'), {
+    game: 'calc', level: 1, url: 'games/calc-blitz.html?level=1', label: 'Calc Blitz · Ladder 1'
+  });
+  for (const ced of ['2.3', '2.6']) assert.deepEqual([next(ced).game, next(ced).level], ['calc', 1], ced + ' is a measurement');
+  assert.deepEqual([next('3.2').game, next('3.2').level], ['calc', 2], 'multipliers are arithmetic');
+  for (const ced of ['4.2', '4.4']) assert.deepEqual([next(ced).game, next(ced).level], ['calc', 3], ced + ' is money arithmetic');
   // a still-unmapped topic falls through to the hardest shift level
-  assert.deepEqual(next('2.3'), {
+  assert.deepEqual(next('2.7'), {
     game: 'shift', level: 3, url: 'games/shift-happens.html?level=3', label: 'Shift Happens · Level 3'
   });
   // no data at all starts at level 1

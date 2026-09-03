@@ -807,3 +807,29 @@ html.big-type .podium { display: block; order: -1; }
 .sort-emoji { font-size: 40px; line-height: 1; }
 .sort-text { font-weight: 800; font-size: 17px; line-height: 1.3; }
 @media (prefers-reduced-motion: reduce) { .sort-card.deal { animation: none; } }
+
+/* ===== CALC BLITZ — a problem card and a dial =====
+   The dial is a snapped number line: the knob follows the finger, the readout above shows
+   the value in big type, and a release after real travel hands the number over. */
+.calc-problem { font-weight: 800; font-size: 17px; line-height: 1.35; min-height: 96px; display: flex; align-items: center; }
+.calc-problem.deal { animation: dealIn .3s ease-out; }
+.calc-dial { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 4px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.calc-readout { display: flex; align-items: baseline; justify-content: center; gap: 6px; min-height: 56px; }
+.calc-value { font-family: var(--font-mono); font-weight: 800; font-size: 44px; line-height: 1; color: var(--text); }
+.calc-unit { font-weight: 900; font-size: 18px; color: var(--text2); }
+.calc-track { position: relative; height: 72px; border-radius: 36px; background: var(--bg3); border: 2px solid var(--border); touch-action: none; cursor: grab; }
+.calc-ticks { position: absolute; left: 28px; right: 28px; top: 0; bottom: 0; }
+.calc-tick { position: absolute; top: 50%; width: 2px; height: 10px; margin: -5px 0 0 -1px; background: var(--border); border-radius: 1px; }
+.calc-tick.major { height: 20px; margin-top: -10px; background: var(--text3); }
+.calc-knob {
+  position: absolute; top: 6px; left: 0; width: 56px; height: 56px; border-radius: 50%;
+  background: var(--blue); border: 3px solid var(--text); box-shadow: 0 6px 16px rgba(0,0,0,.4);
+  transition: background .15s;
+}
+.calc-knob.grabbed { background: var(--blue-dark); transform: scale(1.08); }
+.calc-knob.good { background: var(--green); }
+.calc-knob.bad { background: var(--red); }
+.calc-knob:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.calc-answer { position: absolute; top: -8px; width: 4px; height: 84px; margin-left: -2px; background: var(--green); border-radius: 2px; box-shadow: 0 0 0 4px var(--green-glow); }
+.calc-ends { justify-content: space-between; padding: 0 6px; }
+@media (prefers-reduced-motion: reduce) { .calc-problem.deal { animation: none; } .calc-knob.grabbed { transform: none; } }

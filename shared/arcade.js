@@ -429,11 +429,13 @@ var Arcade = (function () {
   /** Which level drills which topic. @type {Record<string, {game:string, level:number}>} */
   var CED_TO_LEVEL = {
     '2.1': { game: 'sort', level: 1 }, '2.2': { game: 'sort', level: 1 },    // GDP or not
-    '3.1': { game: 'shift', level: 1 }, '3.2': { game: 'shift', level: 1 }, '3.8': { game: 'shift', level: 1 },
+    '2.3': { game: 'calc', level: 1 }, '2.4': { game: 'calc', level: 1 }, '2.6': { game: 'calc', level: 1 },  // the measurements
+    '3.1': { game: 'shift', level: 1 }, '3.2': { game: 'calc', level: 2 }, '3.8': { game: 'shift', level: 1 },  // multipliers are arithmetic
     '3.3': { game: 'shift', level: 2 }, '3.6': { game: 'shift', level: 2 },
     '3.4': { game: 'shift', level: 3 }, '3.5': { game: 'shift', level: 3 },
     '3.7': { game: 'shift', level: 3 }, '3.9': { game: 'shift', level: 3 },
-    '4.3': { game: 'sort', level: 2 }, '4.4': { game: 'sort', level: 2 },    // what money is
+    '4.3': { game: 'sort', level: 2 },                                         // what money is
+    '4.2': { game: 'calc', level: 3 }, '4.4': { game: 'calc', level: 3 },    // Fisher, reserves, the multiplier
     '4.5': { game: 'shift', level: 4 },                                        // the money market
     '4.6': { game: 'fed', level: 1 }, '5.1': { game: 'fed', level: 1 },        // policy is the Fed's game
     '4.7': { game: 'shift', level: 5 }, '5.4': { game: 'shift', level: 5 },    // loanable funds, deficits,
@@ -484,6 +486,9 @@ var Arcade = (function () {
     }
     if (target.game === 'sort') {
       return { game: 'sort', level: target.level, url: 'games/sort-circuit.html?level=' + target.level, label: 'Sort Circuit · Deck ' + target.level };
+    }
+    if (target.game === 'calc') {
+      return { game: 'calc', level: target.level, url: 'games/calc-blitz.html?level=' + target.level, label: 'Calc Blitz · Ladder ' + target.level };
     }
     return {
       game: 'shift',

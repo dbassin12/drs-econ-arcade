@@ -83,6 +83,19 @@
       </div>
       <span class="game-go" aria-hidden="true">›</span>
     </a>
+
+    <a class="panel game-card" href="games/calc-blitz.html">
+      <div class="game-emoji" aria-hidden="true">🧮</div>
+      <div class="game-info">
+        <div class="game-title">Calc Blitz</div>
+        <div class="game-blurb">You are a human calculator: dial in the number the exam wants, from the CPI to the money multiplier</div>
+        <div class="row">
+          <span class="game-best" id="bestCalc">No score yet</span>
+          <span class="row medal-row" id="medalsCalc"></span>
+        </div>
+      </div>
+      <span class="game-go" aria-hidden="true">›</span>
+    </a>
   </section>
 
   <section class="stack games" aria-labelledby="soonTitle">
@@ -102,15 +115,6 @@
       <div class="game-info">
         <div class="game-title">Crisis Country</div>
         <div class="game-blurb">You are the finance minister of a country in trouble</div>
-        <div class="row"><span class="tag">Coming soon</span></div>
-      </div>
-    </div>
-
-    <div class="panel game-card soon" aria-disabled="true">
-      <div class="game-emoji" aria-hidden="true">🧮</div>
-      <div class="game-info">
-        <div class="game-title">Calc Blitz</div>
-        <div class="game-blurb">You are a human calculator</div>
         <div class="row"><span class="tag">Coming soon</span></div>
       </div>
     </div>
@@ -175,10 +179,13 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
   var RANKS = ['🥇', '🥈', '🥉'];
   var SHIFT_LEVELS = 7;               // Shift Happens levels, for the medal row
   var SORT_DECKS = 4;                 // Sort Circuit decks, for its medal row
+  var CALC_LADDERS = 3;               // Calc Blitz ladders, for its medal row
   /** Which CED unit each Shift level's Exam Sprint certifies. @type {Record<number, number>} */
   var LEVEL_UNIT = { 1: 3, 2: 3, 3: 3, 4: 4, 5: 5, 6: 6, 7: 5 };
   /** Which CED unit each Sort Circuit deck's Exam Sprint certifies. @type {Record<number, number>} */
   var DECK_UNIT = { 1: 2, 2: 4, 3: 3, 4: 6 };
+  /** Which CED unit each Calc Blitz ladder's Exam Sprint certifies. @type {Record<number, number>} */
+  var LADDER_UNIT = { 1: 2, 2: 3, 3: 4 };
 
   /* ===== ELEMENTS ===== */
 
@@ -208,6 +215,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
   var initialsBtn = byId('initialsBtn'), initialsSheet = byId('initialsSheet'), initialsMount = byId('initialsMount');
   var bestShift = byId('bestShift'), medalsShift = byId('medalsShift'), bestFed = byId('bestFed');
   var bestSort = byId('bestSort'), medalsSort = byId('medalsSort');
+  var bestCalc = byId('bestCalc'), medalsCalc = byId('medalsCalc');
   var titleChip = byId('titleChip');
   var readinessBody = byId('readinessBody'), podiumBody = byId('podiumBody');
 
@@ -220,6 +228,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
   }
   function shiftLevels() { return progressLevels('arcade.shift.progress'); }
   function sortLevels() { return progressLevels('arcade.sort.progress'); }
+  function calcLevels() { return progressLevels('arcade.calc.progress'); }
 
   /** One pip per level, lettered with its medal.
    *  @param {any} row @param {any} levels @param {number} count @param {string} noun 'Level' or 'Deck' */
@@ -247,6 +256,12 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
       : 'No score yet';
     paintPips(medalsSort, sortLevels(), SORT_DECKS, 'Deck');
 
+    var calc = Arcade.bests('calc');
+    bestCalc.textContent = calc
+      ? 'Best ' + commas(calc.score) + ' · ' + calc.initials + (calc.level ? ' · Ladder ' + calc.level : '')
+      : 'No score yet';
+    paintPips(medalsCalc, calcLevels(), CALC_LADDERS, 'Ladder');
+
     // Fed Chair's best is the AP stamp the run earned, 1-5, not a score.
     var fed = Arcade.bests('fed');
     bestFed.textContent = fed ? 'Best stamp: ' + fed.score + ' · ' + fed.initials : 'No run yet';
@@ -270,7 +285,8 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
 
   /** The units wearing an "Exam Ready" ribbon: a clean Exam Sprint on a level of that unit.
    *  Levels 1–3 are Unit 3, the money market is Unit 4, loanable funds and the Phillips curve are
-   *  Unit 5, and the dollar market is Unit 6. Sort Circuit's decks certify Units 2, 4, 3 and 6.
+   *  Unit 5, and the dollar market is Unit 6. Sort Circuit's decks certify Units 2, 4, 3 and 6;
+   *  Calc Blitz's ladders certify Units 2, 3 and 4.
    *  @returns {number[]} */
   function examReadyUnits() {
     var out = [];
@@ -284,6 +300,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
     }
     collect(shiftLevels(), SHIFT_LEVELS, LEVEL_UNIT);
     collect(sortLevels(), SORT_DECKS, DECK_UNIT);
+    collect(calcLevels(), CALC_LADDERS, LADDER_UNIT);
     return out.sort();
   }
 

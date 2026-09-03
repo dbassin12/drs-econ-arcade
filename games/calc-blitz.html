@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calc Blitz — DRS Econ Arcade</title>
+<!-- The arcade is static pages that talk to nobody. The policy says so out loud: nothing loads
+     that is not this origin's own script and stylesheet, the two Google Fonts hosts, or a data:
+     favicon, and connect-src 'none' means no page here can ever send a student's play anywhere. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+
+<script>
+/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. */
+if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
+/* ================================================================================
+   CONTENT — every ladder, rung and exam question in the game.
+   Nothing here is logic; the game reads this and nothing else for its content.
+
+   A ladder is { n, name, blurb, ced, rungs: [kind ids in climbing order], exam[] }.
+   A rung kind is { ced, skill, unit, dial: {min, max, step}, make(rng) } and make() deals
+   one problem: { text, answer, why, dial? }.  Numbers are drawn from short lists chosen so
+   every answer lands on the dial's step.  `why` is always the sentence that would earn the
+   FRQ point, with the arithmetic shown.  Every clock lives in TIMING below.
+   ================================================================================ */
+/** @param {() => number} rng @returns {(list:any[]) => any} */
+function pickWith(rng) { return function (list) { return list[Math.floor(rng() * list.length)]; }; }
+/** @param {number} n @returns {string} 1250 -> "1,250" */
+function num(n) { return Number(n).toLocaleString('en-US'); }
+
+const RUNG_KINDS = {
+  // ---- Unit 2: measuring the economy ----
+  cpi: { ced: '2.4', skill: 3, unit: '', dial: { min: 80, max: 160, step: 5 }, make: function (rng) {
+    var pick = pickWith(rng); var base = pick([40, 50, 80, 100]); var ratio = pick([0.9, 1.1, 1.2, 1.3, 1.4, 1.5]); var now = Math.round(base * ratio);
+    return { text: 'The market basket cost $' + base + ' in the base year and $' + now + ' this year. What is this year’s CPI?', answer: Math.round(ratio * 100),
+      why: 'CPI = (cost of the market basket this year ÷ cost in the base year) × 100 = $' + now + ' ÷ $' + base + ' × 100 = ' + Math.round(ratio * 100) + '.' }; } },
+  inflation: { ced: '2.4', skill: 3, unit: '%', dial: { min: 0, max: 25, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var a = pick([100, 150, 200, 250]); var r = pick([2, 4, 5, 8, 10, 20]); var b = Math.round(a * (1 + r / 100));
+    return { text: 'The CPI rose from ' + a + ' last year to ' + b + ' this year. What was the inflation rate?', answer: r,
+      why: 'Inflation rate = (new CPI − old CPI) ÷ old CPI × 100 = (' + b + ' − ' + a + ') ÷ ' + a + ' × 100 = ' + r + '%.' }; } },
+  realgdp: { ced: '2.6', skill: 3, unit: '$B', dial: { min: 200, max: 1200, step: 50 }, make: function (rng) {
+    var pick = pickWith(rng); var real = pick([400, 500, 800, 1000]); var d = pick([80, 120, 125, 150, 200]); var nominal = Math.round(real * d / 100);
+    return { text: 'Nominal GDP is $' + num(nominal) + ' billion and the GDP deflator is ' + d + '. What is real GDP?', answer: real,
+      why: 'Real GDP = nominal GDP ÷ (price index ÷ 100) = $' + num(nominal) + ' billion ÷ ' + (d / 100) + ' = $' + num(real) + ' billion.' }; } },
+  urate: { ced: '2.3', skill: 3, unit: '%', dial: { min: 0, max: 20, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var u = pick([40, 50, 60, 80, 100, 120]); var e = 1000 - u;
+    return { text: 'In Lawrence, ' + num(e) + ' people are employed and ' + u + ' are looking for work. What is the unemployment rate?', answer: u / 10,
+      why: 'Unemployment rate = unemployed ÷ labor force × 100 = ' + u + ' ÷ (' + num(e) + ' + ' + u + ') × 100 = ' + (u / 10) + '%.' }; } },
+  lfpr: { ced: '2.3', skill: 3, unit: '%', dial: { min: 0, max: 100, step: 5 }, make: function (rng) {
+    var pick = pickWith(rng); var pop = pick([1000, 2000]); var rate = pick([50, 55, 60, 65, 70, 75]); var lf = pop * rate / 100;
+    return { text: 'Hewlett has ' + num(pop) + ' working-age adults; ' + num(lf) + ' are employed or looking for work. What is the labor force participation rate?', answer: rate,
+      why: 'Labor force participation rate = labor force ÷ working-age population × 100 = ' + num(lf) + ' ÷ ' + num(pop) + ' × 100 = ' + rate + '%.' }; } },
+  growth: { ced: '2.6', skill: 3, unit: '%', dial: { min: 0, max: 15, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var a = pick([500, 800, 1000, 2000]); var r = pick([2, 3, 4, 5, 10]); var b = Math.round(a * (1 + r / 100));
+    return { text: 'Real GDP rose from $' + num(a) + ' billion to $' + num(b) + ' billion. What was the growth rate?', answer: r,
+      why: 'Growth rate = (new real GDP − old real GDP) ÷ old real GDP × 100 = (' + num(b) + ' − ' + num(a) + ') ÷ ' + num(a) + ' × 100 = ' + r + '%.' }; } },
+  deflator: { ced: '2.6', skill: 3, unit: '', dial: { min: 60, max: 160, step: 5 }, make: function (rng) {
+    var pick = pickWith(rng); var real = pick([400, 500, 800]); var d = pick([80, 110, 120, 125, 150]); var nominal = Math.round(real * d / 100);
+    return { text: 'Nominal GDP is $' + num(nominal) + ' billion and real GDP is $' + num(real) + ' billion. What is the GDP deflator?', answer: d,
+      why: 'GDP deflator = nominal GDP ÷ real GDP × 100 = ' + num(nominal) + ' ÷ ' + num(real) + ' × 100 = ' + d + '.' }; } },
+  bossReal: { ced: '2.6', skill: 3, unit: '%', dial: { min: 0, max: 25, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var d2 = pick([110, 125]); var real2 = pick([1040, 1100, 1200]); var n2 = Math.round(real2 * d2 / 100); var g = Math.round((real2 - 1000) / 10);
+    return { text: 'BOSS · Year 1 is the base year and nominal GDP was $1,000 billion. In year 2 nominal GDP is $' + num(n2) + ' billion and the deflator is ' + d2 + '. By what percent did real GDP grow?', answer: g,
+      why: 'Year-2 real GDP = nominal ÷ (deflator ÷ 100) = $' + num(n2) + ' ÷ ' + (d2 / 100) + ' = $' + num(real2) + ' billion; real growth = (' + num(real2) + ' − 1,000) ÷ 1,000 × 100 = ' + g + '%.' }; } },
+  // ---- Unit 3: multipliers ----
+  mpcMult: { ced: '3.2', skill: 3, unit: '×', dial: { min: 1, max: 10, step: 0.5 }, make: function (rng) {
+    var pick = pickWith(rng); var m = pick([0.5, 0.6, 0.75, 0.8, 0.9]); var k = Math.round(100 / (1 - m)) / 100;
+    return { text: 'The marginal propensity to consume is ' + m + '. What is the spending multiplier?', answer: k,
+      why: 'Spending multiplier = 1 ÷ (1 − MPC) = 1 ÷ (1 − ' + m + ') = 1 ÷ ' + Math.round((1 - m) * 100) / 100 + ' = ' + k + '.' }; } },
+  mpsMult: { ced: '3.2', skill: 3, unit: '×', dial: { min: 1, max: 10, step: 0.5 }, make: function (rng) {
+    var pick = pickWith(rng); var s = pick([0.1, 0.2, 0.25, 0.4, 0.5]); var k = Math.round(100 / s) / 100;
+    return { text: 'The marginal propensity to save is ' + s + '. What is the spending multiplier?', answer: k,
+      why: 'Spending multiplier = 1 ÷ MPS = 1 ÷ ' + s + ' = ' + k + ', since MPS = 1 − MPC.' }; } },
+  dgGdp: { ced: '3.2', skill: 3, unit: '$B', dial: { min: 0, max: 1000, step: 50 }, make: function (rng) {
+    var pick = pickWith(rng); var m = pick([0.5, 0.75, 0.8, 0.9]); var g = pick([50, 100]); var k = 1 / (1 - m); var x = Math.round(k * g);
+    return { text: 'MPC is ' + m + '. Government purchases rise by $' + g + ' billion. What is the maximum change in real GDP?', answer: x,
+      why: 'Change in real GDP = spending multiplier × change in spending = 1 ÷ (1 − ' + m + ') × $' + g + ' billion = ' + Math.round(k * 100) / 100 + ' × $' + g + ' billion = $' + num(x) + ' billion.' }; } },
+  taxMult: { ced: '3.2', skill: 3, unit: '×', dial: { min: 0, max: 10, step: 0.5 }, make: function (rng) {
+    var pick = pickWith(rng); var m = pick([0.5, 0.6, 0.75, 0.8, 0.9]); var k = Math.round(100 * m / (1 - m)) / 100;
+    return { text: 'MPC is ' + m + '. What is the size of the tax multiplier (ignore the sign)?', answer: k,
+      why: 'Tax multiplier = −MPC ÷ (1 − MPC) = −' + m + ' ÷ ' + Math.round((1 - m) * 100) / 100 + ' = −' + k + '; it is one smaller than the spending multiplier because part of the first round of a tax change is saved, not spent.' }; } },
+  dtGdp: { ced: '3.8', skill: 3, unit: '$B', dial: { min: 0, max: 1000, step: 50 }, make: function (rng) {
+    var pick = pickWith(rng); var m = pick([0.5, 0.75, 0.8]); var t = pick([100, 200]); var k = m / (1 - m); var x = Math.round(k * t);
+    return { text: 'MPC is ' + m + '. Congress cuts taxes by $' + t + ' billion. What is the maximum increase in real GDP?', answer: x,
+      why: 'Change in real GDP = tax multiplier × change in taxes = [' + m + ' ÷ (1 − ' + m + ')] × $' + t + ' billion = ' + Math.round(k * 100) / 100 + ' × $' + t + ' billion = $' + num(x) + ' billion.' }; } },
+  closeGap: { ced: '3.8', skill: 3, unit: '$B', dial: { min: 0, max: 500, step: 20 }, make: function (rng) {
+    var pick = pickWith(rng); var gap = pick([400, 800]); var m = pick([0.5, 0.75, 0.8]); var k = 1 / (1 - m); var x = Math.round(gap / k);
+    return { text: 'Real GDP is $' + gap + ' billion below full employment and MPC is ' + m + '. By how much must government purchases rise to close the gap?', answer: x,
+      why: 'Needed change in G = gap ÷ spending multiplier = $' + gap + ' billion ÷ [1 ÷ (1 − ' + m + ')] = $' + gap + ' ÷ ' + Math.round(k * 100) / 100 + ' = $' + num(x) + ' billion.' }; } },
+  balanced: { ced: '3.8', skill: 3, unit: '$B', dial: { min: 0, max: 500, step: 50 }, make: function (rng) {
+    var pick = pickWith(rng); var z = pick([50, 100, 200, 300]); var m = pick([0.5, 0.75, 0.8]);
+    return { text: 'MPC is ' + m + '. Government raises both purchases and taxes by $' + z + ' billion. What is the change in real GDP?', answer: z,
+      why: 'ΔGDP = spending multiplier × ΔG + tax multiplier × ΔT = [1 ÷ (1 − ' + m + ')] × ' + z + ' − [' + m + ' ÷ (1 − ' + m + ')] × ' + z + ' = $' + z + ' billion: the balanced-budget multiplier is 1.' }; } },
+  bossGapTax: { ced: '3.8', skill: 3, unit: '$B', dial: { min: 0, max: 500, step: 50 }, make: function (rng) {
+    var pick = pickWith(rng); var m = pick([0.75, 0.8]); var gap = pick([600, 1200]); var kt = Math.round(m / (1 - m)); var x = gap / kt;
+    return { text: 'BOSS · Real GDP is $' + num(gap) + ' billion below full employment and MPC is ' + m + '. Congress will act only through a tax cut. How large a cut closes the gap?', answer: x,
+      why: 'Tax multiplier size = MPC ÷ (1 − MPC) = ' + m + ' ÷ ' + Math.round((1 - m) * 100) / 100 + ' = ' + kt + '; needed tax cut = gap ÷ ' + kt + ' = $' + num(gap) + ' ÷ ' + kt + ' = $' + num(x) + ' billion — larger than the spending increase that would do the same job.' }; } },
+  // ---- Unit 4: money and banks ----
+  fisherReal: { ced: '4.2', skill: 3, unit: '%', dial: { min: -5, max: 10, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var n = pick([5, 6, 8, 10, 12]); var p = pick([2, 3, 4, 8]);
+    return { text: 'A savings account pays ' + n + '% and inflation is expected to be ' + p + '%. What is the expected real interest rate?', answer: n - p,
+      why: 'Real interest rate = nominal interest rate − expected inflation = ' + n + '% − ' + p + '% = ' + (n - p) + '%.' }; } },
+  fisherNominal: { ced: '4.2', skill: 3, unit: '%', dial: { min: 0, max: 15, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var r = pick([2, 3, 4, 5]); var p = pick([2, 3, 5, 8]);
+    return { text: 'A lender wants a ' + r + '% real return and expects ' + p + '% inflation. What nominal rate must the loan carry?', answer: r + p,
+      why: 'Nominal interest rate = real interest rate + expected inflation = ' + r + '% + ' + p + '% = ' + (r + p) + '%.' }; } },
+  moneyMult: { ced: '4.4', skill: 3, unit: '×', dial: { min: 0, max: 20, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var rr = pick([5, 10, 20, 25, 50]); var k = 100 / rr;
+    return { text: 'The reserve requirement is ' + rr + '%. What is the money multiplier?', answer: k,
+      why: 'Money multiplier = 1 ÷ reserve requirement = 1 ÷ ' + (rr / 100) + ' = ' + k + '.' }; } },
+  required: { ced: '4.4', skill: 3, unit: '$', dial: { min: 0, max: 600, step: 50 }, make: function (rng) {
+    var pick = pickWith(rng); var d = pick([1000, 2000]); var rr = pick([10, 20, 25]); var x = d * rr / 100;
+    return { text: 'A customer deposits $' + num(d) + ' in a Cedarhurst bank; the reserve requirement is ' + rr + '%. How much must the bank hold as required reserves?', answer: x,
+      why: 'Required reserves = reserve requirement × deposits = ' + (rr / 100) + ' × $' + num(d) + ' = $' + num(x) + '.' }; } },
+  excess: { ced: '4.4', skill: 3, unit: '$', dial: { min: 0, max: 1000, step: 50 }, make: function (rng) {
+    var pick = pickWith(rng); var d = pick([1000, 2000]); var rr = pick([10, 20, 25, 50]); var req = d * rr / 100; var x = d - req;
+    return { text: 'A $' + num(d) + ' deposit arrives at a bank with no excess reserves; the reserve requirement is ' + rr + '%. What is the largest loan the bank can now make?', answer: x, dial: { min: 0, max: d, step: d / 20 },
+      why: 'Required reserves = ' + (rr / 100) + ' × $' + num(d) + ' = $' + num(req) + '; excess reserves = $' + num(d) + ' − $' + num(req) + ' = $' + num(x) + ', and a bank can lend at most its excess reserves.' }; } },
+  maxCreate: { ced: '4.4', skill: 3, unit: '$', dial: { min: 0, max: 10000, step: 500 }, make: function (rng) {
+    var pick = pickWith(rng); var rr = pick([10, 20, 25, 50]); var d = 1000; var ex = d - d * rr / 100; var x = ex * 100 / rr;
+    return { text: 'A $1,000 cash deposit arrives at a bank with no excess reserves; the reserve requirement is ' + rr + '%. What is the maximum amount of new money the banking system can create?', answer: x,
+      why: 'Excess reserves = $1,000 − ' + (rr / 100) + ' × $1,000 = $' + num(ex) + '; maximum money creation = excess reserves × money multiplier = $' + num(ex) + ' × (1 ÷ ' + (rr / 100) + ') = $' + num(x) + '.' }; } },
+  omoBank: { ced: '4.4', skill: 3, unit: '$M', dial: { min: 0, max: 5000, step: 250 }, make: function (rng) {
+    var pick = pickWith(rng); var b = pick([250, 500]); var rr = pick([10, 20, 50]); var x = b * 100 / rr;
+    return { text: 'The Fed buys $' + b + ' million of bonds from a bank; the reserve requirement is ' + rr + '%. What is the maximum increase in the money supply?', answer: x,
+      why: 'Bonds bought from a bank become reserves that back no deposit, so all $' + b + ' million is excess; maximum money creation = excess reserves × (1 ÷ ' + (rr / 100) + ') = $' + b + ' million × ' + (100 / rr) + ' = $' + num(x) + ' million.' }; } },
+  bossSurprise: { ced: '4.2', skill: 3, unit: '%', dial: { min: -5, max: 10, step: 1 }, make: function (rng) {
+    var pick = pickWith(rng); var n = pick([6, 8, 10]); var pe = pick([2, 3, 4]); var pa = pick([5, 6, 8]);
+    return { text: 'BOSS · A bank lends at ' + n + '% expecting ' + pe + '% inflation. Inflation turns out to be ' + pa + '%. What real interest rate does the bank actually earn?', answer: n - pa,
+      why: 'Actual real interest rate = nominal − actual inflation = ' + n + '% − ' + pa + '% = ' + (n - pa) + '%, below the ' + (n - pe) + '% expected; unexpected inflation transferred purchasing power from the lender to the borrower.' }; } }
+};
+
+const LADDERS = [
+  { n: 1, name: 'Measuring the Economy', blurb: 'CPI, inflation, real GDP, the deflator, unemployment', ced: '2.4',
+    rungs: ['cpi', 'inflation', 'urate', 'lfpr', 'realgdp', 'deflator', 'growth', 'bossReal'],
+    exam: [
+      { stem: 'A market basket cost $200 in the base year and $250 in year 2. The consumer price index for year 2 is', choices: ['50', '80', '125', '150'], answer: 2, why: 'CPI = (cost this year ÷ cost in the base year) × 100 = 250 ÷ 200 × 100 = 125.', ced: '2.4', skill: 3 },
+      { stem: 'In a country with a labor force of 100 million, 6 million people are unemployed. Which of the following is the unemployment rate?', choices: ['0.6 percent', '6 percent', '9.4 percent', '60 percent'], answer: 1, why: 'Unemployment rate = unemployed ÷ labor force × 100 = 6 ÷ 100 × 100 = 6 percent.', ced: '2.3', skill: 3 },
+      { stem: 'Nominal GDP is $2,400 billion and the GDP deflator is 120. Real GDP is', choices: ['$1,200 billion', '$2,000 billion', '$2,280 billion', '$2,880 billion'], answer: 1, why: 'Real GDP = nominal GDP ÷ (deflator ÷ 100) = 2,400 ÷ 1.2 = $2,000 billion.', ced: '2.6', skill: 3 }
+    ] },
+  { n: 2, name: 'Multipliers', blurb: 'The spending and tax multipliers, and the gap they close', ced: '3.2',
+    rungs: ['mpcMult', 'mpsMult', 'dgGdp', 'taxMult', 'dtGdp', 'closeGap', 'balanced', 'bossGapTax'],
+    exam: [
+      { stem: 'If the marginal propensity to consume is 0.8, an increase in government purchases of $10 billion will increase real GDP by a maximum of', choices: ['$8 billion', '$10 billion', '$40 billion', '$50 billion'], answer: 3, why: 'The spending multiplier is 1 ÷ (1 − 0.8) = 5, so real GDP rises by at most 5 × $10 billion = $50 billion.', ced: '3.2', skill: 3 },
+      { stem: 'Assume the marginal propensity to consume is 0.75. Which of the following has the largest effect on real GDP?', choices: ['A $100 billion increase in government purchases', 'A $100 billion tax cut', 'A $100 billion increase in transfer payments', 'They all have the same effect'], answer: 0, why: 'The spending multiplier (1 ÷ 0.25 = 4) exceeds the tax and transfer multiplier (0.75 ÷ 0.25 = 3) because every dollar of government purchases is spent, while part of a tax cut or transfer is saved.', ced: '3.8', skill: 2 },
+      { stem: 'An economy has a recessionary gap of $200 billion and a marginal propensity to consume of 0.5. To close the gap, government purchases should be increased by', choices: ['$50 billion', '$100 billion', '$200 billion', '$400 billion'], answer: 1, why: 'The spending multiplier is 1 ÷ (1 − 0.5) = 2, so the needed increase is $200 billion ÷ 2 = $100 billion.', ced: '3.8', skill: 3 }
+    ] },
+  { n: 3, name: 'Money & Banks', blurb: 'Real vs nominal rates, reserves, and the money multiplier', ced: '4.4',
+    rungs: ['fisherReal', 'fisherNominal', 'moneyMult', 'required', 'excess', 'maxCreate', 'omoBank', 'bossSurprise'],
+    exam: [
+      { stem: 'If the nominal interest rate is 7 percent and the expected inflation rate is 3 percent, the expected real interest rate is', choices: ['3 percent', '4 percent', '7 percent', '10 percent'], answer: 1, why: 'Real interest rate = nominal interest rate − expected inflation = 7 − 3 = 4 percent.', ced: '4.2', skill: 3 },
+      { stem: 'Assume the reserve requirement is 20 percent and banks hold no excess reserves. A new deposit of $1,000 in currency can lead to a maximum increase in the money supply of', choices: ['$200', '$800', '$4,000', '$5,000'], answer: 2, why: 'Excess reserves are $800 and the money multiplier is 1 ÷ 0.2 = 5, so the banking system can create $800 × 5 = $4,000 of new money on top of the deposit.', ced: '4.4', skill: 3 },
+      { stem: 'A bank has $10,000 in deposits, $2,000 in reserves and faces a reserve requirement of 10 percent. Its excess reserves are', choices: ['$0', '$1,000', '$2,000', '$8,000'], answer: 1, why: 'Required reserves = 0.10 × $10,000 = $1,000; excess reserves = $2,000 − $1,000 = $1,000.', ced: '4.4', skill: 3 }
+    ] }
+];
+
+/* ================================================================================
+   TIMING — Teacher-tunable: seconds students get.  Numbers are seconds.
+   ================================================================================ */
+const TIMING = {
+  rungSeconds: 30,            // one rung: read, compute, dial it in
+  bossSeconds: 45,            // the two-step boss rung
+  warnSeconds: 5,             // when the bar turns red and the tick/tock starts
+  readGrace: 6,               // opening seconds that all pay the full speed bonus
+  whySeconds: 2,              // how long a right answer's WHY line stays up; a tap ends it
+  examSeconds: 70             // the Exam Sprint stays at the real exam's Section I pace
+};
+
+/* ================================================================================
+   HOW TO PLAY — the cards the first run of a ladder opens on, and what the ? shows.
+   ================================================================================ */
+const HOWTO = [
+  { emoji: '\u{1F9EE}', head: 'Read it, work it, dial it', body: 'Each rung is one calculation the exam asks. Tap the line to jump the knob near your number, slide it until the big readout shows your answer, then let go. A tap alone never answers; the knob has to travel.' },
+  { emoji: '❤️', head: 'Three hearts, and a streak', body: 'A wrong number costs a heart, and three lost ends the ladder. Three right in a row starts a multiplier that climbs to ×5.' },
+  { emoji: '\u{1F451}', head: 'The boss rung', body: 'The eighth rung is a two-step problem on a longer clock, for double points.' },
+  { emoji: '\u{1F4DD}', head: 'Then the Exam Sprint', body: 'Three questions in the exam’s own voice at the exam’s own pace. Optional — but gold needs it.' }
+];
+
+/* ================================================================================
+   WHAT IS THIS GAME? — the purpose, before the rules.
+   ================================================================================ */
+const INTRO = [
+  { emoji: '\u{1F522}', text: 'Section I hands you numbers and expects arithmetic: a CPI, a multiplier, a real interest rate, the money a deposit can create. This is that arithmetic, on a clock.' },
+  { emoji: '\u{1F393}', text: 'Every rung ends with the formula written out with your numbers in it — the sentence that earns the FRQ point — so the reflex you build is the one the grader wants.' },
+  { emoji: '\u{1F3AE}', text: 'Three ladders of eight rungs, hearts and a streak, a boss rung at the top. The Exam Sprint at the end is the only multiple choice.' }
+];
+</script>
+
+<main class="app" id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div class="stack">
+      <h1 class="h1" tabindex="-1" data-focus>CALC BLITZ</h1>
+      <p class="muted">You are a human calculator on a clock.</p>
+      <div class="row">
+        <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+        <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+        <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      </div>
+      <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
+      <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <section class="panel stack intro" id="intro" aria-labelledby="introTitle"></section>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+  <!-- SELECT -->
+  <section class="screen" id="screen-select">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Ladders</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="stack" id="ladderList"></div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="screen" id="screen-howto">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
+        <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="screen-play">
+    <div class="stack tight">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the ladder list">←</button>
+        <div class="hearts" id="hearts"></div>
+        <div class="topbar-stats">
+          <span class="combo" id="combo"></span>
+          <span class="score" id="score">0</span>
+        </div>
+        <button type="button" class="btn btn-ghost howto-btn" id="playHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="timer-bar" id="timer"></div>
+      <div class="row sort-head">
+        <span class="tag" id="rungTag">Rung 1</span>
+        <span class="muted mono" id="rungCount"></span>
+      </div>
+      <div class="panel calc-problem" id="problem" tabindex="-1" data-focus></div>
+      <!-- The dial: a readout, a snapped number line, and the knob the student drags along it. -->
+      <div class="calc-dial" id="dial">
+        <div class="calc-readout" id="readout" aria-live="off"><span class="calc-value" id="readoutValue">—</span><span class="calc-unit" id="readoutUnit"></span></div>
+        <div class="calc-track" id="track">
+          <div class="calc-ticks" id="ticks" aria-hidden="true"></div>
+          <div class="calc-answer" id="answerMark" hidden aria-hidden="true"></div>
+          <div class="calc-knob" id="knob" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Your answer"></div>
+        </div>
+        <div class="row calc-ends" aria-hidden="true"><span class="muted mono" id="dialMin"></span><span class="muted mono" id="dialMax"></span></div>
+      </div>
+      <div class="muted" id="hint">Drag the knob to your answer and let go</div>
+      <div class="row wrap kbd-answers" id="kbdRow" role="group" aria-label="Answer with the keyboard">
+        <button type="button" class="btn btn-ghost" id="kbdDown" aria-label="One step down">−</button>
+        <button type="button" class="btn btn-ghost" id="kbdUp" aria-label="One step up">+</button>
+        <button type="button" class="btn btn-ghost" id="kbdLock" aria-label="Lock in this answer">Lock in</button>
+      </div>
+      <div class="sr-only" id="problemRead" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- EXAM SPRINT — the one screen in the game with multiple choice -->
+  <section class="screen" id="screen-exam">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the ladder list">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Exam Sprint</h2>
+        <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="timer-bar" id="examTimer"></div>
+      <div class="row">
+        <span class="tag" id="examPace">70 s</span>
+        <span class="muted" id="examSub"></span>
+      </div>
+      <div class="panel"><div class="exam-stem" id="examStem"></div></div>
+      <div class="stack" id="examChoices"></div>
+    </div>
+  </section>
+
+  <!-- CLEAR, FAIL and the sprint result all render an Arcade.endScreen panel here -->
+  <section class="screen" id="screen-end"></section>
+
+</main>
+
+<div class="sheet" id="sheet" role="status">
+  <div class="stack">
+    <div class="sheet-msg" id="sheetMsg"></div>
+    <div class="sheet-why" id="sheetWhy"></div>
+    <button type="button" class="btn btn-block" id="sheetBtn">Got it</button>
+  </div>
+</div>
+
+<script src="../shared/arcade.js"></script>
+
+<script>
+/* ================================================================================
+   CALC BLITZ — the game. Sections: elements · screens · progress · ladder select ·
+   the dial (drag) · round chrome · round loop · exam sprint · the run · end screens · boot.
+   During play the student's only input is dragging the knob; multiple choice appears
+   nowhere but the Exam Sprint. Every rung calls Arcade.track once.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined') return;
+
+  var RUNG_MS = TIMING.rungSeconds * 1000;
+  var BOSS_MS = TIMING.bossSeconds * 1000;
+  var WARN_MS = TIMING.warnSeconds * 1000;
+  var GRACE_MS = TIMING.readGrace * 1000;
+  var WHY_MS = TIMING.whySeconds * 1000;
+  var EXAM_MS = TIMING.examSeconds * 1000;
+  var HEARTS = 3;
+  var MOVE_PX = 12;           // a release counts only after the knob has travelled this far
+  var KEYS = 'ABCD';
+  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
+
+  /* ===== ELEMENTS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {number} ms @returns {Promise<void>} */
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function fill(cls, text) { var n = document.createElement('div'); n.className = cls; n.textContent = text; return n; }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function chip(cls, text) { var n = document.createElement('span'); n.className = cls; n.textContent = text; return n; }
+
+  var screens = {
+    title: byId('screen-title'), select: byId('screen-select'), howto: byId('screen-howto'),
+    play: byId('screen-play'), exam: byId('screen-exam'), end: byId('screen-end')
+  };
+  var ladderList = byId('ladderList');
+  var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
+  var heartsEl = byId('hearts'), comboEl = byId('combo'), scoreEl = byId('score'), timerEl = byId('timer');
+  var rungTag = byId('rungTag'), rungCount = byId('rungCount'), problemEl = byId('problem'), problemRead = byId('problemRead');
+  var dialEl = byId('dial'), readoutValue = byId('readoutValue'), readoutUnit = byId('readoutUnit');
+  var track = byId('track'), ticks = byId('ticks'), answerMark = byId('answerMark'), knob = byId('knob');
+  var dialMin = byId('dialMin'), dialMax = byId('dialMax'), hintEl = byId('hint');
+  var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
+  var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
+  var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+  var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), introEl = byId('intro');
+
+  /** The run in progress. `token` is what tells an awaiting round it has been abandoned. */
+  var run = null;
+  var runToken = 0;
+  var exam = null;
+  var examToken = 0;
+  /** @param {number} token @returns {boolean} */
+  function alive(token) { return token === runToken; }
+  /** @param {number} token @returns {boolean} */
+  function examAlive(token) { return token === examToken; }
+
+  /* ===== SCREENS ===== */
+
+  var booted = false;
+  /** @param {string} name */
+  function show(name) {
+    Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+    if (booted) Arcade.guardTaps();
+    booted = true;
+    Arcade.focusScreen(screens[name]);
+  }
+
+  function abortRun() {
+    runToken += 1;
+    examToken += 1;
+    if (run && run.clock) run.clock.stop();
+    if (exam && exam.stop) exam.stop();
+    ackNow();
+    hideSheet();
+    endDrag();
+    Arcade.voice.stop();
+  }
+
+  /* ===== PROGRESS — arcade.calc.progress ===== */
+
+  /** @returns {{unlocked:number, levels:Object<string, any>}} */
+  function loadProgress() {
+    var p = Arcade.store.get('arcade.calc.progress', null);
+    if (!p || typeof p !== 'object') p = {};
+    var levels = {};
+    var raw = p.levels && typeof p.levels === 'object' ? p.levels : {};
+    Object.keys(raw).forEach(function (key) { if (raw[key] && typeof raw[key] === 'object') levels[key] = raw[key]; });
+    return { unlocked: typeof p.unlocked === 'number' && p.unlocked >= 1 ? p.unlocked : 1, levels: levels };
+  }
+
+  /** @returns {any} */
+  function blankRecord() { return { cleared: false, acc: 0, best: 0, medal: null, exam: null, examPerfect: false }; }
+
+  /** @param {any} rec @returns {any} */
+  function rescore(rec) {
+    rec.medal = Arcade.medalFor(rec.acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) });
+    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total && rec.acc >= 0.95);
+    return rec;
+  }
+
+  /** @param {number} n @param {number} score @param {number} acc */
+  function saveProgress(n, score, acc) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    rec.cleared = true;
+    rec.acc = Math.max(rec.acc || 0, acc);
+    rec.best = Math.max(rec.best || 0, score);
+    p.levels[String(n)] = rescore(rec);
+    if (rec.acc >= 0.75) p.unlocked = Math.max(p.unlocked, n + 1);
+    Arcade.store.set('arcade.calc.progress', p);
+  }
+
+  /** @param {number} n @param {number} right @param {number} total @returns {any} */
+  function saveExam(n, right, total) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    if (!rec.exam || right > rec.exam.right) rec.exam = { right: right, total: total };
+    p.levels[String(n)] = rescore(rec);
+    Arcade.store.set('arcade.calc.progress', p);
+    return rec;
+  }
+
+  /* ===== LADDER SELECT ===== */
+
+  /** @param {number} n @returns {any} */
+  function ladderOf(n) { for (var i = 0; i < LADDERS.length; i += 1) if (LADDERS[i].n === n) return LADDERS[i]; return undefined; }
+  /** @param {number} n @returns {boolean} */
+  function playable(n) { return !!ladderOf(n) && n <= loadProgress().unlocked; }
+
+  /** @param {any} L @param {any} rec @param {boolean} locked @returns {any} */
+  function ladderTile(L, rec, locked) {
+    var tile = document.createElement('div');
+    tile.className = 'panel level-tile' + (locked ? ' locked' : '');
+    var medal = Arcade.safeMedal(rec && rec.medal);
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'tile-open';
+    open.disabled = locked;
+    open.setAttribute('aria-label', (locked ? 'Locked: ladder ' : 'Play ladder ') + L.n + ', ' + L.name + (medal === 'none' ? '' : ', ' + medal + ' medal'));
+    open.appendChild(chip('level-num', String(L.n)));
+    var info = chip('tile-info', '');
+    info.appendChild(chip('tile-name', L.name + (locked ? ' 🔒' : '')));
+    var meta = chip('tile-meta', '');
+    meta.appendChild(chip('muted', rec && rec.cleared ? 'Best ' + rec.best + ' · ' + Math.round(rec.acc * 100) + '%' : locked ? 'Locked' : L.blurb));
+    if (rec && rec.exam) meta.appendChild(chip('tag', 'Sprint ' + rec.exam.right + '/' + rec.exam.total));
+    if (rec && rec.examPerfect) meta.appendChild(chip('ribbon', 'Exam Ready'));
+    info.appendChild(meta);
+    open.appendChild(info);
+    open.appendChild(chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
+    if (!locked) open.addEventListener('click', function () { startLadder(L.n); });
+    tile.appendChild(open);
+    if (rec && rec.cleared) {
+      var sprint = document.createElement('button');
+      sprint.type = 'button';
+      sprint.className = 'btn btn-ghost tile-btn';
+      sprint.textContent = 'Exam Sprint';
+      sprint.setAttribute('aria-label', 'Exam Sprint for ladder ' + L.n);
+      sprint.addEventListener('click', function () { startExam(L.n); });
+      tile.appendChild(sprint);
+    }
+    return tile;
+  }
+
+  function paintSelect() {
+    var progress = loadProgress();
+    ladderList.textContent = '';
+    LADDERS.forEach(function (L) { ladderList.appendChild(ladderTile(L, progress.levels[String(L.n)] || null, L.n > progress.unlocked)); });
+  }
+
+  /* ===== THE DIAL — a snapped number line and one knob =====
+     The knob follows the finger along the track and snaps to the dial's steps; the readout
+     above shows the value in big type. A release hands the value over only if the knob has
+     travelled MOVE_PX — a tap just parks the knob where the finger landed. */
+
+  /** @type {{min:number, max:number, step:number, unit:string}} */ var dial = { min: 0, max: 10, step: 1, unit: '' };
+  var value = 0;
+  var dialLocked = true;
+  /** @type {any} */ var drag = null;
+  /** @type {((v:number|null) => void)|null} */ var dialResolve = null;
+
+  /** @returns {number} */
+  function steps() { return Math.round((dial.max - dial.min) / dial.step); }
+  /** @param {number} v @returns {number} v snapped to the grid and held inside the dial */
+  function snap(v) {
+    var k = Math.round((v - dial.min) / dial.step);
+    k = Math.max(0, Math.min(steps(), k));
+    return Math.round((dial.min + k * dial.step) * 1000) / 1000;
+  }
+  /** @param {number} v @returns {string} */
+  function format(v) { return Number.isInteger(v) ? num(v) : String(v); }
+  /** @param {number} v @returns {number} 0–1 */
+  function fracOf(v) { return dial.max === dial.min ? 0 : (v - dial.min) / (dial.max - dial.min); }
+  /** @returns {{left:number, width:number}} the knob's travel in page px */
+  function travel() {
+    var r = track.getBoundingClientRect();
+    var kw = knob.getBoundingClientRect().width || 56;
+    return { left: r.left + kw / 2, width: Math.max(1, r.width - kw) };
+  }
+  /** @param {number} clientX @returns {number} the snapped value under a finger at clientX */
+  function valueAt(clientX) {
+    var t = travel();
+    var f = Math.max(0, Math.min(1, (clientX - t.left) / t.width));
+    return snap(dial.min + f * (dial.max - dial.min));
+  }
+
+  /** @param {number} v */
+  function setValue(v) {
+    value = snap(v);
+    var f = fracOf(value);
+    knob.style.left = 'calc(' + (f * 100).toFixed(2) + '% - ' + (f * 56).toFixed(1) + 'px)';
+    knob.setAttribute('aria-valuenow', String(value));
+    readoutValue.textContent = format(value);
+  }
+
+  /** @param {{min:number, max:number, step:number}} d @param {string} unit */
+  function setDial(d, unit) {
+    dial = { min: d.min, max: d.max, step: d.step, unit: unit };
+    readoutUnit.textContent = unit;
+    dialMin.textContent = format(d.min) + (unit === '%' ? '%' : '');
+    dialMax.textContent = format(d.max) + (unit === '%' ? '%' : '');
+    knob.setAttribute('aria-valuemin', String(d.min));
+    knob.setAttribute('aria-valuemax', String(d.max));
+    ticks.textContent = '';
+    var n = steps();
+    var every = n > 24 ? 5 : n > 12 ? 2 : 1;
+    for (var k = 0; k <= n; k += 1) {
+      var t = document.createElement('span');
+      t.className = 'calc-tick' + (k % every === 0 ? ' major' : '');
+      t.style.left = (k / n * 100).toFixed(2) + '%';
+      ticks.appendChild(t);
+    }
+    answerMark.hidden = true;
+    knob.classList.remove('good', 'bad');
+    setValue(d.min);
+    readoutValue.textContent = '—';
+  }
+
+  /** @returns {Promise<number|null>} the value handed over, or null when the clock wins */
+  function nextAnswer() { return new Promise(function (resolve) { dialResolve = resolve; }); }
+  /** @param {number|null} v */
+  function handOver(v) { if (!dialResolve) return; var r = dialResolve; dialResolve = null; r(v); }
+
+  function endDrag() {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    try { track.releasePointerCapture(d.pointerId); } catch (err) { /* already gone */ }
+    knob.classList.remove('grabbed');
+  }
+
+  /** @param {number} v */
+  function commit(v) {
+    if (dialLocked) return;
+    dialLocked = true;
+    endDrag();
+    setValue(v);
+    Arcade.sfx.play('snap');
+    handOver(value);
+  }
+
+  track.addEventListener('pointerdown', function (ev) {
+    if (dialLocked || drag) return;
+    ev.preventDefault();
+    drag = { pointerId: ev.pointerId, startX: ev.clientX, moved: 0 };
+    try { track.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety */ }
+    knob.classList.add('grabbed');
+    Arcade.sfx.play('grab');
+    setValue(valueAt(ev.clientX));
+    readoutValue.textContent = format(value);
+  });
+  track.addEventListener('pointermove', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    drag.moved = Math.max(drag.moved, Math.abs(ev.clientX - drag.startX));
+    var before = value;
+    setValue(valueAt(ev.clientX));
+    if (value !== before) Arcade.sfx.play('tick');
+  });
+  track.addEventListener('pointerup', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    var moved = drag.moved;
+    endDrag();
+    if (moved < MOVE_PX) { hintEl.textContent = 'Slide the knob, then let go'; return; }
+    commit(value);
+  });
+  track.addEventListener('pointercancel', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    endDrag();
+  });
+
+  /** @param {number} dir −1 or +1: the keyboard's road to the same answer */
+  function nudge(dir) {
+    if (dialLocked || drag) return;
+    setValue(value + dir * dial.step);
+    Arcade.sfx.play('tick');
+  }
+  byId('kbdDown').addEventListener('click', function () { nudge(-1); });
+  byId('kbdUp').addEventListener('click', function () { nudge(1); });
+  byId('kbdLock').addEventListener('click', function () { if (!dialLocked && !drag) commit(value); });
+  document.addEventListener('keydown', function (ev) {
+    if (!run || !screens.play.classList.contains('active')) return;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') { ev.preventDefault(); nudge(-1); }
+    if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') { ev.preventDefault(); nudge(1); }
+    if (ev.key === 'Enter' && !dialLocked && !drag && readoutValue.textContent !== '—') { ev.preventDefault(); commit(value); }
+  });
+
+  /** Show where the right answer sits on the line. @param {number} answer */
+  function markAnswer(answer) {
+    var f = fracOf(answer);
+    answerMark.style.left = 'calc(' + (f * 100).toFixed(2) + '% - ' + (f * 56).toFixed(1) + 'px + 28px)';
+    answerMark.hidden = false;
+  }
+
+  /* ===== ROUND CHROME ===== */
+
+  /** @param {any} rung @param {number} index @param {number} total @param {boolean} boss */
+  function paintRung(rung, index, total, boss) {
+    rungTag.textContent = boss ? '👑 Boss rung' : 'Rung ' + (index + 1);
+    rungTag.classList.toggle('lightning', boss);
+    rungCount.textContent = (index + 1) + ' / ' + total;
+    problemEl.textContent = rung.problem.text.replace(/^BOSS · /, '');
+    problemEl.classList.remove('deal');
+    void problemEl.offsetWidth;
+    problemEl.classList.add('deal');
+    setDial(rung.problem.dial || rung.kind.dial, rung.kind.unit);
+    problemRead.textContent = problemEl.textContent + ' The line runs from ' + dialMin.textContent + ' to ' + dialMax.textContent + '.';
+  }
+
+  /** @param {string} kind @param {string} msg @param {string} why @param {boolean} ack */
+  function paintSheet(kind, msg, why, ack) {
+    sheetMsg.textContent = msg;
+    sheetWhy.textContent = why;
+    sheetBtn.style.display = ack ? '' : 'none';
+    sheet.className = 'sheet ' + kind + ' open';
+  }
+  function hideSheet() { sheet.classList.remove('open'); sheetBtn.style.display = 'none'; }
+
+  /** @type {(() => void)|null} */ var ackResolve = null;
+  function ackNow() { if (!ackResolve) return; var r = ackResolve; ackResolve = null; r(); }
+  sheetBtn.addEventListener('click', function () { hideSheet(); ackNow(); });
+
+  /** @param {string} msg @param {string} why @param {string} [label] @param {string} [kind] @returns {Promise<void>} */
+  function sheetAsk(msg, why, label, kind) {
+    ackNow();
+    sheetBtn.textContent = label || 'Got it';
+    paintSheet(kind || 'wrong', msg, why, true);
+    return new Promise(function (resolve) { ackResolve = resolve; });
+  }
+
+  /** A moment to read, or a tap anywhere to move on. @param {number} ms @returns {Promise<void>} */
+  function readBeat(ms) {
+    return new Promise(function (resolve) {
+      var timer = setTimeout(done, ms);
+      function done() { clearTimeout(timer); document.removeEventListener('pointerdown', done); resolve(); }
+      document.addEventListener('pointerdown', done);
+    });
+  }
+
+  /** The rung's clock. @param {number} ms
+   *  @returns {{next:() => Promise<number|null>, remaining:() => number, pause:() => void, resume:() => void, stop:() => void}} */
+  function roundClock(ms) {
+    var expired = false;
+    var timer = Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: atZero });
+    function atZero() {
+      if (expired) return;
+      expired = true;
+      dialLocked = true;
+      endDrag();
+      handOver(null);
+    }
+    timer.start();
+    return {
+      next: function () { return expired ? Promise.resolve(null) : nextAnswer(); },
+      remaining: function () { return timer.remaining(); },
+      pause: function () { timer.pause(); },
+      resume: function () { if (!expired) timer.resume(); },
+      stop: function () { expired = true; timer.stop(); handOver(null); }
+    };
+  }
+
+  function pauseClocks() { if (run && run.clock) run.clock.pause(); if (exam && exam.pause) exam.pause(); }
+  function resumeClocks() { if (run && run.clock) run.clock.resume(); if (exam && exam.resume) exam.resume(); }
+
+  function punish() {
+    Arcade.shake(dialEl);
+    run.hearts.lose();
+    run.streak.miss();
+  }
+
+  /** @param {number} points */
+  function award(points) { run.score += points; scoreEl.textContent = String(run.score); }
+
+  /** @param {number} left @param {number} total @param {number} cap @returns {number} */
+  function speedBonus(left, total, cap) {
+    var window = total - GRACE_MS;
+    var frac = window > 0 ? Math.min(1, Math.max(0, left / window)) : (left > 0 ? 1 : 0);
+    var bonus = Math.round(cap * frac);
+    run.speedTotal += bonus;
+    return bonus;
+  }
+
+  function streakUp() {
+    run.streak.hit();
+    run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+    var lines = { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' };
+    if (lines[run.streak.count]) Arcade.toast(lines[run.streak.count], 1400);
+  }
+
+  /** The ladder's rungs, each dealt fresh. @param {any} L @returns {any[]} */
+  function dealRungs(L) {
+    return L.rungs.map(function (id) {
+      var kind = RUNG_KINDS[id];
+      return { id: id, kind: kind, problem: kind.make(Math.random) };
+    });
+  }
+
+  /** @param {number} v @returns {string} */
+  function withUnit(v) {
+    var u = dial.unit;
+    if (u === '$' || u === '$B' || u === '$M') return '$' + format(v) + (u === '$B' ? ' billion' : u === '$M' ? ' million' : '');
+    return format(v) + (u === '×' ? '' : u);
+  }
+
+  /* ===== ROUND LOOP ===== */
+
+  /** @param {any} rung @param {number} index @param {number} total @param {boolean} boss @param {number} token */
+  async function playRung(rung, index, total, boss, token) {
+    paintRung(rung, index, total, boss);
+    hintEl.textContent = 'Drag the knob to your answer and let go';
+    Arcade.sfx.play('card');
+    if (Arcade.voice.enabled) Arcade.say(problemEl.textContent, { who: 'anchor' });
+    dialLocked = false;
+    var ms = boss ? BOSS_MS : RUNG_MS;
+    run.clock = roundClock(ms);
+    var ans = await run.clock.next();
+    if (!alive(token)) return;
+    var left = run.clock.remaining();
+    run.clock.stop();
+    dialLocked = true;
+
+    var answer = rung.problem.answer;
+    var ok = ans !== null && Math.abs(ans - answer) < dial.step / 2;
+    run.asked += 1;
+    Arcade.track(rung.kind.ced, rung.kind.skill, ok);
+    if (ok) {
+      knob.classList.add('good');
+      Arcade.sfx.play('correct');
+      award(Math.round(((boss ? 200 : 100) + speedBonus(left, ms, 50)) * run.streak.mult));
+      streakUp();
+      run.correct += 1;
+      paintSheet('correct', '✓ ' + withUnit(answer), rung.problem.why, false);
+      await readBeat(WHY_MS);
+    } else {
+      knob.classList.add('bad');
+      markAnswer(answer);
+      Arcade.sfx.play('wrong');
+      punish();
+      run.missed.push(rung);
+      var head = ans === null ? '✗ Out of time — it was ' + withUnit(answer) : '✗ You dialed ' + withUnit(ans) + ' — it was ' + withUnit(answer);
+      await sheetAsk(head, rung.problem.why);
+    }
+    if (!alive(token)) return;
+    hideSheet();
+  }
+
+  /* ===== EXAM SPRINT ===== */
+
+  /** @param {any} q @param {number} index @param {number} total @param {number} token @returns {Promise<boolean>} */
+  async function askQuestion(q, index, total, token) {
+    examCountEl.textContent = (index + 1) + '/' + total;
+    examStemEl.textContent = q.stem;
+    examChoicesEl.textContent = '';
+    var buttons = q.choices.map(function (text, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-block choice';
+      b.textContent = KEYS.charAt(i) + '. ' + text;
+      examChoicesEl.appendChild(b);
+      return b;
+    });
+    var picked = await new Promise(function (resolve) {
+      var settled = false;
+      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { warnAt: WARN_MS, onEnd: function () { finish(-1); } });
+      function finish(i) { if (settled) return; settled = true; timer.stop(); resolve(i); }
+      buttons.forEach(function (b, i) { b.addEventListener('click', function () { finish(i); }); });
+      exam.stop = function () { finish(-1); };
+      exam.pause = function () { timer.pause(); };
+      exam.resume = function () { if (!settled) timer.resume(); };
+      timer.start();
+    });
+    if (!examAlive(token)) return false;
+    var ok = picked === q.answer;
+    buttons.forEach(function (b, i) { b.classList.add('marked'); if (i === q.answer) b.classList.add('right'); else if (i === picked) b.classList.add('wrong'); });
+    Arcade.sfx.play(ok ? 'correct' : 'wrong');
+    Arcade.track(q.ced, q.skill, ok);
+    await sheetAsk(ok ? '✓ Correct' : '✗ ' + KEYS.charAt(q.answer) + ' is the answer', q.why, 'Next', ok ? 'correct' : 'wrong');
+    if (!examAlive(token)) return ok;
+    hideSheet();
+    return ok;
+  }
+
+  /** @param {number} n */
+  function startExam(n) {
+    var L = ladderOf(n);
+    if (!L || !L.exam || !L.exam.length) return;
+    abortRun();
+    show('exam');
+    runExam(L).catch(function () { Arcade.toast('Something went wrong — back to the ladders'); goSelect(); });
+  }
+
+  /** @param {any} L */
+  async function runExam(L) {
+    examToken += 1;
+    var token = examToken;
+    exam = { L: L, stop: null };
+    examSubEl.textContent = 'Ladder ' + L.n + ' · ' + L.name;
+    hideSheet();
+    var right = 0;
+    for (var i = 0; i < L.exam.length; i += 1) {
+      var ok = await askQuestion(L.exam[i], i, L.exam.length, token);
+      if (!examAlive(token)) return;
+      if (ok) right += 1;
+    }
+    examToken += 1;
+    showExamResult(L, right, L.exam.length);
+  }
+
+  /** @param {any} L @param {number} right @param {number} total */
+  function showExamResult(L, right, total) {
+    var rec = saveExam(L.n, right, total);
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'EXAM SPRINT', sub: 'Exam Sprint: ' + right + '/' + total,
+      score: rec.best || 0, accuracy: rec.acc || 0,
+      medal: rec.medal, stamp: Arcade.stampFor(rec.acc || 0),
+      ribbon: rec.examPerfect ? 'Exam Ready' : '',
+      stats: [{ label: 'Ladder ' + L.n, value: L.name }, { label: 'Best sprint', value: rec.exam.right + '/' + rec.exam.total }],
+      note: rec.medal === 'gold' ? '' : 'Gold needs 95% on the ladder and 2 of 3 here.',
+      buttons: [
+        { label: 'Ladders', primary: true, onClick: goSelect },
+        { label: 'Run it again', onClick: function () { startExam(L.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    Arcade.focusScreen(screens.end);
+    if (right === total) Arcade.confetti();
+  }
+
+  /* ===== THE RUN ===== */
+
+  /** @param {number} n */
+  function startLadder(n) {
+    var L = ladderOf(n);
+    if (!L) return;
+    abortRun();
+    if (!howtoSeen(n)) { openHowto(n, function () { markHowtoSeen(n); beginLadder(L); }, goSelect); return; }
+    beginLadder(L);
+  }
+
+  /** @param {any} L */
+  function beginLadder(L) {
+    show('play');
+    playLadder(L).catch(function () { Arcade.toast('Something went wrong — back to the ladders'); goSelect(); });
+  }
+
+  /** @param {any} L */
+  async function playLadder(L) {
+    runToken += 1;
+    var token = runToken;
+    run = { L: L, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(), score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, missed: [] };
+    run.streak.render(comboEl);
+    scoreEl.textContent = '0';
+    hideSheet();
+    var rungs = dealRungs(L);
+    for (var i = 0; i < rungs.length; i += 1) {
+      var boss = i === rungs.length - 1;
+      if (boss) { Arcade.sfx.play('boss'); Arcade.toast('👑 Boss rung', 1200); await wait(500); if (!alive(token)) return; }
+      await playRung(rungs[i], i, rungs.length, boss, token);
+      if (!alive(token)) return;
+      if (run.hearts.get() === 0) { showFail(L); return; }
+    }
+    showClear(L);
+  }
+
+  /* ===== END SCREENS ===== */
+
+  function goHome() { window.location.href = '../index.html'; }
+  var ARCADE_BUTTON = { label: 'Arcade', onClick: goHome };
+
+  /** @returns {number} */
+  function accuracy() { return run.asked ? run.correct / run.asked : 0; }
+
+  /** @param {any} panel */
+  function showMissed(panel) {
+    if (!panel || !run.missed.length) return;
+    var list = fill('missed-list', '');
+    list.appendChild(chip('muted', 'Missed: '));
+    run.missed.forEach(function (rung, i) { list.appendChild(chip('missed-head', (i ? ' · ' : '') + rung.problem.text.replace(/^BOSS · /, '').split('?')[0].slice(0, 48) + '…')); });
+    panel.insertBefore(list, panel.lastElementChild);
+  }
+
+  /** @param {any} panel @param {any} before */
+  function showTitle(panel, before) {
+    if (!panel) return;
+    var after = Arcade.titleFor();
+    var rose = after.rank > before.rank;
+    var line = fill('title-chip' + (rose ? ' up' : ''), 'Title: ' + after.name + (rose ? ' · 🎉 New title!' : ''));
+    var head = panel.querySelector('.end-head');
+    head.parentNode.insertBefore(line, head.nextSibling);
+    if (rose) Arcade.sfx.play('coin');
+  }
+
+  /** @param {any} L */
+  function showClear(L) {
+    var acc = accuracy();
+    var score = run.score;
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    var beforeTitle = Arcade.titleFor();
+    saveProgress(L.n, score, acc);
+    Arcade.saveBest('calc', { score: score, initials: Arcade.initials(), level: L.n });
+    var saved = loadProgress();
+    var rec = saved.levels[String(L.n)] || {};
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: 'LADDER CLIMBED', sub: 'Ladder ' + L.n + ' · ' + L.name,
+      score: score, accuracy: acc, stamp: Arcade.stampFor(acc),
+      medal: Arcade.medalFor(acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) }),
+      stats: [{ label: 'Best streak', value: String(run.bestStreak) }, { label: 'Speed bonus', value: '+' + run.speedTotal }],
+      note: EXAM_FRAME + (saved.unlocked > L.n ? '' : ' · Clear 75% to unlock the next ladder.'),
+      buttons: [
+        { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { startExam(L.n); } },
+        { label: 'Ladders', onClick: goSelect },
+        { label: 'Replay', onClick: function () { startLadder(L.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    showTitle(panel, beforeTitle);
+    showMissed(panel);
+    Arcade.focusScreen(screens.end);
+    Arcade.confetti();
+  }
+
+  /** @param {any} L */
+  function showFail(L) {
+    var acc = accuracy();
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: 'LADDER FALLEN', sub: 'Three wrong numbers. Climb again?', tone: 'fail',
+      score: run.score, accuracy: acc, medal: null, stamp: Arcade.stampFor(acc),
+      stats: [{ label: 'Best streak', value: String(run.bestStreak) }, { label: 'Right', value: run.correct + '/' + run.asked }],
+      buttons: [
+        { label: 'Retry', primary: true, onClick: function () { startLadder(L.n); } },
+        { label: 'Ladders', onClick: goSelect },
+        ARCADE_BUTTON
+      ]
+    });
+    showMissed(panel);
+    Arcade.focusScreen(screens.end);
+  }
+
+  function goSelect() {
+    abortRun();
+    sheetBtn.textContent = 'Got it';
+    paintSelect();
+    show('select');
+  }
+
+  /* ===== HOW TO PLAY ===== */
+
+  /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {(() => void)|null} */ var howtoBackTo = null;
+
+  /** @param {number} n @returns {boolean} */
+  function howtoSeen(n) {
+    var saved = Arcade.store.get('arcade.calc.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen : [];
+    return seen.indexOf(n) >= 0;
+  }
+  /** @param {number} n */
+  function markHowtoSeen(n) {
+    var saved = Arcade.store.get('arcade.calc.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen.filter(function (v) { return typeof v === 'number'; }) : [];
+    if (seen.indexOf(n) < 0) seen.push(n);
+    Arcade.store.set('arcade.calc.howto', { seen: seen });
+  }
+
+  /** @param {number} n */
+  function paintHowto(n) {
+    var L = ladderOf(n);
+    howtoTitle.textContent = L ? 'How to play · ' + L.name : 'How to play';
+    howtoCards.textContent = '';
+    var cards = HOWTO.slice();
+    if (L) cards.unshift({ emoji: '\u{1FA9C}', head: 'Ladder ' + L.n + ' · ' + L.name, body: L.blurb + '. Eight rungs; the formulas are the ones on the exam.' });
+    cards.forEach(function (card) {
+      var panel = fill('panel howto-card', '');
+      var emoji = fill('howto-emoji', card.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      panel.appendChild(emoji);
+      var body = fill('', '');
+      body.appendChild(fill('howto-head', card.head));
+      body.appendChild(fill('howto-body', card.body));
+      panel.appendChild(body);
+      howtoCards.appendChild(panel);
+    });
+  }
+
+  /** @param {number} n @param {() => void} after @param {() => void} [back] */
+  function openHowto(n, after, back) { howtoAfter = after; howtoBackTo = back || after; paintHowto(n); show('howto'); }
+  /** @param {boolean} [backwards] */
+  function closeHowto(backwards) { var go = backwards === true ? howtoBackTo : howtoAfter; howtoAfter = null; howtoBackTo = null; if (go) go(); }
+
+  function paintIntro() {
+    introEl.textContent = '';
+    var title = fill('intro-title', 'What is this game?');
+    title.id = 'introTitle';
+    introEl.appendChild(title);
+    INTRO.forEach(function (line) {
+      var row = fill('intro-line', '');
+      var emoji = fill('intro-emoji', line.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      row.appendChild(fill('intro-text', line.text));
+      introEl.appendChild(row);
+    });
+  }
+
+  /* ===== BOOT ===== */
+
+  Arcade.bigType(Arcade.store.get('arcade.bigType', false));
+  Arcade.sfx.bindMuteButton(byId('muteBtn'));
+  Arcade.voice.bindButton(byId('voiceBtn'));
+  sheetBtn.style.display = 'none';
+  paintIntro();
+
+  initialsBtn.textContent = Arcade.initials();
+  initialsBtn.addEventListener('click', function () {
+    if (!initialsPanel.hidden) { initialsPanel.hidden = true; return; }
+    initialsPanel.hidden = false;
+    Arcade.initialsEntry(initialsMount, { onDone: function (value) { initialsBtn.textContent = value; initialsPanel.hidden = true; } });
+  });
+
+  byId('examPace').textContent = TIMING.examSeconds + ' s';
+  byId('playBtn').addEventListener('click', goSelect);
+  byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
+  byId('playBack').addEventListener('click', goSelect);
+  byId('examBack').addEventListener('click', goSelect);
+  byId('howtoBack').addEventListener('click', function () { closeHowto(true); });
+  byId('howtoGo').addEventListener('click', function () { closeHowto(false); });
+  byId('selectHowto').addEventListener('click', function () { openHowto(0, function () { show('select'); }); });
+  byId('playHowto').addEventListener('click', function () {
+    if (!run) return;
+    pauseClocks();
+    openHowto(run.L.n, function () { show('play'); resumeClocks(); });
+  });
+
+  paintSelect();
+  var deepLink = parseInt(String(Arcade.qs('level', '')), 10);
+  if (Number.isFinite(deepLink)) {
+    if (playable(deepLink)) startLadder(deepLink);
+    else { show('select'); Arcade.toast(ladderOf(deepLink) ? 'Ladder ' + deepLink + ' is still locked' : 'No ladder ' + deepLink); }
+  }
+  booted = true;
+}());
+</script>
+
+</body>
+</html>
