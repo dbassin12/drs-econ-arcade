@@ -638,3 +638,150 @@ test('search with politics on still finds a 5 while holding the line at every ch
   assert.equal(replay.ending, null);
   near(best.raw, FedModel.score(replay, { integrity: !replay.capitulated, ended: replay.ending }).raw, 'the path replays to its score');
 });
+
+/* ===== the eras — four crises as data, and the model reading them ===== */
+
+const ERAS = FedModel.ERAS;
+
+test('the four eras are data the game can read, in the order it lists them', () => {
+  assert.deepEqual(FedModel.ERA_IDS, ['1975', '1980', '2008', '2021']);
+  FedModel.ERA_IDS.forEach((id) => {
+    const e = ERAS[id];
+    assert.equal(typeof e.chair, 'string');
+    assert.equal(e.year, Number(id));
+    ['k', 'rStar', 'rho', 'phi', 'FLOOR', 'a', 'uStar', 'piStar', 'lambda', 'okun'].forEach((key) => assert.equal(typeof e.params[key], 'number', id + ' params.' + key));
+    assert.equal(e.initial.t, 1);
+    assert.ok(e.initial.rate >= e.band.min && e.initial.rate <= e.band.max, id + ' opens inside its band');
+    ['pi', 'u', 'rate'].forEach((s) => assert.equal(e.history[s].length, 10, id + ' history.' + s));
+    assert.ok(Math.abs(e.history.pi[0] - e.initial.pi) <= 0.3, id + ' opens where its history opens');
+    assert.ok(e.band.min < e.band.max && e.band.step > 0 && e.band.move >= e.band.step, id + ' band');
+    assert.equal(typeof e.score.uStar, 'number'); assert.equal(typeof e.score.peakBar, 'number');
+    assert.ok(e.call.t >= 2 && e.call.t <= 9, id + ' call quarter');
+    assert.equal(typeof e.shocks, 'function');
+    assert.deepEqual(e.shocks(99), { demand: 0, supply: 0 }, id + ' quiet quarters are zero');
+  });
+  assert.deepEqual(ERAS['1975'].band, FedModel.BAND_1975);
+  assert.equal(ERAS['1975'].params, FedModel.PARAMS_1975);
+  assert.equal(ERAS['1975'].history, FedModel.HISTORY_1975);
+});
+
+test('each era keeps the rate inside its own band and move limit', () => {
+  assert.equal(FedModel.clampRate(0, 0.5, ERAS['2008'].band), 0.25, '2008 has a floor at a quarter point');
+  assert.equal(FedModel.clampRate(20, 15, ERAS['1980'].band), 17, 'Volcker moves two points a quarter');
+  assert.equal(FedModel.clampRate(3, 0.25, ERAS['2021'].band), 1.75, '2022 moves a point and a half');
+  assert.equal(FedModel.clampRate(9, 6.5), 7.5, 'the two-argument form is still 1975');
+});
+
+test('eraShocks adds the pressure beat the Chair chose, and 1975 reads as it always did', () => {
+  assert.deepEqual(FedModel.eraShocks('1975', 4, { acceptedCall: true }), FedModel.shocksFor(4, { acceptedCall: true }));
+  assert.deepEqual(FedModel.eraShocks('1975', 4, {}), { demand: 0, supply: 0 });
+  assert.deepEqual(FedModel.eraShocks('2008', 4, { acceptedCall: true }), { demand: -3, supply: -3 }, 'a backstopped Lehman on top of the oil crash');
+  assert.deepEqual(FedModel.eraShocks('2008', 4, {}), { demand: -4, supply: -3 }, 'a failed Lehman');
+  assert.deepEqual(FedModel.eraShocks('2008', 5, {}), { demand: -4.5, supply: -1.5 }, 'and its second instalment');
+  assert.deepEqual(FedModel.eraShocks('2021', 3, { acceptedCall: true }), { demand: 1, supply: 1.5 }, 'bond buying kept going');
+  assert.deepEqual(FedModel.eraShocks('2008', 7, { qeAt: 5 }), { demand: 0.5 + 0.6, supply: 1.5 }, 'QE is worth 0.6 a quarter once launched');
+  assert.deepEqual(FedModel.eraShocks('2008', 4, { qeAt: 5 }), { demand: -4, supply: -3 }, 'and nothing before');
+  assert.deepEqual(FedModel.eraShocks('1980', 4, { qeAt: 2 }), { demand: 0, supply: 0 }, 'no QE in an era without a floor');
+});
+
+test('simulate opens each era on a copy of its own state and never reads unemployment below the floor', () => {
+  FedModel.ERA_IDS.forEach((id) => {
+    const e = ERAS[id];
+    const r = FedModel.simulate(rep(10, e.initial.rate), { era: id });
+    assert.deepEqual(r.history[0], e.initial, id);
+    assert.notEqual(r.history[0], e.initial, id + ' is a copy');
+    assert.equal(r.history.length, 11);
+  });
+  const floor = FedModel.simulate(rep(10, 5), { era: '1980' });   // cutting into 14% inflation
+  assert.ok(floor.history.every((s) => s.u >= FedModel.U_FLOOR), 'u never goes below ' + FedModel.U_FLOOR);
+  assert.equal(floor.final.u, FedModel.U_FLOOR);
+});
+
+test('QE only counts when it is launched at the floor', () => {
+  const path = [2, 1, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25];
+  const plain = FedModel.simulate(path, { era: '2008' });
+  const qe = FedModel.simulate(path, { era: '2008', qeAt: 4 });
+  assert.ok(qe.final.u < plain.final.u - 1, 'QE from quarter 4 brings unemployment down: ' + qe.final.u + ' vs ' + plain.final.u);
+  const tooEarly = FedModel.simulate(path, { era: '2008', qeAt: 2 });   // the rate that quarter is 1, not the floor
+  assert.deepEqual(tooEarly.history.map((s) => s.u), plain.history.map((s) => s.u), 'a launch above the floor never happens');
+});
+
+test('judgeMove says nothing about a cut at the floor or a hike at the ceiling', () => {
+  assert.equal(FedModel.judgeMove({ pi: 1, gap: -9 }, 0.25, 0.25, ERAS['2008'].band), null, 'no cut to make at 0.25');
+  assert.equal(FedModel.judgeMove({ pi: 1, gap: -9 }, 0.5, 1.0, ERAS['2008'].band), true, 'a cut above the floor still counts');
+  assert.equal(FedModel.judgeMove({ pi: 10, gap: 0 }, 20, 20, ERAS['1980'].band), null, 'no hike to make at 20');
+  assert.equal(FedModel.judgeMove({ pi: 10, gap: 0 }, 19, 19, ERAS['1980'].band), false, 'holding a point below the ceiling is not tightening');
+  assert.equal(FedModel.judgeMove({ pi: 5, gap: -4 }, 2, 2), null, '1975 at its own floor');
+});
+
+test('score grades against the era: its natural rate, its bloodbath bar, and 2021\'s tighter yardstick', () => {
+  near(FedModel.score(fakeRun(2, 5, 2, 9.5), { integrity: true, era: '2008' }).raw, 105, '5% unemployment is the 2008 natural rate');
+  near(FedModel.score(fakeRun(2, 6, 2, 9.5), { integrity: true, era: '2008' }).raw, 97.5, 'a point off it');
+  near(FedModel.score(fakeRun(4.5, 4, 2, 4), { integrity: true, era: '2021' }).raw, 85, '2021: |4.5 - 2| / 5 leaves half the inflation points');
+  near(FedModel.score(fakeRun(4.5, 6, 4.5, 8), { integrity: true }).raw, 40 * (1 - 2.5 / 9) + 30 + 20 + 10 * (1 - 2.5 / 9) + 5, '1975 keeps its span of 9');
+});
+
+test('the politics are the era\'s: election quarters, and a bailout that angers the street either way', () => {
+  assert.deepEqual(FedModel.politicsFor('1975').electionQuarters, [5, 6, 7, 8]);
+  assert.deepEqual(FedModel.politicsFor('1980').electionQuarters, [1, 2, 3, 4]);
+  assert.deepEqual(FedModel.politicsFor('2008').electionQuarters, [1, 2, 3, 4]);
+  assert.deepEqual(FedModel.politicsFor('2021').electionQuarters, [5, 6, 7, 8]);
+  assert.equal(FedModel.politicsFor('2021').hikeCost, 0.10);
+  assert.equal(FedModel.politicsFor('1980').hikeCost, 0.05, 'an override leaves the rest of 1975 in place');
+  assert.deepEqual(FedModel.callBump(ERAS['1975'], false, FedModel.politicsFor('1975')), { washington: 0.25 });
+  assert.deepEqual(FedModel.callBump(ERAS['1975'], true, FedModel.politicsFor('1975')), { washington: -0.15 });
+  assert.deepEqual(FedModel.callBump(ERAS['2008'], true, FedModel.politicsFor('2008')), { street: 0.25, washington: 0.10 });
+  assert.deepEqual(FedModel.callBump(ERAS['2008'], false, FedModel.politicsFor('2008')), { street: 0.10, washington: 0.20 });
+});
+
+/** @param {string} era @param {number[]} rates @param {any} [opts] */
+function eraRun(era, rates, opts) {
+  const o = Object.assign({ era, politics: true }, opts || {});
+  const r = FedModel.simulate(rates, o);
+  const call = ERAS[era].call;
+  const integrity = call.integrityFor === null ? false : (call.integrityFor === 'refuse') !== !!o.acceptedCall;
+  return Object.assign(r, { stamp: FedModel.score(r, { integrity: integrity && !r.capitulated, ended: r.ending, era }).stamp });
+}
+
+test('1980: Volcker\'s own path is a 3, a measured squeeze is a 5, and slamming 20% survives Congress but not the White House', () => {
+  const actual = eraRun('1980', ERAS['1980'].history.rate);
+  assert.equal(actual.stamp, 3, 'actual ' + actual.final.pi.toFixed(1) + '/' + actual.final.u.toFixed(1));
+  assert.ok(Math.abs(actual.final.u - ERAS['1980'].history.u[9]) <= 1.5, 'the model lands near the real 1982 unemployment: ' + actual.final.u.toFixed(1) + ' vs ' + ERAS['1980'].history.u[9]);
+  const slam = eraRun('1980', rep(10, 20));
+  assert.equal(slam.volcker, true, 'the bill comes and a real rate over 2 holds it');
+  assert.equal(slam.verdict, 'notReappointed');
+  assert.ok(slam.peakU > 12, 'and the cost is a depression: ' + slam.peakU.toFixed(1));
+  const cut = eraRun('1980', rep(10, 5));
+  assert.equal(cut.verdict, 'revolt', 'cutting into 14% inflation ends in the revolt');
+  assert.equal(FedModel.search({ era: '1980', n: 3000, rng: lcg(1980), politics: true }).stamp, 5);
+});
+
+test('2008: the real path is a 3, holding at 3% is worse, Lehman rescued is worth a stamp, QE at the floor is the 5', () => {
+  const actual = eraRun('2008', ERAS['2008'].history.rate);
+  assert.equal(actual.stamp, 3, 'actual ' + actual.final.pi.toFixed(1) + '/' + actual.final.u.toFixed(1));
+  assert.ok(actual.peakU > 9.5 && actual.peakU < 11.5, 'unemployment peaks near ten: ' + actual.peakU.toFixed(1));
+  assert.ok(actual.history.some((s) => s.pi < 0), 'a brush with deflation in 2009');
+  assert.ok(eraRun('2008', rep(10, 3)).stamp <= 2, 'a Fed that never cuts');
+  const rescued = eraRun('2008', ERAS['2008'].history.rate, { acceptedCall: true });
+  assert.ok(rescued.stamp > actual.stamp, 'a backstopped Lehman is a milder crash');
+  const floorFast = [2, 1, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25];
+  assert.equal(eraRun('2008', floorFast, { qeAt: 3 }).stamp, 5);
+  const best = FedModel.search({ era: '2008', n: 2000, rng: lcg(2008), politics: true });
+  const bestQE = FedModel.search({ era: '2008', n: 2000, rng: lcg(2008), politics: true, qeAt: 3 });
+  assert.ok(bestQE.raw > best.raw + 5, 'QE is the tool the floor leaves: ' + bestQE.raw.toFixed(1) + ' vs ' + best.raw.toFixed(1));
+});
+
+test('2021: the real path is a 4, sitting at zero is a 3 and the street, an early hiking cycle is the 5', () => {
+  const actual = eraRun('2021', ERAS['2021'].history.rate);
+  assert.equal(actual.stamp, 4, 'actual ' + actual.final.pi.toFixed(1) + '/' + actual.final.u.toFixed(1));
+  assert.ok(Math.max.apply(null, actual.history.map((s) => s.pi)) > 7, 'inflation peaks above 7 on the real path');
+  const zero = eraRun('2021', rep(10, 0.25));
+  assert.equal(zero.stamp, 3);
+  assert.equal(zero.verdict, 'revolt', 'two years of 6% inflation brings the street out');
+  assert.equal(actual.verdict, null, 'a Fed the street can see hiking is neither run out of town nor denied a second term: street ' + actual.politics[10].street.toFixed(2) + ' washington ' + actual.politics[10].washington.toFixed(2));
+  const early = eraRun('2021', [0.25, 1.0, 2.0, 3.0, 4.0, 4.5, 4.5, 4.5, 4.5, 4.5]);
+  assert.equal(early.stamp, 5, 'hiking from quarter 2: ' + early.final.pi.toFixed(1) + '/' + early.final.u.toFixed(1));
+  assert.ok(early.events.some((e) => e.id === 'hearing'), 'and the Senate notices');
+  assert.ok(eraRun('2021', ERAS['2021'].history.rate, { acceptedCall: true }).stamp < actual.stamp, 'keeping the bond buying going costs a stamp');
+  assert.equal(FedModel.search({ era: '2021', n: 2000, rng: lcg(2021), politics: true }).stamp, 5);
+});

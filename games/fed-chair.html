@@ -51,12 +51,10 @@ const SCENARIO_1975 = {
     'One more thing. This office answers to Congress, and Congress answers to voters — and 1976 is an election year. Two meters under the gauges keep that score: STREET, how angry the public is, and WASHINGTON, how hard the politicians are leaning on you. Nobody can make you cut. Everybody can make you pay for not cutting.'
   ],
 
-  ERAS: [
-    { year: '1975', chair: 'Chair Burns', blurb: 'Stagflation. Eleven percent inflation, eight percent unemployment, an oil shock still ringing.', ready: true },
-    { year: '1980', chair: 'Chair Volcker', blurb: 'The squeeze. Whatever it takes, and it takes a lot.', ready: false },
-    { year: '2008', chair: 'Chair Bernanke', blurb: 'The floor gives way. Rates hit zero and stay there.', ready: false },
-    { year: '2021', chair: 'Chair Powell', blurb: 'Reopening, stimulus, and the fastest hiking cycle in forty years.', ready: false }
-  ],
+  tile: { blurb: 'Stagflation. Eleven percent inflation, eight percent unemployment, an oil shock still ringing.' },
+  RATE_NAME: 'FOMC',
+  GAUGES: { pi: { min: 0, max: 15, red: 8 } },
+  HOWTO_ERA: { emoji: '\u{1F6E2}️', head: 'The 1975 twist: the shock you inherited', body: 'Eleven percent inflation and an oil shock nobody at the table caused. Expectations are unanchored, so the price you pay for disinflation depends on being believed.' },
 
   HEADLINES: [
     'FIRST FOMC OF 1975 — Chair Burns takes the gavel with prices up 11 percent on the year',
@@ -248,6 +246,342 @@ const SCENARIO_1975 = {
 };
 
 /* ================================================================================
+   THE OTHER THREE CRISES — the words for 1980, 2008 and 2021, in the same shape as
+   1975 above. What an era does not say, it borrows from 1975 (the fallback quips,
+   the meter names, the FRQ lines); what it must say for itself — briefing, the ten
+   headlines, its beats, its political events, its endings, its history — is here.
+   The economics of each era live in fed-chair.model.js (FedModel.ERAS).
+   ================================================================================ */
+const SCENARIO_1980 = {
+  tile: { blurb: 'The squeeze. Fourteen percent inflation, a 15 percent funds rate, and a band that runs to 20.' },
+  RATE_NAME: 'FOMC',
+  GAUGES: { pi: { min: 0, max: 16, red: 8 } },
+  HOWTO_ERA: { emoji: '\u{1F3C5}', head: 'The 1980 twist: credibility is the game', body: 'Expectations are unanchored. Every quarter of a real rate above neutral fills a credibility pip, and a credible Fed drags expectations down without a depression. The band runs 5 to 20, two points a quarter.' },
+  briefing: [
+    'It is January 1980 and you are Paul Volcker, five months into the job. Consumer prices are up 14 percent on the year, the second oil shock is still working through, and the dollar has been sliding for two years. Last October you changed the machinery: the Fed now targets bank reserves and lets the funds rate go where it must — and it has gone to 15.',
+    'President Carter faces the voters in November with a misery index over 20. Congress passed the Humphrey–Hawkins Act two years ago and expects full employment. The housing and auto industries expect you to blink.',
+    'Your job is one number: the federal funds rate, and the band is wider than it has ever been — 5 to 20 percent, two points a quarter. Ten quarters, 1980 Q1 through 1982 Q2.',
+    'The lag is still the whole game: output next quarter, inflation the quarter after. But there is a second lesson here. Expectations are unanchored — everyone prices in the inflation they just had — and the only thing that anchors them is a real rate held high long enough to be believed. Watch the credibility pips: they are the cheapest disinflation you will ever buy.',
+    'What good looks like: inflation back toward 2 with unemployment near the natural rate of 6, without the depression a 20 percent rate would buy. Cut early and 14 percent becomes 20.',
+    'One note on plumbing. In 1980 the Fed still works with limited reserves: it makes a scarce supply of reserves meet demand at the rate it wants by trading bonds. Today reserves are ample and the Fed administers the rate it pays on reserve balances — IORB — and the funds rate follows. Same goal, different machinery.'
+  ],
+  HEADLINES: [
+    'FIRST FOMC OF 1980 — Chair Volcker holds a 15 percent funds rate with prices up 14 on the year',
+    'CARTER ORDERS CREDIT CONTROLS — Five Towns card holders find their limits cut; Cedarhurst car lots go quiet',
+    'CONTROLS LIFTED, SHOPPERS RETURN — Central Avenue registers ring again after the shortest recession on record',
+    'ELECTION WEEK — Reagan wins in a landslide; the funds rate is back above 15',
+    'PRIME RATE HITS 20 — a Hewlett builder says nobody can borrow at that price',
+    'FARM BANKRUPTCIES CLIMB — a Long Island grower says the loan costs more than the crop',
+    'TAX CUT SIGNED AT THE RANCH — the Reagan cuts phase in from October',
+    'HOMEBUILDERS MAIL TWO-BY-FOURS TO THE FED — a Woodmere contractor sends his with a note',
+    'UNEMPLOYMENT TOPS 8.5 — Lawrence High freezes hiring again; the Ledger asks how long',
+    'LAST MEETING OF THE TERM — inflation under 7, unemployment over 9; the Ledger weighs the price'
+  ],
+  TICKER: {
+    hotPrices: 'Bagel prices double from 1975',
+    emptyPlatforms: 'LIRR platforms empty at rush hour',
+    negativeReal: 'Bond vigilantes dump Treasuries',
+    bigHike: 'Wall Street cheers, Main Street winces',
+    angryStreet: 'Two-by-fours pile up in the Fed mailroom',
+    hillHeat: 'A House bill would order the Fed to cut'
+  },
+  QUIPS: [
+    { when: (s) => s.washington >= 0.7 && s.pi > 6, hawk: 'Congress wants cheap money before the election. That is the best argument against it.', dove: 'Independence is worth nothing if they take it away. Give them a quarter point and keep the dial.' },
+    { when: (s) => s.pi > 12, hawk: 'Fourteen percent. There is no gentle way down from fourteen.', dove: 'Fourteen percent is oil and food. Do not fight a supply shock with a depression.' },
+    { when: (s) => s.real > 5, hawk: 'A five-point real rate is what it takes when nobody believes you.', dove: 'A five-point real rate is a recession by appointment.' },
+    { when: (s) => s.cred >= 0.4 && s.pi > 6, hawk: 'They are starting to believe us. Do not give it back.', dove: 'They believe us because we broke the housing industry. Ease before we break the rest.' },
+    { when: (s) => s.street >= 0.75 && s.pi > 8, hawk: 'They are marching about prices. Prices are our job. Hold.', dove: 'They are marching. Whatever the textbook says, that is a data point.' }
+  ],
+  EVENTS: {
+    2: { kind: 'card', sfx: 'card', emoji: '\u{1F4B3}',
+      head: 'CARTER IMPOSES CREDIT CONTROLS',
+      sub: 'The White House invokes the Credit Control Act: banks must hold back consumer lending. Card limits fall across the Five Towns and spending stops dead.',
+      note: 'A negative demand shock from outside the Fed: consumption spending falls, aggregate demand shifts left, and real output drops — the sharpest quarterly fall since the war. It reverses when the controls are lifted. Your rate is about the two years after.',
+      button: 'Brace for it' },
+    4: { kind: 'call', sfx: 'boss', emoji: '☎️',
+      head: 'THE WHITE HOUSE WANTS RATES DOWN BY NOVEMBER',
+      sub: 'A campaign aide on the phone: the President is running on the economy and the funds rate is back at 15. Could the Board find a point or two before the vote?',
+      note: 'An election-year request for easier money is the political business cycle in one phone call. Independence exists so that this answer can be no.',
+      accept: 'Find them a point',
+      refuse: 'The Fed is independent' },
+    7: { kind: 'card', sfx: 'card', emoji: '\u{1F4DC}',
+      head: 'TAX CUT SIGNED — DEFICITS AHEAD',
+      sub: 'The Economic Recovery Tax Act phases in over three years. Supply-siders promise growth; the bond market sees deficits.',
+      note: 'Expansionary fiscal policy shifts aggregate demand right over the coming quarters — pushing against your tightening. Fiscal and monetary policy pulling different ways is why the real rate has to do more work.',
+      button: 'Noted' },
+    8: { kind: 'card', sfx: 'card', emoji: '\u{1FAB5}',
+      head: 'TWO-BY-FOURS IN THE MAILROOM',
+      sub: 'Homebuilders across the country are mailing lumber to the Board with their names on it. Housing starts are the lowest since 1946.',
+      note: 'Interest-sensitive spending is where monetary policy bites first: housing and cars. This is the transmission mechanism, in the mail.',
+      button: 'Read the notes' }
+  },
+  POLITICS: {
+    events: {
+      march: { sfx: 'card', emoji: '✊', head: 'JOBLESS MARCH ON THE FEDERAL RESERVE', sub: 'Laid-off auto workers rally outside the Board in Washington; the Nassau chapter fills two buses.', note: 'Cyclical unemployment is a political fact before it is a statistic: every point above the natural rate is a crowd, and crowds are what Congress hears. Washington pressure rises a notch.', button: 'Noted' },
+      boycott: { sfx: 'card', emoji: '\u{1F9FA}', head: 'SHOPPERS STRIKE BACK AT PRICES', sub: 'A Cedarhurst grocer says customers bring last year’s receipts to argue. The receipts are losing.', note: 'A boycott of one good cannot lower the price level: inflation is a rise in prices in general, and the money to pay them is still there. It is the public telling you which number they are watching.', button: 'Noted' },
+      savers: { sfx: 'card', emoji: '\u{1F3E6}', head: 'PASSBOOK SAVERS REVOLT', sub: 'Hewlett retirees earn 5 percent on savings that lose 14 a year to prices; money market funds take their deposits.', note: 'The real interest rate is the nominal rate minus inflation. A deeply negative real rate transfers wealth from savers to borrowers, and the savers have noticed. The street heats up.', button: 'Noted' },
+      strike: { sfx: 'boss', emoji: '\u{1FAA7}', head: 'AIR TRAFFIC CONTROLLERS WALK OUT', sub: 'Thirteen thousand controllers strike for a raise that beats inflation; flights out of Kennedy stack up on the taxiway.', note: 'A negative supply shock: higher nominal wages raise per-unit production costs, so short-run aggregate supply shifts left next quarter — the price level rises and real output falls. Persistent inflation writes itself into wage demands; this is the cost of letting it persist.', button: 'Brace for it' },
+      editorial: { sfx: 'card', emoji: '\u{1F4F0}', head: 'LEDGER EDITORIAL: TIME FOR VOLCKER TO GO', sub: 'Two quarters of an angry street, and the paper that prints the bagel index has run out of patience with the Board.', note: 'A central bank that loses the public loses its cover: Congress reads the editorial page. Washington pressure climbs, whatever the numbers say.', button: 'Noted' },
+      bondRally: { sfx: 'coin', emoji: '\u{1F4C8}', head: 'BOND MARKET FINALLY BELIEVES THE FED', sub: 'Two quarters of a real rate above 2 percent, and the long bond is rallying: investors are lending on the bet that 14 percent is over.', note: 'Expectations are moving. When lenders believe inflation will fall they accept a lower nominal rate — anchored expectations, on a trading screen — and a Fed the markets back is harder for Congress to push. Washington pressure eases.', button: 'Good' },
+      relief: { sfx: 'coin', emoji: '\u{1F3E0}', head: 'HOUSING STARTS TURN UP', sub: 'The two-by-fours stop coming; a Woodmere builder pours his first foundation of the year.', note: 'The street forgives on a lag, the same way it got angry: as rates come down and jobs return the crowd thins, and Congress hears the quiet. Washington pressure eases.', button: 'Good' },
+      hearing: { sfx: 'boss', emoji: '⚖️', head: 'JOINT ECONOMIC COMMITTEE SUMMONS THE CHAIRMAN', sub: 'The committee wants to know, under oath, why the prime rate is 20 and whether the Board intends to keep it there. A bill to force a cut is circulating.', note: 'Oversight is the price of independence: Congress created the Fed and can question it. Hold the line and the pressure ratchets up. Signal easing and it eases — but a signal is a promise, and a promise broken next quarter costs more than the hearing did.', hold: 'The Fed is independent', promise: 'Signal easing ahead', promiseToast: 'Promise made — cut next quarter or pay for it' },
+      whitehouse: { sfx: 'boss', emoji: '\u{1F3DB}️', head: 'WHITE HOUSE: “THE FED IS CHOKING THE RECOVERY”', sub: 'The Treasury Secretary tells the Ledger the tax cut cannot work at these interest rates, and that the administration did not sign it to watch the Fed undo it.', note: 'The political business cycle: an administration wants growth on its watch and the inflation bill later. A Fed that obliges buys a boom now and pays for it in prices — which is why the central bank is independent in the first place. The street takes the President’s side.', button: 'Understood' },
+      bill: { sfx: 'boss', emoji: '\u{1F5F3}️', head: 'BILL WOULD ORDER THE FED TO LOWER RATES', sub: 'A bill directing the Board to bring rates down and to seat the Treasury Secretary on the FOMC is headed for a vote. Your answer is on the front page tomorrow either way.', noteStrong: 'Ease, and the Board keeps its dial by giving up the reason to have one: expansionary policy under political pressure shifts aggregate demand right, and the price level with it. Hold, and with the real rate above 2 percent the markets are behind you — the bill will die on the floor.', noteWeak: 'Ease, and the Board keeps its dial by giving up the reason to have one: expansionary policy under political pressure shifts aggregate demand right, and the price level with it. Hold, and with the real rate under 2 percent nobody outside this building believes you — the bill has the votes.', ease: 'Ease — give them the cut', hold: 'Hold — let them vote' }
+    },
+    endings: {
+      congress: { head: 'FED FALLS UNDER CONGRESS: Treasury Takes a Seat at the FOMC', sub: 'Volcker’s term ends with the bill’s signing; the Board keeps its building and loses its dial' },
+      revolt: { head: 'INFLATION REVOLT: Crowds at the Fed as Volcker Steps Down', sub: 'The Chairman resigns with prices still climbing; the two-by-fours are on the signs' },
+      notReappointed: { sub: 'White House signals the Chairman will not be reappointed in 1983' },
+      capitulated: { sub: 'Chair’s independence questioned after Capitol Hill “compromise”' },
+      volcker: { sidebar: 'THE DAY THE FED SAID NO' }
+    }
+  },
+  NEWS: {
+    masthead: 'The Five Towns Ledger',
+    dateline: 'Cedarhurst, New York · June 1982',
+    roaredBack: 'Fourteen Percent Forever: The Fed Blinked',
+    bloodbath: 'Fed Crushes Inflation — and One Worker in Nine',
+    byStamp: { 5: 'VOLCKER BREAKS INFLATION — and the Country Is Still Standing', 4: 'Steady Hand at the Fed as Prices Cool', 3: 'Fed Muddles Through; Inflation Lingers' },
+    fallbackHead: 'Two Years On, the Board Has Little to Show For It',
+    acceptedSub: 'Chair’s independence questioned after election-year “favor”',
+    refusedSidebar: 'FED CHAIR TELLS THE WHITE HOUSE: NO'
+  },
+  HISTORY: [
+    'In October 1979 Volcker changed how the Fed operated: it would target the growth of bank reserves and let the federal funds rate go wherever that took it. It took it to 17 and 19 percent through 1981.',
+    'Carter’s credit controls produced a recession so short it barely counted — the economy shrank at nearly an 8 percent annual rate in the spring of 1980 and grew again by summer. The one the squeeze bought was the real thing: from July 1981 to November 1982 unemployment climbed to 10.8 percent, the highest since the Depression.',
+    'Inflation fell from 14 percent to under 4 by 1983 and stayed down. It cost roughly one year of lost output for every point of disinflation — the sacrifice ratio — and the bill was paid in housing, autos, farms and steel.',
+    'What made it stick was credibility. By 1982 the bond market believed the Fed would not let inflation come back, and expectations fell with it — which is why the recovery of 1983 came without the prices of 1979.',
+    'Reagan reappointed Volcker in 1983. The lesson economists took: disinflation is cheaper the more the public believes you, and there is no way to be believed except to do it.'
+  ],
+  HISTORY_NOTE: 'Volcker hit his rate the hard way, targeting reserves and letting the funds rate find itself. Today the Fed does not have to: reserves are ample, so it administers the rate it pays on reserve balances (IORB) and the federal funds rate follows.',
+  HISTORY_POLITICS: 'The politics were real too. Homebuilders mailed two-by-fours to the Board, farmers blockaded its doors with tractors, and in 1982 bills to force the Fed to lower rates and to seat the Treasury Secretary on the FOMC drew dozens of sponsors; in 1983 a House member introduced articles of impeachment against the Chairman. None of it passed. The administration criticized the Fed in public and left it alone in private — and got a recovery with low inflation for the 1984 election. That is the case for an independent central bank, made by the people who leaned on it.',
+  FRQ: {
+    era: 'Holding the real interest rate above neutral for several quarters lowers expected inflation as the central bank gains credibility; the short-run Phillips curve shifts inward, so each unemployment rate comes with lower inflation and the cost of disinflation falls.'
+  }
+};
+
+const SCENARIO_2008 = {
+  tile: { blurb: 'The floor gives way. Bear Stearns, Lehman, a rate that stops at zero, and a second tool.' },
+  RATE_NAME: 'FOMC',
+  GAUGES: { pi: { min: -3, max: 7, red: 5 } },
+  HOWTO_ERA: { emoji: '\u{1F9EF}', head: 'The 2008 twist: the floor, and the second tool', body: 'The dial stops at 0.25. At the floor a LAUNCH QE button appears: bond buying that adds demand every quarter from then on. And one night in the fall, Lehman calls.' },
+  briefing: [
+    'It is January 2008 and you are Ben Bernanke. House prices have fallen for a year, two hedge funds at Bear Stearns have already collapsed, and banks have stopped trusting each other overnight. Inflation is 4 percent and rising with oil; unemployment is 5 and just starting to climb.',
+    'The band is 0.25 to 6 — and 0.25 is the floor. Below it there is nowhere to go, which is why this era has a second tool: at the floor you may launch QE, buying long-term bonds to push demand when the rate cannot.',
+    'One decision this fall belongs to the Board alone. Lehman Brothers will come to the window. Backstop it and the panic is milder, but the street will not forgive a bailout. Let it fail and the crash is the one in the history books.',
+    'The lag is still the whole game — output next quarter, inflation the quarter after — but the danger runs the other way now. When prices fall, a rate stuck at the floor is a rising real rate. That is the deflation trap.',
+    'What good looks like: unemployment back toward the natural rate of 5 without a deflationary spiral, and a Fed that still has Congress’s trust when it is over. 2008 is an election year.',
+    'One note on plumbing. This is the era where the machinery changed. QE fills the banking system with reserves; by 2009 they are ample, and from then on the Fed steers the funds rate by administering the rate it pays on reserve balances — IORB. The reserve market model in your CED starts here.'
+  ],
+  HEADLINES: [
+    'FIRST FOMC OF 2008 — Chair Bernanke opens the year with house prices down and oil at 90 dollars',
+    'GAS HITS FOUR DOLLARS ON ROCKAWAY TURNPIKE — oil tops 140; the Ledger prints the pump price on page one',
+    'FANNIE AND FREDDIE SEIZED — a Lawrence lender says the mortgage market has one buyer left',
+    'LEHMAN FALLS, MARKETS CRATER — the Dow loses 777 points in a day; Cedarhurst retirees stop opening their statements',
+    'STIMULUS SIGNED — 787 billion in spending and tax cuts; the LIRR gets its first checks',
+    'UNEMPLOYMENT PASSES 9 — an Inwood warehouse cuts its second shift; Lawrence High freezes hiring',
+    'ECONOMISTS SAY THE RECESSION ENDED IN JUNE — nobody in the Five Towns noticed',
+    'UNEMPLOYMENT HITS 10 — Central Avenue storefronts go dark two at a time',
+    'CONGRESS DRAFTS A NEW RULEBOOK — the Fed’s emergency powers go on a leash',
+    'LAST MEETING OF THE TERM — the Ledger asks what the floor bought'
+  ],
+  TICKER: {
+    hotPrices: 'Gas at four dollars on the Turnpike',
+    emptyPlatforms: 'LIRR platforms empty at rush hour',
+    negativeReal: 'Savers earn nothing and say so',
+    bigHike: 'Wall Street gasps',
+    angryStreet: 'Bailout protests outside the New York Fed',
+    hillHeat: 'Audit-the-Fed bill gains sponsors'
+  },
+  QUIPS: [
+    { when: (s) => s.washington >= 0.7 && s.u > 7, hawk: 'Congress wants us to do more. Congress is not on the hook for the balance sheet.', dove: 'Congress wants us to do more because ten percent of the country is out of work. Do more.' },
+    { when: (s) => s.rate <= 0.3 && s.gap < -6, hawk: 'We are at zero. The next tool is the balance sheet — and the bill for it.', dove: 'We are at zero and unemployment is climbing. Launch QE and stop asking permission.' },
+    { when: (s) => s.pi < 0, hawk: 'Deflation is a symptom. Fix the banks and it goes.', dove: 'Falling prices mean a rising real rate at zero. This is the trap. Buy the bonds.' },
+    { when: (s) => s.pi > 4 && s.t <= 3, hawk: 'Four percent inflation and oil at 140. Do not cut into that.', dove: 'Oil is a supply shock and the banks are dying. Cut.' },
+    { when: (s) => s.u > 9, hawk: 'Nine percent unemployment is the price of the bubble, not of this Board.', dove: 'Nine percent unemployment is the only number in this room that votes.' }
+  ],
+  EVENTS: {
+    2: { kind: 'card', sfx: 'card', emoji: '\u{1F3DB}️',
+      head: 'BEAR STEARNS IS SOLD OVER A WEEKEND',
+      sub: 'The Fed lends 29 billion against Bear’s worst assets so JPMorgan will take the rest. A Hewlett broker says the phones have stopped ringing.',
+      note: 'The lender of last resort at work: the Fed lends against collateral so a run does not become a collapse. It is not monetary policy — the rate did not move — but it is the reason the rate still matters.',
+      button: 'Noted' },
+    4: { kind: 'call', sfx: 'boss', emoji: '☎️',
+      head: 'LEHMAN IS ON THE PHONE',
+      sub: 'Lehman Brothers cannot open Monday without a buyer or a backstop. Treasury says no public money. The decision is the Board’s, tonight.',
+      note: 'Backstop it, and the panic is milder — and the street learns that Wall Street gets rescued. Let it fail, and the crash is the one in the history books, and Congress asks why you did nothing. There is no clean answer; there is only the one you can defend.',
+      accept: 'Backstop it',
+      refuse: 'Let it fail' },
+    5: { kind: 'card', sfx: 'card', emoji: '\u{1F4DC}',
+      head: 'STIMULUS SIGNED',
+      sub: 'The Recovery Act: 787 billion in spending and tax cuts over two years, from highways to a payroll-tax credit.',
+      note: 'Expansionary fiscal policy shifts aggregate demand right — the same direction as your cuts, which is what a crisis looks like when both policies pull together. The lag applies to Congress too.',
+      button: 'Noted' },
+    7: { kind: 'card', sfx: 'card', firesWhen: 'deflation', emoji: '\u{1F9CA}',
+      head: 'PRICES ARE FALLING',
+      sub: 'The CPI is down on the year for the second quarter running. A Cedarhurst shop cuts prices and still cannot sell.',
+      note: 'With the nominal rate at the floor, falling prices raise the real interest rate: monetary policy tightens by itself. Anchored expectations are what stop this becoming a spiral; QE is what a central bank does about it.',
+      button: 'Understood' }
+  },
+  POLITICS: {
+    events: {
+      march: { sfx: 'card', emoji: '✊', head: 'MAIN STREET MARCHES ON WALL STREET', sub: 'Ten thousand rally in lower Manhattan under one banner: WHERE IS OUR BAILOUT. The Five Towns buses leave at dawn.', note: 'Cyclical unemployment is a political fact before it is a statistic: every point above the natural rate is a crowd, and crowds are what Congress hears. Washington pressure rises a notch.', button: 'Noted' },
+      boycott: { sfx: 'card', emoji: '⛽', head: 'GAS BOYCOTT SPREADS', sub: 'A “don’t fill up Friday” chain email reaches every inbox in Nassau County. The pumps on the Turnpike are busy Saturday.', note: 'A boycott of one good cannot lower the price level: inflation is a rise in prices in general, and the money to pay them is still there. It is the public telling you which number they are watching.', button: 'Noted' },
+      savers: { sfx: 'card', emoji: '\u{1F3E6}', head: 'SAVERS EARN NOTHING AND SAY SO', sub: 'Hewlett retirees find their CDs paying under 1 percent while groceries climb. A letter to the Ledger asks who at the Fed cares about people who saved.', note: 'The real interest rate is the nominal rate minus inflation. Two quarters of a deeply negative real rate transfer wealth from savers to borrowers, and the savers have noticed. The street heats up.', button: 'Noted' },
+      strike: { sfx: 'boss', emoji: '\u{1FAA7}', head: 'TRANSIT WORKERS STRIKE FOR CATCH-UP PAY', sub: 'The LIRR shops walk out for raises that beat the price of gas. Nothing moves through Jamaica for a week.', note: 'A negative supply shock: higher nominal wages raise per-unit production costs, so short-run aggregate supply shifts left next quarter — the price level rises and real output falls.', button: 'Brace for it' },
+      editorial: { sfx: 'card', emoji: '\u{1F4F0}', head: 'LEDGER EDITORIAL: TIME FOR BERNANKE TO GO', sub: 'Two quarters of an angry street, and the paper that prints the foreclosure list has run out of patience with the Board.', note: 'A central bank that loses the public loses its cover: Congress reads the editorial page. Washington pressure climbs, whatever the numbers say.', button: 'Noted' },
+      bondRally: { sfx: 'coin', emoji: '\u{1F4C8}', head: 'BOND MARKET BELIEVES THE FED', sub: 'Two quarters of a real rate above 2 percent — falling prices did that, not the dial — and the long bond is rallying.', note: 'Expectations are moving: lenders accept a lower nominal rate when they believe inflation will stay low. A Fed the markets back is harder for Congress to push. Washington pressure eases.', button: 'Good' },
+      relief: { sfx: 'coin', emoji: '\u{1F3E0}', head: 'THE MARCHERS GO HOME', sub: 'Help-wanted signs are back on Central Avenue, and the Saturday rally drew eleven people and a dog.', note: 'The street forgives on a lag, the same way it got angry: as unemployment falls toward the natural rate the crowd thins, and Congress hears the quiet. Washington pressure eases.', button: 'Good' },
+      hearing: { sfx: 'boss', emoji: '⚖️', head: 'BANKING COMMITTEE SUMMONS THE CHAIRMAN', sub: 'The committee wants to know why the Fed could find billions for AIG and nothing for Main Street. An Audit-the-Fed bill has three hundred sponsors.', note: 'Oversight is the price of independence: Congress created the Fed and can question it. Hold the line and the pressure ratchets up. Signal easing and it eases — but a signal is a promise, and a promise broken next quarter costs more than the hearing did.', hold: 'The Fed is independent', promise: 'Signal more support', promiseToast: 'Promise made — cut next quarter or pay for it' },
+      whitehouse: { sfx: 'boss', emoji: '\u{1F3DB}️', head: 'WHITE HOUSE: “DO MORE, AND DO IT NOW”', sub: 'The administration’s economic team tells the Ledger, off the record, that the recovery is the presidency and the Fed has room to act.', note: 'The political business cycle: elected officials want the recovery on their watch. A Fed that obliges past the point the economy needs buys a boom now and pays for it in prices — which is why the central bank is independent in the first place. The street takes the President’s side.', button: 'Understood' },
+      bill: { sfx: 'boss', emoji: '\u{1F5F3}️', head: 'AUDIT-THE-FED BILL HEADS FOR THE FLOOR', sub: 'The bill would open every FOMC decision to a GAO audit and let Congress veto emergency lending. Your answer is on the front page tomorrow either way.', noteStrong: 'Ease, and the Board keeps its discretion by giving up the reason to have it: policy set to please Congress shifts aggregate demand right past what the economy needs. Hold, and with the Board’s credibility intact the bill dies in the Senate.', noteWeak: 'Ease, and the Board keeps its discretion by giving up the reason to have it. Hold, and with the Board’s credibility gone nobody outside this building believes you — the bill has the votes.', ease: 'Ease — do what they ask', hold: 'Hold — let them vote' }
+    },
+    endings: {
+      congress: { head: 'FED FALLS UNDER CONGRESS: Every Decision Audited, Emergency Lending Ends', sub: 'Bernanke’s term ends with the bill’s signing; the Board keeps its building and loses its discretion' },
+      revolt: { head: 'MAIN STREET REVOLT: Crowds Fill Central Avenue as Bernanke Steps Down', sub: 'The Chairman resigns with unemployment still near ten; the bailouts are the story' },
+      notReappointed: { sub: 'Reappointment in doubt: the Chairman’s second term will need every vote in the Senate' },
+      capitulated: { sub: 'Chair’s independence questioned after Capitol Hill “compromise”' },
+      volcker: { sidebar: 'THE DAY THE FED SAID NO' }
+    }
+  },
+  NEWS: {
+    masthead: 'The Five Towns Ledger',
+    dateline: 'Cedarhurst, New York · June 2010',
+    roaredBack: 'Prices Roar Back: The Fed Kept the Money Loose Too Long',
+    bloodbath: 'One Worker in Nine: The Fed That Waited',
+    byStamp: { 5: 'THE FLOOR HELD: Fed Steers Past Depression', 4: 'Steady Hand at the Fed as the Recovery Takes Hold', 3: 'Fed Muddles Through; Jobs Lag' },
+    fallbackHead: 'Two Years On, the Board Has Little to Show For It',
+    acceptedSub: 'Lehman rescued: Main Street asks why Wall Street always is',
+    refusedSub: 'Lehman allowed to fail: the panic that followed is the story',
+    refusedSidebar: null,
+    callStat: { label: 'Lehman', accept: 'Rescued', refuse: 'Let fail' }
+  },
+  HISTORY: [
+    'Bear Stearns was sold in March 2008 with the Fed’s money behind it; Fannie Mae and Freddie Mac were seized in September; Lehman Brothers filed for bankruptcy on September 15 and AIG was rescued the next day. The money markets froze, and the Dow fell 777 points in one session while Congress voted down the first bailout bill.',
+    'The Fed cut the funds rate from 4.25 percent to a range of 0 to 0.25 by December 2008 and announced its first round of quantitative easing in November: 600 billion dollars of mortgage bonds, expanded to 1.75 trillion in March 2009.',
+    'Unemployment kept climbing for a year after the rate hit the floor — to 10.0 percent in October 2009 — and inflation dipped below zero in mid-2009 as oil crashed, before returning to about 2 by 2010. Prices never spiralled: expectations were anchored, and the Fed kept them there.',
+    'The recovery was slow. Unemployment was still above 9 in 2011 and above 8 into 2012, and the Fed launched QE2 in 2010 and QE3 in 2012 before it was over.',
+    'The lesson economists took: at the zero lower bound the policy rate is not the only tool, and the real interest rate — not the nominal one — is what the economy feels. Bernanke was confirmed for a second term in January 2010 by 70 votes to 30, the closest vote in the Fed’s history.'
+  ],
+  HISTORY_NOTE: 'This is where the plumbing changed. QE filled the banking system with reserves; by 2009 they were ample, and the Fed has steered the funds rate ever since by administering the rate it pays on reserve balances, IORB — the reserve market model in your CED.',
+  HISTORY_POLITICS: 'The politics were real too. The first bailout vote failed in the House on September 29, 2008, and passed on the second try four days later. An Audit-the-Fed bill drew more than three hundred cosponsors in 2009; the Dodd–Frank Act of 2010 put the Fed’s emergency lending under new limits. The pressure in this era ran through bailouts, not rates: nobody asked the Fed to raise them, and everybody asked why it had rescued whom it had.',
+  FRQ: {
+    era: 'When the nominal interest rate is at the zero lower bound, the central bank cannot lower it further, so it buys long-term assets (quantitative easing) to lower long-term interest rates and increase aggregate demand; falling prices at the floor raise the real interest rate, which is why anchored inflation expectations matter.'
+  }
+};
+
+const SCENARIO_2021 = {
+  tile: { blurb: 'Reopening, stimulus, “transitory”, a war — and the fastest hiking cycle in forty years.' },
+  RATE_NAME: 'IORB',
+  GAUGES: { pi: { min: 0, max: 10, red: 5 } },
+  HOWTO_ERA: { emoji: '\u{1F39B}️', head: 'The 2021 twist: you set IORB', body: 'Reserves are ample, so the dial is the rate the Fed pays on reserve balances and the funds rate follows it — a point and a half a quarter. Someone will ask you to keep buying bonds. A war will spike oil. The word is “transitory”.' },
+  briefing: [
+    'It is January 2021 and you are Jerome Powell. The vaccine is rolling out, unemployment is 6.2 and falling fast, and inflation is 1.9 — below target for most of a decade. Congress is about to pass a 1.9 trillion dollar rescue plan on top of last year’s.',
+    'Reserves are ample. You do not trade bonds to find a funds rate; you set the rate the Fed pays on reserve balances — IORB — and the market rate follows. The dial is that administered rate, 0.25 to 7, and this Fed can move it a point and a half a quarter.',
+    'The Fed is still buying 120 billion dollars of bonds a month. Someone will ask you to keep going.',
+    'The lag is the whole game — output next quarter, inflation the quarter after — and so is the word everyone will use this year: transitory. Supply chains and energy will push prices up whatever you do. The question is whether expectations stay anchored while they do.',
+    'What good looks like: inflation back toward 2 without a recession — the soft landing — and unemployment near the 4 percent this economy calls natural. 2022 is a midterm year.',
+    'One note on plumbing. Every earlier era in this arcade ran on limited reserves. This one runs on the machinery your CED describes: ample reserves, administered rates, and IORB as the anchor of the funds rate.'
+  ],
+  HEADLINES: [
+    'FIRST FOMC OF 2021 — Chair Powell holds at zero; the rescue plan clears the Senate',
+    'REOPENING — Central Avenue restaurants take reservations again; used-car prices jump 30 percent',
+    '“TRANSITORY” — the Chair tells the Senate the price rises will pass; the ports say otherwise',
+    'SHIPS QUEUE OFF LONG BEACH — a Cedarhurst toy store has no Christmas stock',
+    'RUSSIA INVADES UKRAINE — gas on Rockaway Turnpike heads for five dollars',
+    'INFLATION HITS 9 PERCENT — the highest since 1981; the Ledger prints the bagel index on page one',
+    'THREE-QUARTER-POINT HIKES — the fastest cycle in forty years; a Hewlett buyer’s mortgage rate doubles',
+    'MIDTERMS — voters name inflation the top issue; the funds rate passes 4',
+    'SILICON VALLEY BANK FAILS — the Fed lends against Treasuries that lost value to its own hikes',
+    'LAST MEETING OF THE TERM — inflation under 5, unemployment 3.5; the Ledger asks if this is the soft landing'
+  ],
+  TICKER: {
+    hotPrices: 'Bagel prices up 20 percent in a year',
+    emptyPlatforms: 'LIRR platforms empty at rush hour',
+    negativeReal: 'Savers earn nothing while prices climb',
+    bigHike: 'Mortgage rates jump on the Turnpike',
+    angryStreet: 'Gas prices painted on protest signs',
+    hillHeat: 'Senators write the Fed about “reckless” hikes'
+  },
+  QUIPS: [
+    { when: (s) => s.washington >= 0.7 && s.pi > 4, hawk: 'The Senate wants us to stop before the midterms. That is the best argument for continuing.', dove: 'The Senate confirms the Chair. Give them a pause and keep the dial.' },
+    { when: (s) => s.pi > 7, hawk: 'Nine percent. The longer you wait, the higher you have to go.', dove: 'Nine percent is oil and war. Half of it goes away on its own.' },
+    { when: (s) => s.pi > 4 && s.rate < 1, hawk: 'Transitory is a forecast, not a policy. Start now.', dove: 'It is supply chains and used cars. Hike into that and you strangle the recovery for nothing.' },
+    { when: (s) => s.real > 0 && s.pi < 5, hawk: 'A positive real rate at last. Hold it until 2 is in sight.', dove: 'A positive real rate with inflation falling is a recession you are choosing. Pause.' },
+    { when: (s) => s.street >= 0.75 && s.pi > 6, hawk: 'They are marching about prices. Prices are our job. Hike.', dove: 'They are marching about gas. Gas is not in the dial.' }
+  ],
+  EVENTS: {
+    2: { kind: 'card', sfx: 'card', emoji: '\u{1F6A2}',
+      head: 'REOPENING MEETS BROKEN SUPPLY CHAINS',
+      sub: 'Restaurants are full and the ports are jammed; a used car costs more than it did new.',
+      note: 'A positive demand shock and a negative supply shock at once: aggregate demand shifts right while short-run aggregate supply shifts left. Real output rises, the price level rises more — and nothing on your dial can unclog a port.',
+      button: 'Noted' },
+    3: { kind: 'call', sfx: 'boss', emoji: '☎️',
+      head: 'KEEP THE BOND BUYING GOING',
+      sub: 'The Treasury Secretary and the Banking Committee chair would like the Fed to keep buying 120 billion a month through the recovery. Tapering now, they say, would risk the rebound.',
+      note: 'Continuing asset purchases is expansionary monetary policy: it holds long-term rates down and shifts aggregate demand right — into an economy already reopening. Taper and you take the punchbowl away early; keep buying and you own the inflation that follows.',
+      accept: 'Keep buying',
+      refuse: 'Taper now' },
+    5: { kind: 'card', sfx: 'boss', emoji: '\u{1F6E2}️',
+      head: 'WAR IN UKRAINE',
+      sub: 'Oil and wheat spike within a week of the invasion; gas heads for five dollars on the Turnpike.',
+      note: 'A negative supply shock: short-run aggregate supply shifts left, the price level rises and real output falls. Your dial cannot lower the price of oil; it can only decide whether expectations follow it.',
+      button: 'Brace for it' },
+    9: { kind: 'card', sfx: 'card', emoji: '\u{1F4F1}',
+      head: 'A BANK RUN, ON PHONES',
+      sub: 'Silicon Valley Bank loses 42 billion in deposits in a day; its Treasuries fell in value as your rates rose.',
+      note: 'Higher interest rates lower the price of previously issued bonds — bond prices and interest rates move inversely — and a bank that funded long bonds with instant deposits found out. The lender of last resort lends against them at par.',
+      button: 'Noted' }
+  },
+  POLITICS: {
+    events: {
+      march: { sfx: 'card', emoji: '✊', head: 'GAS-PRICE PROTEST ON THE TURNPIKE', sub: 'Drivers park across the pumps with the price painted on their windshields; the Nassau police let them.', note: 'A crowd is a political fact before it is a statistic, and crowds are what Congress hears. Washington pressure rises a notch.', button: 'Noted' },
+      boycott: { sfx: 'card', emoji: '\u{1F9FA}', head: 'SHOPPERS SWITCH TO STORE BRANDS', sub: 'The Cedarhurst A&P moves the name brands to the back; a pound of coffee is the argument at every register.', note: 'A boycott of one good cannot lower the price level: inflation is a rise in prices in general, and the money to pay them is still there. It is the public telling you which number they are watching.', button: 'Noted' },
+      savers: { sfx: 'card', emoji: '\u{1F3E6}', head: 'SAVERS EARN NOTHING WHILE PRICES CLIMB', sub: 'Hewlett retirees earn a tenth of a percent on savings that lose 8 a year to prices. A letter to the Ledger asks who at the Fed is minding the store.', note: 'The real interest rate is the nominal rate minus inflation. Two quarters of a deeply negative real rate transfer wealth from savers to borrowers, and the savers have noticed. The street heats up.', button: 'Noted' },
+      strike: { sfx: 'boss', emoji: '\u{1FAA7}', head: '“STRIKETOBER”: WORKERS WALK OUT FOR CATCH-UP PAY', sub: 'Deere, Kellogg, and a Lawrence hospital’s nurses: contracts reopen for raises that beat the prices, and the settlements run to double digits.', note: 'A negative supply shock: higher nominal wages raise per-unit production costs, so short-run aggregate supply shifts left next quarter — the price level rises and real output falls. Persistent inflation writes itself into wages; this is the cost of letting it persist.', button: 'Brace for it' },
+      editorial: { sfx: 'card', emoji: '\u{1F4F0}', head: 'LEDGER EDITORIAL: TIME FOR POWELL TO GO', sub: 'Two quarters of an angry street, and the paper that prints the bagel index has run out of patience with “transitory”.', note: 'A central bank that loses the public loses its cover: Congress reads the editorial page. Washington pressure climbs, whatever the numbers say.', button: 'Noted' },
+      bondRally: { sfx: 'coin', emoji: '\u{1F4C8}', head: 'BOND MARKET BELIEVES THE FED', sub: 'Two quarters of a real rate above 2 percent, and long yields are falling: investors are lending on the bet that inflation is beaten.', note: 'Expectations are moving. When lenders believe inflation will fall they accept a lower nominal rate — anchored expectations, on a trading screen — and a Fed the markets back is harder for Congress to push. Washington pressure eases.', button: 'Good' },
+      relief: { sfx: 'coin', emoji: '\u{1F3E0}', head: 'PRICES COOL AND THE SIGNS COME DOWN', sub: 'Gas is back under four dollars on the Turnpike, and the Saturday protest drew eleven people and a dog.', note: 'The street forgives on a lag, the same way it got angry: as inflation falls the crowd thins, and Congress hears the quiet. Washington pressure eases.', button: 'Good' },
+      hearing: { sfx: 'boss', emoji: '⚖️', head: 'SENATE BANKING SUMMONS THE CHAIRMAN', sub: 'A senator calls the Chair “a dangerous man” and asks how many jobs each hike will cost. The reappointment vote is weeks away.', note: 'Oversight is the price of independence: Congress created the Fed and can question it. Hold the line and the pressure ratchets up. Signal a pause and it eases — but a signal is a promise, and a promise broken next quarter costs more than the hearing did.', hold: 'The Fed is independent', promise: 'Signal a pause', promiseToast: 'Promise made — cut next quarter or pay for it' },
+      whitehouse: { sfx: 'boss', emoji: '\u{1F3DB}️', head: 'A DOZEN SENATORS: “STOP HIKING BEFORE THE MIDTERMS”', sub: 'A letter warns the Fed that every hike costs jobs and votes in November, and that the Senate confirms Fed chairs.', note: 'The political business cycle: elected officials want easy money before an election and the inflation bill comes due after it. A Fed that obliges buys a boom for November and pays for it in prices — which is why the central bank is independent in the first place. The street takes the senators’ side.', button: 'Understood' },
+      bill: { sfx: 'boss', emoji: '\u{1F5F3}️', head: 'BILL WOULD GIVE CONGRESS A VETO ON RATE HIKES', sub: 'The bill would require the Board to hold rates until unemployment falls below 3.5 and let Congress block any hike. Your answer is on the front page tomorrow either way.', noteStrong: 'Ease, and the Board keeps its dial by giving up the reason to have one: policy held loose to please Congress shifts aggregate demand right, and the price level with it. Hold, and with the real rate above 2 percent — or the Fed’s credibility intact — the markets are behind you and the bill dies on the floor.', noteWeak: 'Ease, and the Board keeps its dial by giving up the reason to have one. Hold, and with the real rate under 2 percent and credibility spent, nobody outside this building believes you — the bill has the votes.', ease: 'Ease — pause the hikes', hold: 'Hold — let them vote' }
+    },
+    endings: {
+      congress: { head: 'FED FALLS UNDER CONGRESS: Rate Hikes Now Need a Vote', sub: 'Powell’s term ends with the bill’s signing; the Board keeps its building and loses its dial' },
+      revolt: { head: 'INFLATION REVOLT: Crowds on Central Avenue as Powell Steps Down', sub: 'The Chairman resigns with prices still climbing; “transitory” is on the signs' },
+      notReappointed: { sub: 'White House signals the Chairman will not be renominated' },
+      capitulated: { sub: 'Chair’s independence questioned after Capitol Hill “compromise”' },
+      volcker: { sidebar: 'THE DAY THE FED SAID NO' }
+    }
+  },
+  NEWS: {
+    masthead: 'The Five Towns Ledger',
+    dateline: 'Cedarhurst, New York · June 2023',
+    roaredBack: 'Nine Percent and Rising: The Fed That Waited',
+    bloodbath: 'Hard Landing: Fed Breaks Inflation, and the Job Market With It',
+    byStamp: { 5: 'SOFT LANDING: Fed Tames Inflation Without a Recession', 4: 'Steady Hand at the Fed as Prices Cool', 3: 'Fed Muddles Through; “Transitory” Lasts Two Years' },
+    fallbackHead: 'Two Years On, the Board Has Little to Show For It',
+    acceptedSub: 'Chair’s independence questioned after “keep buying” call from Treasury',
+    refusedSidebar: 'FED CHAIR TELLS WASHINGTON: NO'
+  },
+  HISTORY: [
+    'Inflation rose from 1.4 percent in January 2021 to 9.1 percent in June 2022, the highest since 1981. The Fed called it transitory through most of 2021 and kept buying bonds until March 2022, when it began to hike.',
+    'It then moved faster than any Fed since Volcker: from 0 to a range of 5.25 to 5.5 percent by July 2023, with four straight three-quarter-point hikes in the summer and fall of 2022.',
+    'Unemployment never rose above 4 percent through the middle of 2023, and inflation fell to about 3 by then. Whether that was a soft landing or the luck of a supply side that healed on its own is still argued.',
+    'Roughly half of the surge is usually put down to supply — snarled ports, used cars, energy, then the war — and the rest to demand: the rescue plan, reopening, and a Fed that held rates at zero into it.',
+    'The lesson economists took: with anchored expectations a supply shock can pass, but an economy running hot lets it into wages and expectations, and a late start means a higher peak rate. Powell was renominated in November 2021 and confirmed in May 2022, 80 votes to 19.'
+  ],
+  HISTORY_NOTE: 'This is the plumbing your CED describes. Reserves are ample, so the Fed does not trade bonds to find a funds rate; it administers the rate it pays on reserve balances (IORB), and the federal funds rate follows it.',
+  HISTORY_POLITICS: 'The politics were real too. A senator called the Chair “a dangerous man” at his reappointment hearing; through 2022 letters from Capitol Hill warned the Fed about the jobs each hike would cost; the White House said in public that the Fed’s independence was the point and left it alone. Voters named inflation the top issue of the 2022 midterms. That is the political business cycle running the other way: the pressure to stop tightening, and a Fed that did not.',
+  FRQ: {
+    era: 'In an economy with ample reserves the central bank raises the nominal interest rate by raising the interest rate it pays on reserve balances (its administered rate); the higher real interest rate reduces interest-sensitive spending, shifts aggregate demand left and lowers inflation with a lag, while anchored expectations keep a supply shock from becoming a wage-price spiral.'
+  }
+};
+
+/* Every crisis the game can run, keyed the way FedModel.ERAS is. */
+const SCENARIOS = { '1975': SCENARIO_1975, '1980': SCENARIO_1980, '2008': SCENARIO_2008, '2021': SCENARIO_2021 };
+
+/* ================================================================================
    TIMING — Teacher-tunable: seconds students get.  Fed Chair has no answer clock at
    all: the board waits as long as a student needs to think, and the quarter only
    moves when they gavel it.  These two numbers are therefore the pace of the END
@@ -279,7 +613,7 @@ const HOWTO = [
    WHAT IS THIS GAME? \u2014 the purpose, before the rules, on the title screen.
    ================================================================================ */
 const INTRO = [
-  { emoji: '\u{1F39A}\uFE0F', text: 'You are Arthur Burns in January 1975, and the one thing you control is the federal funds rate. Inflation is 11 percent. Unemployment is 8 and climbing.' },
+  { emoji: '\u{1F39A}\uFE0F', text: 'You are the Fed chair in one of four crises \u2014 1975, 1980, 2008 or 2021 \u2014 and the one thing you control is the policy rate. The economy is on fire each time, a different way.' },
   { emoji: '\u23F3', text: 'Your move hits output next quarter and inflation the quarter after \u2014 the lag that makes monetary policy the hardest topic on the AP exam, played by hand.' },
   { emoji: '\u{1F3DB}\uFE0F', text: 'The street and Washington keep score too. Ten quarters, one number each, and a newspaper that prints what you left behind.' }
 ];
@@ -383,6 +717,8 @@ const INTRO = [
       </div>
       <div class="row">
         <button type="button" class="btn btn-ghost btn-block" id="nudgeDown">−25 bps</button>
+        <!-- 2008 only, and only at the floor: takes the cut button's place, because there is no cut left -->
+        <button type="button" class="btn btn-gold btn-block" id="qeBtn" hidden>Launch QE</button>
         <button type="button" class="btn btn-ghost btn-block" id="nudgeUp">+25 bps</button>
       </div>
       <button type="button" class="btn btn-block" id="endTurn">End turn</button>
@@ -460,10 +796,18 @@ const INTRO = [
   'use strict';
   if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined' || typeof FedModel === 'undefined') return;
 
-  var TURNS = FedModel.HISTORY_1975.pi.length;   // ten quarters, 1975 Q1 through 1977 Q2
+  var TURNS = 10;                                // ten quarters, whichever crisis
   var THUMB = 48;                                // the dial thumb's width, and the axis inset
   var BEAT = TIMING.beatSeconds * 1000;          // one step of the END TURN sequence; edit TIMING
-  var PAGE_STEP = FedModel.MAX_MOVE;             // PageUp/PageDown take the whole quarter's allowance
+
+  /** The crisis in play: its economics (FedModel.ERAS), its words (SCENARIOS), its rate band and
+   *  its politics. showBriefing() points these at the crisis about to start; startRun() plays it. */
+  var era = FedModel.ERAS['1975'];
+  var S = SCENARIOS['1975'];
+  var band = era.band;
+  var P = FedModel.politicsFor('1975');
+  /** The crisis the briefing on screen is for. @type {string} */
+  var pendingEra = '1975';
 
   /* ===== BOOT HELPERS ===== */
 
@@ -494,7 +838,7 @@ const INTRO = [
     return (v < 0 ? '−' : '') + s;
   }
   /** @param {number} t 1-based quarter @returns {{year:number, q:number}} */
-  function quarterOf(t) { return { year: 1975 + Math.floor((t - 1) / 4), q: ((t - 1) % 4) + 1 }; }
+  function quarterOf(t) { return { year: era.year + Math.floor((t - 1) / 4), q: ((t - 1) % 4) + 1 }; }
   /** @param {number} t @returns {string} e.g. "1976 Q2" */
   function quarterLabel(t) { var qq = quarterOf(t); return qq.year + ' Q' + qq.q; }
 
@@ -503,7 +847,7 @@ const INTRO = [
     howto: byId('screen-howto'), turn: byId('screen-turn'), news: byId('screen-news'),
     history: byId('screen-history')
   };
-  var eraList = byId('eraList'), briefingText = byId('briefingText');
+  var eraList = byId('eraList'), briefingText = byId('briefingText'), briefingTitle = byId('briefingTitle'), qeBtn = byId('qeBtn');
   var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
   var turnLabel = byId('turnLabel'), metersEl = byId('meters'), introEl = byId('intro');
   var gaugeStrip = byId('gaugeStrip'), realLine = byId('realLine'), pipelineEl = byId('pipeline'), tickerEl = byId('ticker');
@@ -585,13 +929,24 @@ const INTRO = [
   /** @returns {number} quarters actually played */
   function quartersPlayed() { return run.history.length - 1; }
 
-  function startRun() {
+  /** @param {string} [eraId] the crisis to play; defaults to the one in play (Play again) */
+  function startRun(eraId) {
     runToken += 1;
+    var id = eraId || (run && run.era) || pendingEra;
+    era = FedModel.ERAS[id];
+    S = SCENARIOS[id];
+    band = era.band;
+    P = FedModel.politicsFor(id);
+    buildGauges(S.GAUGES.pi);
+    dialEl.setAttribute('aria-valuemin', String(band.min));
+    dialEl.setAttribute('aria-valuemax', String(band.max));
     // history[0] from the model is the exported constant itself, so the run gets its own copy
     run = {
+      era: id,
+      qeAt: null,
       t: 1,
-      history: [Object.assign({}, FedModel.INITIAL_1975)],
-      rate: FedModel.INITIAL_1975.rate,
+      history: [Object.assign({}, era.initial)],
+      rate: era.initial.rate,
       moves: [],
       lastMove: 0,
       acceptedCall: false,
@@ -619,6 +974,7 @@ const INTRO = [
   function lockBoard(locked) {
     nudgeDown.disabled = locked;
     nudgeUp.disabled = locked;
+    qeBtn.disabled = locked || !!(run && run.qeAt);
     endTurnBtn.disabled = locked;
     dialEl.setAttribute('aria-disabled', locked ? 'true' : 'false');
     boardLocked = locked;
@@ -655,7 +1011,7 @@ const INTRO = [
    *  new quarter is never read under the old one's label. */
   function paintWhen() {
     var when = quarterOf(run.t);
-    turnLabel.textContent = when.year + ' · Q' + when.q + ' · Chair Burns';
+    turnLabel.textContent = when.year + ' · Q' + when.q + ' · Chair ' + era.chair;
   }
 
   /** @param {number} v 0–1 @returns {number} pips lit, 0–5 */
@@ -665,7 +1021,7 @@ const INTRO = [
    *  an arrow on any meter that moved this quarter.
    *  @param {any} state the economy on the board @param {any} pol its meters @param {any} [prev] last quarter's */
   function paintMeters(state, pol, prev) {
-    var M = SCENARIO_1975.POLITICS.meters;
+    var M = S.POLITICS.meters;
     var specs = [
       { id: 'street', value: pol.street, was: prev ? prev.street : null },
       { id: 'washington', value: pol.washington, was: prev ? prev.washington : null },
@@ -703,14 +1059,14 @@ const INTRO = [
   function dialSpan() { return Math.max(1, dialEl.getBoundingClientRect().width - THUMB); }
   /** @param {number} v @returns {number} the thumb's centre, in px from the dial's left edge */
   function dialX(v) {
-    return THUMB / 2 + (v - FedModel.RATE_MIN) / (FedModel.RATE_MAX - FedModel.RATE_MIN) * dialSpan();
+    return THUMB / 2 + (v - band.min) / (band.max - band.min) * dialSpan();
   }
   /** @returns {{lo:number, hi:number}} the rates this quarter's move limit allows */
   function legalWindow() {
     var prev = current().rate;
     return {
-      lo: Math.max(FedModel.RATE_MIN, prev - FedModel.MAX_MOVE),
-      hi: Math.min(FedModel.RATE_MAX, prev + FedModel.MAX_MOVE)
+      lo: Math.max(band.min, prev - band.move),
+      hi: Math.min(band.max, prev + band.move)
     };
   }
 
@@ -726,6 +1082,12 @@ const INTRO = [
     var bps = Math.round((run.rate - current().rate) * 100);
     rateOut.textContent = run.rate.toFixed(2) + ' %';
     deltaChip.textContent = bps === 0 ? 'no change' : (bps > 0 ? '+' : '−') + Math.abs(bps) + ' bps';
+    // At the floor, in an era that has one, the button that cannot cut becomes the one that can: QE.
+    var floored = !!era.qe && run.rate <= band.min + 1e-9;
+    nudgeDown.hidden = floored;
+    qeBtn.hidden = !floored;
+    qeBtn.disabled = boardLocked || !!run.qeAt;
+    qeBtn.textContent = run.qeAt ? 'QE on' : 'Launch QE';
     dialEl.setAttribute('aria-valuenow', String(run.rate));
     dialEl.setAttribute('aria-valuetext', run.rate.toFixed(2) + ' percent');
     if (pipelineEl.firstChild) pipelineEl.firstChild.textContent = pipeNowLabel();
@@ -739,7 +1101,7 @@ const INTRO = [
 
   /** @param {number} requested @returns {boolean} true when the dial actually moved */
   function setRate(requested) {
-    var next = FedModel.clampRate(requested, current().rate);
+    var next = FedModel.clampRate(requested, current().rate, band);
     if (next === run.rate) return false;
     run.rate = next;
     paintDial();
@@ -760,7 +1122,7 @@ const INTRO = [
     var rect = dialEl.getBoundingClientRect();
     var frac = (clientX - rect.left - THUMB / 2) / dialSpan();
     frac = Math.min(1, Math.max(0, frac));
-    setRate(FedModel.RATE_MIN + frac * (FedModel.RATE_MAX - FedModel.RATE_MIN));
+    setRate(band.min + frac * (band.max - band.min));
   }
 
   dialEl.addEventListener('pointerdown', function (ev) {
@@ -788,10 +1150,10 @@ const INTRO = [
     if (boardLocked || guarded() || !run) return;
     var win = legalWindow();
     var to = null;
-    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') to = run.rate - FedModel.RATE_STEP;
-    else if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') to = run.rate + FedModel.RATE_STEP;
-    else if (ev.key === 'PageDown') to = run.rate - PAGE_STEP;
-    else if (ev.key === 'PageUp') to = run.rate + PAGE_STEP;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') to = run.rate - band.step;
+    else if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') to = run.rate + band.step;
+    else if (ev.key === 'PageDown') to = run.rate - band.move;
+    else if (ev.key === 'PageUp') to = run.rate + band.move;
     else if (ev.key === 'Home') to = win.lo;
     else if (ev.key === 'End') to = win.hi;
     if (to === null) return;
@@ -807,19 +1169,28 @@ const INTRO = [
   // the gap past −11 and unemployment past 12, and the old rails printed −8.0 and 12.0 while the
   // ticker, the bloodbath headline and the front page all used the true numbers. Anything still
   // beyond these prints its true figure with the needle marked `pinned`.
-  var GAUGE_SPECS = [
-    { id: 'pi', label: 'Inflation π', min: 0, max: 15, unit: '%', decimals: 1,
-      zones: [{ from: 1, to: 3, color: token('--green') }, { from: 8, to: 15, color: token('--red') }] },
-    { id: 'u', label: 'Unemployment u', min: 0, max: 16, unit: '%', decimals: 1, ref: 6, refLabel: 'u* = 6' },
-    { id: 'gap', label: 'Output gap', min: -16, max: 9, unit: '%', decimals: 1, ref: 0, refLabel: 'full employment' }
-  ];
+  /** The three dials, sized for the crisis: inflation's range and red zone are the era's, and the
+   *  natural-rate tick is the era's u*.
+   *  @param {{min:number, max:number, red:number}} pi @returns {any[]} */
+  function gaugeSpecs(pi) {
+    return [
+      { id: 'pi', label: 'Inflation π', min: pi.min, max: pi.max, unit: '%', decimals: 1,
+        zones: [{ from: 1, to: 3, color: token('--green') }, { from: pi.red, to: pi.max, color: token('--red') }] },
+      { id: 'u', label: 'Unemployment u', min: 0, max: 16, unit: '%', decimals: 1, ref: era.params.uStar, refLabel: 'u* = ' + era.params.uStar },
+      { id: 'gap', label: 'Output gap', min: -16, max: 9, unit: '%', decimals: 1, ref: 0, refLabel: 'full employment' }
+    ];
+  }
 
-  function buildGauges() {
+  /** (Re)build the strip for the crisis in play. @param {{min:number, max:number, red:number}} pi */
+  function buildGauges(pi) {
+    var specs = gaugeSpecs(pi);
+    gaugeStrip.textContent = '';
+    gauges = {};
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 ' + (120 * GAUGE_SPECS.length) + ' 90');
+    svg.setAttribute('viewBox', '0 0 ' + (120 * specs.length) + ' 90');
     svg.setAttribute('class', 'gauge-strip');
     svg.style.height = 'auto';
-    GAUGE_SPECS.forEach(function (spec, i) {
+    specs.forEach(function (spec, i) {
       var cell = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       cell.setAttribute('class', 'gauge');
       cell.setAttribute('transform', 'translate(' + (i * 120) + ',0)');
@@ -837,7 +1208,7 @@ const INTRO = [
   }
 
   /** @returns {string} the first chip's label, which tracks the dial as it moves */
-  function pipeNowLabel() { return run.rate.toFixed(2) + ' % now'; }
+  function pipeNowLabel() { return run.rate.toFixed(2) + ' % now' + (run.qeAt ? ' · QE' : ''); }
 
   /** The three chips are the lag drawn out: what you set now, where it lands, and when.
    *  @param {number} stage 0 the decision, 1 output, 2 inflation */
@@ -854,13 +1225,13 @@ const INTRO = [
   /** The quarter's scripted headline plus whatever the economy has earned.
    *  @param {any} state */
   function paintTicker(state) {
-    var lines = [SCENARIO_1975.HEADLINES[run.t - 1]];
-    var T = SCENARIO_1975.TICKER;
+    var lines = [S.HEADLINES[run.t - 1]];
+    var T = S.TICKER;
     var pol = currentPol();
     if (state.pi > 10) lines.push(T.hotPrices);
     if (state.u > 9) lines.push(T.emptyPlatforms);
     if (state.rate - state.pi < -3) lines.push(T.negativeReal);
-    if (run.lastMove >= FedModel.MAX_MOVE - 1e-9) lines.push(T.bigHike);
+    if (run.lastMove >= band.move - 1e-9) lines.push(T.bigHike);
     if (pol.street >= 0.75) lines.push(T.angryStreet);
     if (pol.washington >= 0.7) lines.push(T.hillHeat);
     var text = lines.join('   ·   ') + '   ·   ';
@@ -878,10 +1249,10 @@ const INTRO = [
       rate: state.rate, real: state.rate - state.pi, t: run.t,
       street: pol.street, washington: pol.washington
     };
-    for (var i = 0; i < SCENARIO_1975.QUIPS.length; i += 1) {
-      if (SCENARIO_1975.QUIPS[i].when(view)) return SCENARIO_1975.QUIPS[i];
+    for (var i = 0; i < S.QUIPS.length; i += 1) {
+      if (S.QUIPS[i].when(view)) return S.QUIPS[i];
     }
-    return SCENARIO_1975.QUIP_FALLBACK;
+    return S.QUIP_FALLBACK;
   }
 
   /** Hawk speaks first and Dove answers, queued behind him, whenever the voice is on.
@@ -953,7 +1324,7 @@ const INTRO = [
     beginSequence();
 
     // the gavel
-    slamStamp('FOMC ' + rate.toFixed(2) + ' %');
+    slamStamp(S.RATE_NAME + ' ' + rate.toFixed(2) + ' %');
     await beat(BEAT);
     if (!alive(token)) { endSequence(); return; }
 
@@ -966,22 +1337,22 @@ const INTRO = [
     if (!alive(token)) { endSequence(); return; }
 
     // the quarter actually happens: the scheduled shocks, plus whatever last quarter's politics queued
-    var scheduled = FedModel.shocksFor(run.t, { acceptedCall: run.acceptedCall, history: run.history });
+    var scheduled = FedModel.eraShocks(run.era, run.t, { acceptedCall: run.acceptedCall, history: run.history, qeAt: run.qeAt });
     var shocks = { demand: scheduled.demand + run.pending.demand, supply: scheduled.supply + run.pending.supply };
     run.pending = { demand: 0, supply: 0 };
-    var next = FedModel.step(state, rate, shocks);
+    var next = FedModel.step(state, rate, shocks, era.params);
     run.history.push(next);
     run.moves.push({ t: run.t, rate: rate, prev: prev });
     run.lastMove = rate - prev;
     if (next.u > run.peakU) run.peakU = next.u;
-    var verdict = FedModel.judgeMove(state, rate, prev);
+    var verdict = FedModel.judgeMove(state, rate, prev, band);
     if (verdict !== null) Arcade.track('4.6', 3, verdict);
     // …and the politics read the quarter it produced. A promise to ease made at the hearing is
     // kept by any cut this quarter and broken by anything else.
     var broke = run.promised && rate >= prev - 1e-9;
     run.promised = false;
     var prevPol = currentPol();
-    run.politics.push(FedModel.stepPolitics(prevPol, next, { move: rate - prev, brokenPromise: broke }));
+    run.politics.push(FedModel.stepPolitics(prevPol, next, { move: rate - prev, brokenPromise: broke }, P));
     run.t += 1;
 
     setGauges(next, !sequence.skip);
@@ -1003,7 +1374,7 @@ const INTRO = [
 
     if (run.t > TURNS) { run.busy = false; showNewspaper(); return; }
 
-    var event = SCENARIO_1975.EVENTS[run.t];
+    var event = S.EVENTS[run.t];
     if (event) await playEvent(event, token);
     if (!alive(token)) return;
 
@@ -1035,8 +1406,13 @@ const INTRO = [
   function playEvent(event, token) {
     // the spiral notice only makes the papers in a run where the spiral actually fires
     if (event.firesWhen === 'spiral'
-      && FedModel.shocksFor(run.t, { acceptedCall: run.acceptedCall, history: run.history }).supply <= 0) {
+      && FedModel.eraShocks(run.era, run.t, { acceptedCall: run.acceptedCall, history: run.history, qeAt: run.qeAt }).supply <= 0) {
       return Promise.resolve();
+    }
+    // the deflation notice only makes the papers once prices have actually fallen two quarters running
+    if (event.firesWhen === 'deflation') {
+      var hist = run.history, n = hist.length;
+      if (!(n >= 2 && hist[n - 1].pi < 0 && hist[n - 2].pi < 0)) return Promise.resolve();
     }
     eventEmoji.textContent = event.emoji;
     eventHead.textContent = event.head;
@@ -1074,14 +1450,15 @@ const INTRO = [
         // not a measurement.
         addButton(event.accept, 'btn btn-ghost btn-block', function () {
           run.acceptedCall = true;
-          run.integrity = false;
-          nudgePolitics({ washington: FedModel.POLITICS_1975.callAccept });
+          run.integrity = era.call.integrityFor === 'accept';
+          nudgePolitics(FedModel.callBump(era, true, P));
+          if (run.integrity) Arcade.toast('\u{1F3C5} Integrity');
         });
         addButton(event.refuse, 'btn btn-block', function () {
           run.acceptedCall = false;
-          run.integrity = true;
-          nudgePolitics({ washington: FedModel.POLITICS_1975.callRefuse });
-          Arcade.toast('\u{1F3C5} Integrity');
+          run.integrity = era.call.integrityFor === 'refuse';
+          nudgePolitics(FedModel.callBump(era, false, P));
+          if (run.integrity) Arcade.toast('\u{1F3C5} Integrity');
         });
       } else if (event.kind === 'choice') {
         // a political decision: two answers, each with consequences the caller has already wired
@@ -1110,14 +1487,13 @@ const INTRO = [
   /* ===== POLITICAL EVENTS — what the meters earn, and what the Chair answers ===== */
 
   /** Raise the sheet for a rule out of FedModel.POLITICAL_EVENTS: a card acknowledges itself, the
-   *  hearing and the bill are answered. The words come from SCENARIO_1975.POLITICS; the
+   *  hearing and the bill are answered. The words come from S.POLITICS; the
    *  consequences come from FedModel.resolveEvent and land in settlePolitical.
    *  @param {any} rule @param {number} token @returns {Promise<void>} */
   function playPolitical(rule, token) {
-    var words = SCENARIO_1975.POLITICS.events[rule.id];
+    var words = S.POLITICS.events[rule.id];
     if (!words) return Promise.resolve();
     run.fired[rule.id] = true;
-    var P = FedModel.POLITICS_1975;
     var view = FedModel.politicsView(currentPol(), current(), { stage: run.stage, t: run.t });
     var event = { kind: 'card', sfx: words.sfx, emoji: words.emoji, head: words.head, sub: words.sub, note: words.note, button: words.button };
     if (rule.id === 'hearing') {
@@ -1145,14 +1521,14 @@ const INTRO = [
    *  queued for the coming quarter, the ladder climbs a rung, and the bill can end the term.
    *  @param {any} rule @param {string|null} choice @param {any} view the politicsView the rule fired on */
   function settlePolitical(rule, choice, view) {
-    var res = FedModel.resolveEvent(rule, choice, view);
+    var res = FedModel.resolveEvent(rule, choice, view, P);
     var state = current();
     var prevPol = previousPol();
     run.politics[run.politics.length - 1] = FedModel.bump(currentPol(), res.effects);
     if (res.effects.cred) state.cred = Math.max(0, Math.min(1, state.cred + res.effects.cred));
     run.pending.demand += res.effects.demand || 0;
     run.pending.supply += res.effects.supply || 0;
-    if (res.flags.promised) { run.promised = true; Arcade.toast(SCENARIO_1975.POLITICS.events.hearing.promiseToast); }
+    if (res.flags.promised) { run.promised = true; Arcade.toast(S.POLITICS.events.hearing.promiseToast); }
     if (res.flags.capitulated) { run.capitulated = true; Arcade.toast('Independence bent'); }
     if (res.flags.volcker) { run.volcker = true; Arcade.sfx.play('win'); Arcade.toast('\u{1F3C5} Volcker moment'); }
     if (rule.stage !== undefined) run.stage = rule.stage + 1;
@@ -1165,36 +1541,39 @@ const INTRO = [
   /** @returns {{raw:number, stamp:number}} the integrity point needs the call refused and the bill
    *  not eased into; a term Congress ended is capped by the model */
   function scoreRun() {
-    return FedModel.score({ peakU: run.peakU, final: finalState() }, { integrity: run.integrity && !run.capitulated, ended: run.ending });
+    return FedModel.score({ peakU: run.peakU, final: finalState() }, { integrity: run.integrity && !run.capitulated, ended: run.ending, era: run.era });
   }
 
   /** @param {number} stamp @param {string|null} verdict from FedModel.politicalVerdict @returns {string} */
   function headlineFor(stamp, verdict) {
-    var N = SCENARIO_1975.NEWS, E = SCENARIO_1975.POLITICS.endings;
+    var N = S.NEWS, E = S.POLITICS.endings;
     var final = finalState();
     // the politics that ended a term or a Chairmanship outrank the economics; the economics keep
     // their own order beneath them
     if (verdict === 'congress') return E.congress.head;
     if (verdict === 'revolt') return E.revolt.head;
-    if (final.pi >= 9) return N.roaredBack;
-    if (run.peakU >= 10) return N.bloodbath;
+    if (final.pi >= era.score.roaredAbove) return N.roaredBack;
+    if (run.peakU >= era.score.bloodbathAbove) return N.bloodbath;
     return N.byStamp[stamp] || N.fallbackHead;
   }
 
-  /** @returns {string} 'Held', 'Defended', 'Bent' or 'Lost' — what the term did to the Fed's independence */
-  function independenceWord() {
-    if (run.ending === 'congress') return 'Lost';
-    if (run.volcker) return 'Defended';
-    if (run.acceptedCall || run.capitulated) return 'Bent';
-    return 'Held';
+  /** The last row of the report card: what the term did to the Fed's independence — or, where the
+   *  era's call was about a bank rather than Washington, what the Chair did about the bank.
+   *  @returns {{label:string, value:string}} */
+  function callRow() {
+    var stat = S.NEWS.callStat;
+    if (stat) return { label: stat.label, value: run.acceptedCall ? stat.accept : stat.refuse };
+    var word = run.ending === 'congress' ? 'Lost' : run.volcker ? 'Defended' : (run.acceptedCall || run.capitulated) ? 'Bent' : 'Held';
+    return { label: 'Independence', value: word };
   }
 
   /** Three sentences, all of them read off the run — four when the bill cut it short. @returns {string} */
   function newspaperBody() {
     var final = finalState();
-    var offBy = Math.abs(final.u - 6);
-    var side = offBy < 0.25 ? 'right at the 6 percent economists call the natural rate'
-      : num(offBy) + ' points ' + (final.u > 6 ? 'above' : 'below') + ' the 6 percent economists call the natural rate';
+    var uStar = era.params.uStar;
+    var offBy = Math.abs(final.u - uStar);
+    var side = offBy < 0.25 ? 'right at the ' + uStar + ' percent economists call the natural rate'
+      : num(offBy) + ' points ' + (final.u > uStar ? 'above' : 'below') + ' the ' + uStar + ' percent economists call the natural rate';
     var opening = run.ending ? 'The term ended after ' + quartersPlayed() + ' quarters, with the dial in other hands. ' : '';
     return opening + 'Inflation leaves the Board at ' + num(final.pi) + ' percent, against the 2 percent this newspaper is told counts as price stability. '
       + 'Unemployment finishes at ' + num(final.u) + ' percent, ' + side + '. '
@@ -1220,8 +1599,8 @@ const INTRO = [
     var result = scoreRun();
     var final = finalState();
     var pol = currentPol();
-    var verdict = FedModel.politicalVerdict(pol, { ending: run.ending });
-    var N = SCENARIO_1975.NEWS, E = SCENARIO_1975.POLITICS.endings;
+    var verdict = FedModel.politicalVerdict(pol, { ending: run.ending }, P);
+    var N = S.NEWS, E = S.POLITICS.endings;
 
     newspaperEl.textContent = '';
     newspaperEl.appendChild(fill('np-masthead', N.masthead));
@@ -1230,15 +1609,17 @@ const INTRO = [
     if (verdict === 'congress') newspaperEl.appendChild(fill('np-sub', E.congress.sub));
     else if (verdict === 'revolt') newspaperEl.appendChild(fill('np-sub', E.revolt.sub));
     else if (verdict === 'notReappointed') newspaperEl.appendChild(fill('np-sub', E.notReappointed.sub));
-    if (run.acceptedCall) newspaperEl.appendChild(fill('np-sub', N.acceptedSub));
+    if (run.acceptedCall && N.acceptedSub) newspaperEl.appendChild(fill('np-sub', N.acceptedSub));
+    if (!run.acceptedCall && N.refusedSub) newspaperEl.appendChild(fill('np-sub', N.refusedSub));
     if (run.capitulated) newspaperEl.appendChild(fill('np-sub', E.capitulated.sub));
     newspaperEl.appendChild(fill('np-body', newspaperBody()));
     // the sidebar is the Chair's finest hour, so a Chair who lost the dial does not get one
     if (run.volcker) newspaperEl.appendChild(fill('np-sidebar', E.volcker.sidebar));
-    else if (run.integrity && !run.capitulated && verdict !== 'congress') newspaperEl.appendChild(fill('np-sidebar', N.refusedSidebar));
+    else if (run.integrity && !run.capitulated && verdict !== 'congress' && N.refusedSidebar) newspaperEl.appendChild(fill('np-sidebar', N.refusedSidebar));
 
     var beforeTitle = Arcade.titleFor();      // the rank as it stood before this term was banked
-    Arcade.saveBest('fed', { score: result.stamp, initials: Arcade.initials() });
+    Arcade.saveBest('fed', { score: result.stamp, initials: Arcade.initials(), level: era.year });
+    saveEraBest(run.era, result.stamp);
     // No track('5.2') here either: a whole ten-quarter run is not one Phillips-curve item, and the
     // student never saw a Phillips curve. The per-quarter judgeMove track on 4.6 is the run's only
     // measurement, and it is a real one.
@@ -1254,7 +1635,7 @@ const INTRO = [
         { label: 'Unemployment, end of term', value: num(final.u) + ' %' },
         { label: 'Worst unemployment', value: num(run.peakU) + ' %' },
         { label: 'Street · Washington', value: pipsOf(pol.street) + ' · ' + pipsOf(pol.washington) + ' of 5' },
-        { label: 'Independence', value: independenceWord() }
+        callRow()
       ],
       buttons: [
         { label: 'What really happened →', primary: true, variant: 'gold', onClick: ignoringSkipTap(showHistory) },
@@ -1304,7 +1685,7 @@ const INTRO = [
   };
 
   function paintChart() {
-    var mine = [], theirs = FedModel.HISTORY_1975[chartSeries];
+    var mine = [], theirs = era.history[chartSeries];
     var played = Math.min(TURNS, run.history.length);
     if (chartSeries === 'rate') {
       // a quarter's rate is the one the Chair set in it, which the state after it carries; the
@@ -1364,16 +1745,17 @@ const INTRO = [
 
   function showHistory() {
     historyText.textContent = '';
-    SCENARIO_1975.HISTORY.forEach(function (line) { historyText.appendChild(fill('', line)); });
-    historyText.appendChild(fill('', SCENARIO_1975.HISTORY_POLITICS));
-    historyText.appendChild(fill('muted', SCENARIO_1975.HISTORY_NOTE));
+    S.HISTORY.forEach(function (line) { historyText.appendChild(fill('', line)); });
+    historyText.appendChild(fill('', S.HISTORY_POLITICS));
+    historyText.appendChild(fill('muted', S.HISTORY_NOTE));
 
     chartSeries = 'pi';
     paintChart();
     // two rubric sentences: the move the player made most, and the one the politics were about
     frqLine.textContent = '';
-    frqLine.appendChild(fill('', SCENARIO_1975.FRQ[dominantMove()]));
-    frqLine.appendChild(fill('muted', SCENARIO_1975.FRQ.independence));
+    frqLine.appendChild(fill('', S.FRQ[dominantMove()]));
+    frqLine.appendChild(fill('muted', S.FRQ.independence));
+    if (S.FRQ.era) frqLine.appendChild(fill('muted', S.FRQ.era));
     show('history');
   }
 
@@ -1405,17 +1787,25 @@ const INTRO = [
   /** @type {(() => void)|null} */ var howtoAfter = null;
   /** @type {(() => void)|null} */ var howtoBackTo = null;
 
-  /** @returns {boolean} */
-  function howtoSeen() {
+  /** @param {string} id @returns {boolean} whether this crisis's rules have been read */
+  function howtoSeen(id) {
     var saved = Arcade.store.get('arcade.fed.howto', null);
-    return !!(saved && saved.seen);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen : [];
+    return seen.indexOf(id) >= 0;
   }
 
-  function markHowtoSeen() { Arcade.store.set('arcade.fed.howto', { seen: true }); }
+  /** @param {string} id */
+  function markHowtoSeen(id) {
+    var saved = Arcade.store.get('arcade.fed.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen.filter(function (v) { return typeof v === 'string'; }) : [];
+    if (seen.indexOf(id) < 0) seen.push(id);
+    Arcade.store.set('arcade.fed.howto', { seen: seen });
+  }
 
+  /** The crisis's own twist first, then the rules every crisis shares. */
   function paintHowto() {
     howtoCards.textContent = '';
-    HOWTO.forEach(function (card) {
+    [S.HOWTO_ERA].concat(HOWTO).forEach(function (card) {
       var panel = fill('panel howto-card');
       var emoji = fill('howto-emoji', card.emoji);
       emoji.setAttribute('aria-hidden', 'true');
@@ -1446,57 +1836,94 @@ const INTRO = [
 
   /** The briefing's own button: the rules the first time, then straight to the chair. */
   function takeTheGavel() {
-    if (howtoSeen()) { startRun(); return; }
+    var id = pendingEra;
+    if (howtoSeen(id)) { startRun(id); return; }
     // Marked by "Got it", not by arriving: backing out with ← leaves the rules unread, and the
     // next "Take the gavel" should still open on them.
-    openHowto(function () { markHowtoSeen(); startRun(); }, function () { show('briefing'); });
+    openHowto(function () { markHowtoSeen(id); startRun(id); }, function () { show('briefing'); });
   }
 
   /* ===== ERA AND BRIEFING ===== */
 
+  /** @returns {Record<string, number>} the best stamp per crisis on this device */
+  function eraBests() {
+    var p = Arcade.store.get('arcade.fed.progress', null);
+    return p && typeof p === 'object' ? p : {};
+  }
+
+  /** @param {string} id @param {number} stamp */
+  function saveEraBest(id, stamp) {
+    var p = eraBests();
+    if (!(Number(p[id]) >= stamp)) p[id] = stamp;
+    Arcade.store.set('arcade.fed.progress', p);
+  }
+
   function paintEras() {
+    var bests = eraBests();
     eraList.textContent = '';
-    SCENARIO_1975.ERAS.forEach(function (era) {
-      var tile = fill('panel level-tile' + (era.ready ? '' : ' locked'));
+    FedModel.ERA_IDS.forEach(function (id) {
+      var e = FedModel.ERAS[id];
+      var tile = fill('panel level-tile');
       tile.setAttribute('role', 'button');
-      tile.setAttribute('tabindex', era.ready ? '0' : '-1');
-      tile.setAttribute('aria-label', (era.ready ? 'Play ' : 'Locked: ') + era.year + ', ' + era.chair);
-      if (!era.ready) tile.setAttribute('aria-disabled', 'true');
-      tile.appendChild(fill('level-num', era.year));
+      tile.setAttribute('tabindex', '0');
+      tile.setAttribute('aria-label', 'Play ' + id + ', Chair ' + e.chair);
+      tile.appendChild(fill('level-num', id));
 
       var info = fill('');
       info.setAttribute('style', 'flex:1;min-width:0');
-      info.appendChild(fill('panel-title', era.chair + (era.ready ? '' : ' 🔒')));
-      info.appendChild(fill('muted', era.blurb));
-      if (!era.ready) {
+      info.appendChild(fill('panel-title', 'Chair ' + e.chair));
+      info.appendChild(fill('muted', SCENARIOS[id].tile.blurb));
+      var best = Number(bests[id]);
+      if (Number.isFinite(best) && best > 0) {
         var badges = fill('row');
-        badges.appendChild(chip('tag', 'P1'));
+        badges.appendChild(chip('tag', 'Best stamp ' + Math.min(5, Math.max(1, Math.floor(best)))));
         info.appendChild(badges);
       }
       tile.appendChild(info);
 
-      if (era.ready) {
-        tile.addEventListener('click', showBriefing);
-        tile.addEventListener('keydown', function (ev) {
-          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); showBriefing(); }
-        });
-      }
+      tile.addEventListener('click', function () { showBriefing(id); });
+      tile.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); showBriefing(id); }
+      });
       eraList.appendChild(tile);
     });
   }
 
-  function showBriefing() {
+  /** Point the board at a crisis and open its desk memo. @param {string} id */
+  function showBriefing(id) {
+    pendingEra = id;
+    era = FedModel.ERAS[id];
+    S = SCENARIOS[id];
+    band = era.band;
+    P = FedModel.politicsFor(id);
+    briefingTitle.textContent = 'Your desk, January ' + id;
     briefingText.textContent = '';
-    SCENARIO_1975.briefing.forEach(function (para) { briefingText.appendChild(fill('', para)); });
+    S.briefing.forEach(function (para) { briefingText.appendChild(fill('', para)); });
     show('briefing');
   }
 
   /* ===== BOOT ===== */
 
+  /* Every crisis says what it must; the rest it borrows from 1975: the meter names, the generic
+     advisor lines and their fallback, the three FRQ rubric lines and the independence line, and
+     any ticker line it did not rewrite. A call the words and the model disagree on is a bug. */
+  FedModel.ERA_IDS.forEach(function (id) {
+    var sc = SCENARIOS[id];
+    if (sc !== SCENARIO_1975) {
+      sc.POLITICS.meters = sc.POLITICS.meters || S.POLITICS.meters;
+      sc.QUIPS = sc.QUIPS.concat(S.QUIPS);
+      sc.QUIP_FALLBACK = sc.QUIP_FALLBACK || S.QUIP_FALLBACK;
+      sc.FRQ = Object.assign({}, S.FRQ, sc.FRQ);
+      sc.TICKER = Object.assign({}, S.TICKER, sc.TICKER);
+    }
+    var callWords = sc.EVENTS[FedModel.ERAS[id].call.t];
+    if (!callWords || callWords.kind !== 'call') console.warn('fed-chair: ' + id + ' has no call words on quarter ' + FedModel.ERAS[id].call.t);
+  });
+
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
-  buildGauges();
+  buildGauges(S.GAUGES.pi);
   paintIntro();
   lockBoard(true);
 
@@ -1524,17 +1951,25 @@ const INTRO = [
   }));
   byId('turnBack').addEventListener('click', ignoringSkipTap(goEra));
   byId('historyBack').addEventListener('click', function () { show('news'); });
-  nudgeDown.addEventListener('click', function () { nudge(-FedModel.RATE_STEP); });
-  nudgeUp.addEventListener('click', function () { nudge(FedModel.RATE_STEP); });
+  nudgeDown.addEventListener('click', function () { nudge(-band.step); });
+  nudgeUp.addEventListener('click', function () { nudge(band.step); });
+  qeBtn.addEventListener('click', function () {
+    if (boardLocked || guarded() || !run || run.qeAt || !era.qe) return;
+    run.qeAt = run.t;                    // counts from this quarter's step on, as the model reads it
+    Arcade.sfx.play('win');
+    Arcade.toast('QE launched — bond buying adds demand every quarter from now on');
+    paintDial();
+    paintPipeline(0);
+  });
   endTurnBtn.addEventListener('click', function () { endTurn(); });
 
   paintEras();
-  var era = String(Arcade.qs('era', ''));
-  if (era === '1975') {
-    showBriefing();
-  } else if (era) {
+  var wanted = String(Arcade.qs('era', ''));
+  if (SCENARIOS[wanted]) {
+    showBriefing(wanted);
+  } else if (wanted) {
     show('era');
-    Arcade.toast(era + ' is not built yet');
+    Arcade.toast(wanted + ' is not a crisis here');
   }
   booted = true;      // whatever the boot did or did not show, the next one is the student's doing
 }());

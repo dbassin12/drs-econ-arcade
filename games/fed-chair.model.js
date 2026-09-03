@@ -31,6 +31,7 @@ var FedModel = (function () {
   var RATE_STEP = 0.25;    // rates move a quarter point at a time
   var MAX_MOVE = 1.00;     // and no more than a point in any one quarter
   var TURNS = 10;          // a run is ten quarters
+  var U_FLOOR = 2.0;       // unemployment never reads below this, however hot the gap
 
   /** What actually happened, ten quarterly averages from 1975Q1 (inflation, unemployment, fed funds).
    *  Drawn against the player's run so the class can compare their Fed with Burns's.
@@ -47,13 +48,20 @@ var FedModel = (function () {
 
   /* ===== clampRate — the only rates a player can actually set ===== */
 
-  /** Snap a requested rate to a quarter point, then hold it inside both the 2–14 band and the
-   *  one-point-a-quarter move limit. A request that is not a number leaves the rate where it was.
-   *  @param {number} requested @param {number} prevRate last quarter's rate @returns {number} */
-  function clampRate(requested, prevRate) {
+  /** @typedef {{min:number, max:number, step:number, move:number}} RateBand the rates an era allows */
+
+  /** 1975's band: 2 to 14, a quarter point at a time, a point a quarter. @type {RateBand} */
+  var BAND_1975 = { min: RATE_MIN, max: RATE_MAX, step: RATE_STEP, move: MAX_MOVE };
+
+  /** Snap a requested rate to the band's step, then hold it inside both the band and the move
+   *  limit. A request that is not a number leaves the rate where it was.
+   *  @param {number} requested @param {number} prevRate last quarter's rate
+   *  @param {RateBand} [band] defaults to 1975's @returns {number} */
+  function clampRate(requested, prevRate, band) {
+    var b = band || BAND_1975;
     if (typeof requested !== 'number' || !isFinite(requested)) return prevRate;
-    var snapped = Math.round(requested / RATE_STEP) * RATE_STEP;
-    return clamp(snapped, Math.max(RATE_MIN, prevRate - MAX_MOVE), Math.min(RATE_MAX, prevRate + MAX_MOVE));
+    var snapped = Math.round(requested / b.step) * b.step;
+    return clamp(snapped, Math.max(b.min, prevRate - b.move), Math.min(b.max, prevRate + b.move));
   }
 
   /* ===== step — one quarter ===== */
@@ -82,7 +90,7 @@ var FedModel = (function () {
     var gap = p.rho * state.gap - p.k * (real - p.rStar) + demand;
     var pi = state.piExp + p.phi * Math.max(state.gap, p.FLOOR) + supply;
     var piExp = p.a * state.piExp + (1 - p.a) * pi - state.cred * p.lambda * (state.piExp - p.piStar);
-    var u = p.uStar - p.okun * gap;
+    var u = Math.max(U_FLOOR, p.uStar - p.okun * gap);
     var cred = clamp(state.cred + (real > p.rStar + 1 ? 0.05 : 0) - (real < p.rStar - 2 ? 0.05 : 0), 0, 1);
 
     return { t: state.t + 1, pi: pi, u: u, gap: gap, piExp: piExp, rate: rate, cred: cred, real: real };
@@ -90,25 +98,88 @@ var FedModel = (function () {
 
   /* ===== shocksFor — the 1975 schedule ===== */
 
-  /** The shocks that hit in quarter t: the oil-shock recession in Q1–Q2, the White House's call
-   *  in Q4 if the Chair took it, and a wage-price spiral in Q6 if inflation ran above 8 through
-   *  quarters 4, 5 and 6. `history[t - 1]` is the state observed at the start of quarter t, so the
-   *  spiral reads history[3], history[4] and history[5].
-   *  @param {number} t 1-based quarter
-   *  @param {{acceptedCall?:boolean, history?:FedState[]}} [context] the run so far, index 0 = opening state
+  /** 1975's scheduled shocks: the oil-shock recession in Q1–Q2, a wage-price spiral in Q6 if
+   *  inflation ran above 8 through quarters 4, 5 and 6, and the order books thinning in Q8.
+   *  `history[t - 1]` is the state observed at the start of quarter t, so the spiral reads
+   *  history[3], history[4] and history[5]. The Washington call is the era's `call`, not here.
+   *  @param {number} t 1-based quarter @param {{history?:FedState[]}} [context]
    *  @returns {{demand:number, supply:number}} */
-  function shocksFor(t, context) {
-    var c = context || {};
-    var history = c.history || [];
+  function shocks1975(t, context) {
+    var history = (context || {}).history || [];
     if (t === 1) return { demand: -3, supply: 0 };
     if (t === 2) return { demand: -1, supply: 2 };
-    if (t === 4) return { demand: c.acceptedCall ? 2 : 0, supply: 0 };
     if (t === 6) {
       var spiral = history.length >= 6 && history[3].pi > 8 && history[4].pi > 8 && history[5].pi > 8;
       return { demand: 0, supply: spiral ? 1.5 : 0 };
     }
     if (t === 8) return { demand: -1.5, supply: 0 };
     return { demand: 0, supply: 0 };
+  }
+
+  /** 1980: the credit-controls collapse in Q2 and the rebound after, the recession the squeeze
+   *  buys in 1981, the tax cut, and the oil glut that finally helps in 1982. */
+  function shocks1980(t) {
+    if (t === 2) return { demand: -4, supply: 0 };
+    if (t === 3) return { demand: 2.5, supply: 0 };
+    if (t === 5) return { demand: 0, supply: -1 };
+    if (t === 7) return { demand: -1, supply: 0 };
+    if (t === 8) return { demand: -1.5, supply: 0 };
+    if (t === 9) return { demand: 0, supply: -1.5 };
+    return { demand: 0, supply: 0 };
+  }
+
+  /** 2008: oil to $147 through the summer, the credit crunch, then the collapse — oil's crash
+   *  drags inflation below zero while demand falls out of the floor — and the stimulus of 2009. */
+  function shocks2008(t) {
+    if (t === 1) return { demand: -1, supply: 1 };
+    if (t === 2) return { demand: -0.5, supply: 1.5 };
+    if (t === 3) return { demand: -2, supply: 0.5 };
+    if (t === 4) return { demand: 0, supply: -3 };       // Lehman's own hit is the era's call
+    if (t === 5) return { demand: -3, supply: -1.5 };
+    if (t === 6) return { demand: -1.5, supply: -1 };
+    if (t === 7) return { demand: 0.5, supply: 1.5 };    // the stimulus lands and oil climbs back
+    if (t === 8) return { demand: 1, supply: 1 };
+    if (t === 9) return { demand: 0.5, supply: 0 };
+    return { demand: 0, supply: 0 };
+  }
+
+  /** 2021: the rescue-plan checks and the reopening, then six quarters of supply-side inflation —
+   *  snarled supply chains, then the war in Ukraine's oil and food — healing through 2023. */
+  function shocks2021(t) {
+    if (t === 1) return { demand: 2.5, supply: 0 };
+    if (t === 2) return { demand: 1.5, supply: 2.5 };
+    if (t === 3) return { demand: 0, supply: 1.5 };
+    if (t === 4) return { demand: -0.5, supply: 2 };
+    if (t === 5) return { demand: 0, supply: 2.5 };
+    if (t === 6) return { demand: 0, supply: 1.5 };
+    if (t === 7) return { demand: 0, supply: 0.5 };
+    if (t === 8) return { demand: 0, supply: -1 };
+    if (t === 9) return { demand: 0, supply: -1.5 };
+    if (t === 10) return { demand: 0, supply: -1.5 };
+    return { demand: 0, supply: 0 };
+  }
+
+  /** The 1975 total, as the game and the tests have always read it: the schedule plus the call.
+   *  @param {number} t 1-based quarter
+   *  @param {{acceptedCall?:boolean, history?:FedState[]}} [context] the run so far, index 0 = opening state
+   *  @returns {{demand:number, supply:number}} */
+  function shocksFor(t, context) { return eraShocks('1975', t, context); }
+
+  /** Every shock that lands in quarter t of an era: its schedule, the branch of its pressure beat
+   *  the Chair chose, and QE once it has been launched.
+   *  @param {string} eraId @param {number} t
+   *  @param {{acceptedCall?:boolean, history?:FedState[], qeAt?:number|null}} [context]
+   *  @returns {{demand:number, supply:number}} */
+  function eraShocks(eraId, t, context) {
+    var era = ERAS[eraId] || ERAS['1975'];
+    var c = context || {};
+    var base = era.shocks(t, c);
+    var demand = base.demand, supply = base.supply;
+    var branch = c.acceptedCall ? era.call.accept : era.call.refuse;
+    var extra = branch && branch[t];
+    if (extra) { demand += extra.demand || 0; supply += extra.supply || 0; }
+    if (era.qe && c.qeAt && t >= c.qeAt) demand += era.qe.demand;
+    return { demand: demand, supply: supply };
   }
 
   /* ===== POLITICS — the street, Washington, and what ignoring them costs =====
@@ -127,7 +198,7 @@ var FedModel = (function () {
     streetSpeed: 0.5, streetPi: 0.11, piBase: 3, streetU: 0.04, uBase: 5, hotAbove: 0.75,
     negRealBelow: -3, posRealAbove: 2,
     jobsBar: 8, jobsHeat: 0.05, electionQuarters: [5, 6, 7, 8], electionBoost: 2,
-    cutRelief: 0.10, hikeCost: 0.05, coolBelow: 7, cooling: 0.06, spillAbove: 0.6, spill: 0.10,
+    cutRelief: 0.10, hikeCost: 0.05, coolBelow: 7, cooling: 0.06, spillAbove: 0.6, spill: 0.10, streetHike: 0,
     callRefuse: 0.25, callAccept: -0.15,
     hearingHold: 0.10, hearingPromise: -0.25, promiseCred: -0.10, brokenPromise: 0.40,
     billEase: -0.40, billEaseCred: -0.10, billEaseDemand: 2, billHeld: -0.35,
@@ -166,6 +237,7 @@ var FedModel = (function () {
    *
    *    target      = clamp(streetPi * (pi - piBase) + streetU * (u - uBase))
    *    street'     = street + streetSpeed * (target - street)
+   *                  + streetHike in any quarter the Chair hiked (an era's public that wants the fight)
    *    washington' = washington + jobsHeat * max(0, u - jobsBar) * (election ? boost : 1)
    *                  + spill * max(0, street' - spillAbove) - (u < coolBelow ? cooling : 0)
    *                  - cutRelief if the Chair cut, + hikeCost if the Chair hiked
@@ -180,12 +252,13 @@ var FedModel = (function () {
     var P = params || POLITICS_1975;
     var c = ctx || {};
     var target = clamp(P.streetPi * (econ.pi - P.piBase) + P.streetU * (econ.u - P.uBase), 0, 1);
-    var street = clamp(prev.street + P.streetSpeed * (target - prev.street), 0, 1);
+    var move = c.move || 0;
+    // streetHike: an era where the public wants the Fed to fight prices credits a Fed it can see hiking
+    var street = clamp(prev.street + P.streetSpeed * (target - prev.street) + (move > 1e-9 ? (P.streetHike || 0) : 0), 0, 1);
     var election = P.electionQuarters.indexOf(econ.t) >= 0;
     var jobs = P.jobsHeat * Math.max(0, econ.u - P.jobsBar) * (election ? P.electionBoost : 1);
     var spill = P.spill * Math.max(0, street - P.spillAbove);
     var cool = econ.u < P.coolBelow ? P.cooling : 0;
-    var move = c.move || 0;
     var policy = move < -1e-9 ? -P.cutRelief : move > 1e-9 ? P.hikeCost : 0;
     var washington = clamp(prev.washington + jobs + spill - cool + policy + (c.brokenPromise ? P.brokenPromise : 0), 0, 1);
     var real = typeof econ.real === 'number' ? econ.real : econ.rate - econ.pi;
@@ -291,19 +364,128 @@ var FedModel = (function () {
     return null;
   }
 
+  /* ===== ERAS — four crises: a tuned economy, its real history, its shocks, its politics =====
+     Everything an era needs is data here, and the game reads only this. `history` is FRED
+     (CPIAUCSL year-over-year, UNRATE, FEDFUNDS; quarterly means, checked 2026-09-03). `call` is
+     the era's pressure beat: the quarter it opens, and the shocks each answer adds by quarter.
+     `integrityFor` says which answer earns the score's independence point — none for Lehman,
+     which is a judgment about a bank, not about Washington. `qe` exists only where the floor does. */
+
+  /** @typedef {{demand?:number, supply?:number}} Shock */
+  /** @typedef {{t:number, accept:Record<number, Shock>, refuse:Record<number, Shock>, integrityFor:string|null}} EraCall */
+
+  var ERAS = {
+    '1975': {
+      year: 1975, chair: 'Burns',
+      params: PARAMS_1975, initial: INITIAL_1975, history: HISTORY_1975,
+      band: BAND_1975,
+      score: { uStar: 6, peakBar: 8, roaredAbove: 9, bloodbathAbove: 10 },
+      call: { t: 4, accept: { 4: { demand: 2 } }, refuse: {}, integrityFor: 'refuse' },
+      shocks: shocks1975,
+      politics: {},
+      qe: null
+    },
+    '1980': {
+      year: 1980, chair: 'Volcker',
+      // rho under one: the squeeze opens a gap that settles rather than compounds, so a real rate
+      // five points over neutral for two years costs the 9-and-a-half unemployment it cost, not 17
+      params: { k: 0.20, rStar: 2.0, rho: 0.85, phi: 0.35, FLOOR: -8, a: 0.55, uStar: 6.0, piStar: 2, lambda: 0.08, okun: 0.5 },
+      initial: { t: 1, pi: 14.0, u: 6.3, gap: 0.5, piExp: 12.5, rate: 15.0, cred: 0.2 },
+      history: {
+        pi: [14.2, 14.4, 12.9, 12.5, 11.3, 9.9, 10.9, 9.6, 7.6, 6.9],
+        u: [6.3, 7.3, 7.7, 7.4, 7.4, 7.4, 7.4, 8.2, 8.8, 9.4],
+        rate: [15.0, 12.7, 9.8, 15.9, 16.6, 17.8, 17.6, 13.6, 14.2, 14.5]
+      },
+      band: { min: 5, max: 20, step: 0.25, move: 2.0 },
+      score: { uStar: 6, peakBar: 9, roaredAbove: 11, bloodbathAbove: 11 },
+      call: { t: 4, accept: { 4: { demand: 2 } }, refuse: {}, integrityFor: 'refuse' },
+      shocks: shocks1980,
+      politics: { electionQuarters: [1, 2, 3, 4] },
+      qe: null
+    },
+    '2008': {
+      year: 2008, chair: 'Bernanke',
+      // a flat Phillips curve and well-anchored expectations: the "missing deflation" of 2009 —
+      // a ten-point gap and prices barely fell — is the era's own lesson; rho near one is the
+      // jobless recovery, a gap that will not close on its own
+      params: { k: 0.15, rStar: 1.0, rho: 0.97, phi: 0.15, FLOOR: -6, a: 0.85, uStar: 5.0, piStar: 2, lambda: 0.10, okun: 0.5 },
+      initial: { t: 1, pi: 4.1, u: 5.0, gap: 0.0, piExp: 2.5, rate: 3.0, cred: 0.7 },
+      history: {
+        pi: [4.1, 4.3, 5.3, 1.6, -0.2, -0.9, -1.6, 1.5, 2.4, 1.8],
+        u: [5.0, 5.3, 6.0, 6.9, 8.3, 9.3, 9.6, 9.9, 9.8, 9.6],
+        rate: [3.2, 2.1, 1.9, 0.5, 0.2, 0.2, 0.2, 0.1, 0.1, 0.2]
+      },
+      band: { min: 0.25, max: 6, step: 0.25, move: 1.0 },
+      score: { uStar: 5, peakBar: 9.5, roaredAbove: 6, bloodbathAbove: 11 },
+      // Lehman: backstop it and the panic is milder — and the street hates a bailout; let it fail
+      // and the crash is the one that happened, in two instalments, and Congress asks why
+      call: {
+        t: 4, accept: { 4: { demand: -3 }, 5: { demand: -0.5 } }, refuse: { 4: { demand: -4 }, 5: { demand: -1.5 } }, integrityFor: null,
+        politics: { accept: { street: 0.25, washington: 0.10 }, refuse: { street: 0.10, washington: 0.20 } }
+      },
+      shocks: shocks2008,
+      politics: { electionQuarters: [1, 2, 3, 4], jobsBar: 7, streetPi: 0.04, piBase: 3, streetU: 0.12, uBase: 5, hotAbove: 0.7 },
+      // launched only at the floor; a quarter of QE is worth about half a point of demand
+      qe: { demand: 0.6 }
+    },
+    '2021': {
+      year: 2021, chair: 'Powell',
+      // a fast-settling gap and a loose Okun link are the tight labour market of 2022; `a` under
+      // 0.65 is the era's risk — expectations that come unanchored if the Fed sits at zero
+      params: { k: 0.15, rStar: 0.5, rho: 0.8, phi: 0.35, FLOOR: -6, a: 0.70, uStar: 4.0, piStar: 2, lambda: 0.08, okun: 0.35 },
+      initial: { t: 1, pi: 1.9, u: 6.2, gap: -3.0, piExp: 2.2, rate: 0.25, cred: 0.8 },
+      history: {
+        pi: [1.9, 4.8, 5.2, 6.8, 8.0, 8.6, 8.3, 7.1, 5.7, 4.1],
+        u: [6.2, 5.9, 5.1, 4.2, 3.9, 3.6, 3.5, 3.6, 3.5, 3.5],
+        rate: [0.1, 0.1, 0.1, 0.1, 0.1, 0.8, 2.2, 3.7, 4.5, 5.0]
+      },
+      band: { min: 0.25, max: 7, step: 0.25, move: 1.5 },
+      // a tighter inflation yardstick: 2021's whole job was prices, and the labour market never
+      // gave the score anything to lose
+      score: { uStar: 4, peakBar: 6.5, roaredAbove: 7, bloodbathAbove: 7, piSpan: 5, expSpan: 5 },
+      // keep the bond buying going through the recovery, or taper now
+      call: { t: 3, accept: { 3: { demand: 1 }, 4: { demand: 1 } }, refuse: {}, integrityFor: 'refuse' },
+      shocks: shocks2021,
+      // the street of 2022 is about one thing: prices; hikes cost more with the Senate than in 1975
+      politics: { electionQuarters: [5, 6, 7, 8], jobsBar: 6, hikeCost: 0.10, streetPi: 0.24, piBase: 2, streetU: 0.03, uBase: 4, hotAbove: 0.7, streetHike: -0.06, reappointAbove: 0.9 },
+      qe: null
+    }
+  };
+
+  /** The eras in the order the game lists them. */
+  var ERA_IDS = ['1975', '1980', '2008', '2021'];
+
+  /** @param {string} eraId @returns {typeof POLITICS_1975} the era's politics: 1975's, overridden */
+  function politicsFor(eraId) {
+    var era = ERAS[eraId] || ERAS['1975'];
+    return Object.assign({}, POLITICS_1975, era.politics || {});
+  }
+
+  /** What answering the era's pressure beat does to the meters: Washington eases off a Chair who
+   *  did as asked and leans on one who did not — unless the era says otherwise (a bailout angers
+   *  the street whichever way it goes).
+   *  @param {any} era @param {boolean} accepted @param {typeof POLITICS_1975} P
+   *  @returns {{street?:number, washington?:number}} */
+  function callBump(era, accepted, P) {
+    var own = era.call.politics;
+    if (own) return accepted ? own.accept : own.refuse;
+    return { washington: accepted ? P.callAccept : P.callRefuse };
+  }
+
   /* ===== simulate — ten quarters ===== */
 
   /** Play a whole run. Each requested rate is clamped against the quarter before it, and the
    *  shocks are read off the history as it is built, so the spiral can see what inflation did.
-   *  With `politics` on, the two meters advance each quarter, the Washington call moves them when
+   *  With `politics` on, the two meters advance each quarter, the pressure beat moves them when
    *  it opens, one political event may open each quarter — answered by `decide` when it is a
    *  choice — and the bill can end the run early, in which case the history stops there.
    *  @param {number[]} rates ten requested rates, quarter 1 first
-   *  @param {{acceptedCall?:boolean, params?:typeof PARAMS_1975, initial?:FedState,
-   *           politics?:boolean, decide?:(id:string, view:any) => string,
+   *  @param {{era?:string, acceptedCall?:boolean, qeAt?:number|null, params?:typeof PARAMS_1975,
+   *           initial?:FedState, politics?:boolean, decide?:(id:string, view:any) => string,
    *           politicsParams?:typeof POLITICS_1975, initialPolitics?:Politics}} [options]
-   *    `decide` answers 'hold' | 'promise' to the hearing and 'ease' | 'hold' to the bill; the
-   *    default holds the line at both.
+   *    `era` picks the crisis (default 1975); `qeAt` is the quarter QE was launched in, where the
+   *    era has it; `decide` answers 'hold' | 'promise' to the hearing and 'ease' | 'hold' to the
+   *    bill; the default holds the line at both.
    *  @returns {{history:FedState[], peakU:number, final:FedState, politics?:Politics[],
    *    events?:{t:number, id:string, choice:string|null}[], ending?:string|null,
    *    capitulated?:boolean, volcker?:boolean, stage?:number, verdict?:string|null}}
@@ -312,11 +494,14 @@ var FedModel = (function () {
    *    the verdict */
   function simulate(rates, options) {
     var o = options || {};
-    var params = o.params || PARAMS_1975;
-    var P = o.politicsParams || POLITICS_1975;
+    var eraId = o.era || '1975';
+    var era = ERAS[eraId] || ERAS['1975'];
+    var params = o.params || era.params;
+    var P = o.politicsParams || politicsFor(eraId);
+    var band = era.band;
     // A copy, never the constant itself: `history[0]` is handed straight back to the caller, and
-    // one poke at it would rewrite INITIAL_1975 for every later simulate(), search() and run.
-    var history = [Object.assign({}, o.initial || INITIAL_1975)];
+    // one poke at it would rewrite the era's opening state for every later simulate(), search() and run.
+    var history = [Object.assign({}, o.initial || era.initial)];
     var peakU = -Infinity;
     var pol = Object.assign({}, o.initialPolitics || INITIAL_POLITICS);
     var politics = [pol];
@@ -326,11 +511,14 @@ var FedModel = (function () {
     var promised = false, capitulated = false, volcker = false;
     /** @type {string|null} */ var ending = null;
     var decide = typeof o.decide === 'function' ? o.decide : function () { return 'hold'; };
+    var qeAt = era.qe && o.qeAt ? o.qeAt : null;
 
     for (var t = 1; t <= TURNS; t++) {
       var state = history[t - 1];
-      var rate = clampRate(rates[t - 1], state.rate);
-      var shocks = shocksFor(t, { acceptedCall: !!o.acceptedCall, history: history });
+      var rate = clampRate(rates[t - 1], state.rate, band);
+      // QE is a thing a Fed does at the floor: a launch in a quarter whose rate is above it never happens
+      if (qeAt === t && rate > band.min + 1e-9) qeAt = null;
+      var shocks = eraShocks(eraId, t, { acceptedCall: !!o.acceptedCall, history: history, qeAt: qeAt });
       if (o.politics) {
         shocks = { demand: shocks.demand + pending.demand, supply: shocks.supply + pending.supply };
         pending = { demand: 0, supply: 0 };
@@ -343,7 +531,7 @@ var FedModel = (function () {
       var broke = promised && rate >= state.rate - 1e-9;
       promised = false;
       pol = stepPolitics(pol, next, { move: rate - state.rate, brokenPromise: broke }, P);
-      if (t + 1 === CALL_QUARTER) pol = bump(pol, { washington: o.acceptedCall ? P.callAccept : P.callRefuse });
+      if (t + 1 === era.call.t) pol = bump(pol, callBump(era, !!o.acceptedCall, P));
       var view = politicsView(pol, next, { stage: stage, t: t + 1 });
       var rule = t < TURNS ? dueEvent(view, fired) : null;   // nothing opens after the last quarter
       if (rule) {
@@ -381,38 +569,43 @@ var FedModel = (function () {
   /* ===== judgeMove — was that the move the moment called for? ===== */
 
   /** True if the move matched what the state called for, false if it went the other way (or stood
-   *  still), null when the two mandates disagree and either move is defensible.
+   *  still), null when the two mandates disagree and either move is defensible — or when the move
+   *  the moment called for was not on the dial: a cut at the floor, a hike at the ceiling.
    *  @param {{pi:number, gap:number, rate?:number}} state
    *  @param {number} rate the rate just set
    *  @param {number} [prevRate] defaults to the rate the state came in with
+   *  @param {RateBand} [band] the era's band, default 1975's
    *  @returns {boolean|null} */
-  function judgeMove(state, rate, prevRate) {
+  function judgeMove(state, rate, prevRate, band) {
+    var b = band || BAND_1975;
     var prev = prevRate === undefined ? state.rate : prevRate;
-    if (state.pi > 4 && state.gap >= -2) return rate > prev;    // inflation high, slack nearly gone: hike
-    if (state.gap < -3 && state.pi < 6) return rate < prev;     // deep recession, inflation off the boil: cut
+    if (state.pi > 4 && state.gap >= -2) return prev >= b.max - 1e-9 ? null : rate > prev;    // inflation high, slack nearly gone: hike
+    if (state.gap < -3 && state.pi < 6) return prev <= b.min + 1e-9 ? null : rate < prev;     // deep recession, inflation off the boil: cut
     return null;
   }
 
   /* ===== score — the report card ===== */
 
   /** Score a finished run out of 105: 40 for landing inflation on target, 30 for unemployment at
-   *  the natural rate, 20 for not having wrecked the labour market on the way, 10 for having
-   *  brought expectations back down, and 5 for having held the Fed's independence. A term that
-   *  Congress ended is capped at endedCap: whatever the numbers were the day the bill passed, the
-   *  Chair did not finish the job.
+   *  the era's natural rate, 20 for not having wrecked the labour market on the way (past the
+   *  era's bar), 10 for having brought expectations back down, and 5 for having held the Fed's
+   *  independence. A term that Congress ended is capped at endedCap: whatever the numbers were the
+   *  day the bill passed, the Chair did not finish the job.
    *  @param {{peakU:number, final:{pi:number, u:number, piExp:number}}} run
-   *  @param {{integrity?:boolean, ended?:string|null}} [options]
+   *  @param {{integrity?:boolean, ended?:string|null, era?:string}} [options]
    *  @returns {{raw:number, stamp:number}} raw out of 105 and a 1–5 stamp */
   function score(run, options) {
     var o = options || {};
     var f = run.final;
+    var target = (ERAS[o.era || '1975'] || ERAS['1975']).score;
+    var piSpan = target.piSpan || 9, expSpan = target.expSpan || 9;
     // clamp() propagates NaN and every threshold below compares false against it, so a run handed in
     // without a peakU would fall through to a stamp of 1 — a perfect landing graded as a bloodbath.
     var peak = Number.isFinite(run.peakU) ? run.peakU : 0;
-    var raw = 40 * clamp(1 - Math.abs(f.pi - 2) / 9, 0, 1)
-      + 30 * clamp(1 - Math.abs(f.u - 6) / 4, 0, 1)
-      + 20 * clamp(1 - Math.max(0, peak - 8) / 4, 0, 1)
-      + 10 * clamp(1 - Math.abs(f.piExp - 2) / 9, 0, 1)
+    var raw = 40 * clamp(1 - Math.abs(f.pi - 2) / piSpan, 0, 1)
+      + 30 * clamp(1 - Math.abs(f.u - target.uStar) / 4, 0, 1)
+      + 20 * clamp(1 - Math.max(0, peak - target.peakBar) / 4, 0, 1)
+      + 10 * clamp(1 - Math.abs(f.piExp - 2) / expSpan, 0, 1)
       + 5 * (o.integrity ? 1 : 0);
     if (o.ended) raw = Math.min(raw, POLITICS_1975.endedCap);
     var stamp = raw >= 70 ? 5 : raw >= 65 ? 4 : raw >= 55 ? 3 : raw >= 42 ? 2 : 1;
@@ -431,23 +624,26 @@ var FedModel = (function () {
    *  @returns {{raw:number, stamp:number, path:number[]}} */
   function search(options) {
     var o = options || {};
+    var eraId = o.era || '1975';
+    var era = ERAS[eraId] || ERAS['1975'];
+    var band = era.band;
     var n = o.n === undefined ? 500 : o.n;
     var rng = o.rng || Math.random;
-    var initial = o.initial || INITIAL_1975;
+    var initial = o.initial || era.initial;
     var integrity = o.integrity === undefined ? true : o.integrity;
     var best = { raw: -Infinity, stamp: 1, path: /** @type {number[]} */ ([]) };
-    var choices = 2 * MAX_MOVE / RATE_STEP + 1;   // nine rates are within a point of last quarter's
+    var choices = Math.round(2 * band.move / band.step) + 1;   // every rate within a move of last quarter's
 
     for (var trial = 0; trial < n; trial++) {
       var path = /** @type {number[]} */ ([]);
       var prev = initial.rate;
       for (var t = 1; t <= TURNS; t++) {
-        var rate = clampRate(prev - MAX_MOVE + RATE_STEP * Math.floor(rng() * choices), prev);
+        var rate = clampRate(prev - band.move + band.step * Math.floor(rng() * choices), prev, band);
         path.push(rate);
         prev = rate;
       }
-      var run = simulate(path, { acceptedCall: !!o.acceptedCall, params: o.params, initial: initial, politics: !!o.politics, decide: o.decide });
-      var result = score(run, { integrity: integrity && !run.capitulated, ended: run.ending });
+      var run = simulate(path, { era: eraId, acceptedCall: !!o.acceptedCall, qeAt: o.qeAt || null, params: o.params, initial: initial, politics: !!o.politics, decide: o.decide });
+      var result = score(run, { integrity: integrity && !run.capitulated, ended: run.ending, era: eraId });
       if (result.raw > best.raw) best = { raw: result.raw, stamp: result.stamp, path: path };
     }
     return best;
@@ -455,10 +651,11 @@ var FedModel = (function () {
 
   return {
     PARAMS_1975: PARAMS_1975, INITIAL_1975: INITIAL_1975, HISTORY_1975: HISTORY_1975,
-    RATE_MIN: RATE_MIN, RATE_MAX: RATE_MAX, RATE_STEP: RATE_STEP, MAX_MOVE: MAX_MOVE,
+    RATE_MIN: RATE_MIN, RATE_MAX: RATE_MAX, RATE_STEP: RATE_STEP, MAX_MOVE: MAX_MOVE, BAND_1975: BAND_1975,
     POLITICS_1975: POLITICS_1975, INITIAL_POLITICS: INITIAL_POLITICS, POLITICAL_EVENTS: POLITICAL_EVENTS,
-    CALL_QUARTER: CALL_QUARTER,
-    clampRate: clampRate, step: step, shocksFor: shocksFor, simulate: simulate,
+    CALL_QUARTER: CALL_QUARTER, ERAS: ERAS, ERA_IDS: ERA_IDS,
+    clampRate: clampRate, step: step, shocksFor: shocksFor, eraShocks: eraShocks, politicsFor: politicsFor,
+    callBump: callBump, U_FLOOR: U_FLOOR, simulate: simulate,
     stepPolitics: stepPolitics, bump: bump, politicsView: politicsView, dueEvent: dueEvent,
     resolveEvent: resolveEvent, politicalVerdict: politicalVerdict,
     judgeMove: judgeMove, score: score, search: search
