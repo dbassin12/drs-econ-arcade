@@ -777,6 +777,9 @@ html.big-type .board { order: -1; }
 .intro-line { display: flex; gap: 10px; align-items: flex-start; }
 .intro-emoji { flex: 0 0 auto; font-size: 22px; line-height: 1.2; }
 .intro-text { font-size: 15px; line-height: 1.4; }
+/* Two pixels a line: Shift's and the Investor's title screens ran 3–4 px past a 740 px phone with the
+   stack's 12 px gap, and this is the difference between the ← Arcade button fitting and not. */
+.intro { gap: 10px; }
 /* The practice switch carries a sentence, so it keeps the button's height and drops its shouting. */
 .practice-btn { text-transform: none; letter-spacing: normal; font-size: 15px; }
 /* Where the hearts were: a blue tag, because it is a state, not a warning. */

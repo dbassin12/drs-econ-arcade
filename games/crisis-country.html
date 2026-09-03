@@ -678,8 +678,6 @@ const INTRO = [
     electionTag.textContent = isElection ? '🗳 Election' : C.election > i + 1 ? '🗳 in ' + (C.election - i - 1) : '';
     paintDash(s, run.prev);
     headlineEl.textContent = (isElection ? '🗳 ' : '📰 ') + t.headline;
-    advisor1.textContent = '';
-    advisor1.appendChild(chip('', ''));
     advisor1.innerHTML = '';
     var h1 = document.createElement('b'); h1.textContent = 'Hawk: '; advisor1.appendChild(h1); advisor1.appendChild(document.createTextNode(advice(s, 'The Hawk')));
     advisor2.innerHTML = '';

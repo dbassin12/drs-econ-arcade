@@ -58,10 +58,16 @@ var Arcade = (function () {
     return v;
   }
 
-  /** @param {string} game @returns {{score:number, initials:string, date:string, level?:number}|null} */
+  /** @param {string} game @returns {{score:number, initials:string, date:string, level?:number}|null}
+   *    the stored best, read back the way saveBest would have written it: a record is a text file the
+   *    student owns, and a hand-edited one used to print "ok · Lx" on the hub card */
   function bests(game) {
     var b = store.get('arcade.' + game + '.best', null);
-    return b && typeof b === 'object' && typeof b.score === 'number' ? b : null;
+    if (!b || typeof b !== 'object' || typeof b.score !== 'number' || !Number.isFinite(b.score)) return null;
+    /** @type {{score:number, initials:string, date:string, level?:number}} */
+    var rec = { score: b.score, initials: normalizeInitials(b.initials), date: typeof b.date === 'string' ? b.date : '' };
+    if (typeof b.level === 'number' && Number.isFinite(b.level)) rec.level = b.level;
+    return rec;
   }
 
   /** Told about every new best once it is stored. The class board (shared/leaderboard.js) posts
@@ -254,7 +260,7 @@ var Arcade = (function () {
     bindMuteButton: function (el) {
       if (!el) return;
       muteButtons.push(el);
-      el.addEventListener('click', function () { sfx.toggleMute(); });
+      el.addEventListener('click', debounced(function () { sfx.toggleMute(); }));
       syncMuteButtons();
     }
   };
@@ -271,7 +277,8 @@ var Arcade = (function () {
     hawk: { rate: 1.05, pitch: 0.7 },
     dove: { rate: 0.95, pitch: 1.25 },
     anchor: { rate: 1.1, pitch: 1.0 },
-    president: { rate: 0.9, pitch: 0.8 }
+    president: { rate: 0.9, pitch: 0.8 },
+    chair: { rate: 0.95, pitch: 0.85 }
   };
 
   /** @returns {any} speechSynthesis, or null outside a speaking browser */
@@ -360,7 +367,7 @@ var Arcade = (function () {
     bindButton: function (el) {
       if (!el) return;
       voiceButtons.push(el);
-      el.addEventListener('click', function () { voice.toggle(); });
+      el.addEventListener('click', debounced(function () { voice.toggle(); }));
       syncVoiceButtons();
     },
     stop: function () {
@@ -1313,7 +1320,7 @@ var Arcade = (function () {
   function mountBigTypeButton(el) {
     if (!el) return;
     bigTypeButtons.push(el);
-    el.addEventListener('click', function () { bigType(!bigType()); });
+    el.addEventListener('click', debounced(function () { bigType(!bigType()); }));
     bigType();
   }
 
@@ -1355,7 +1362,7 @@ var Arcade = (function () {
   }
 
   function openSwitcher() {
-    if (!switcherEl) return;
+    if (!switcherEl || !switcherEl.hidden) return;   // already open: a second tap must not trap focus twice
     switcherSeq += 1;
     switcherEl.hidden = false;
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function () { switcherEl.classList.add('open'); });
@@ -1407,7 +1414,7 @@ var Arcade = (function () {
     if (typeof document === 'undefined' || !document.body) return;
     if (!switcherEl) switcherEl = buildSwitcher(opts || {});
     var btns = document.querySelectorAll('.switch-btn');
-    for (var i = 0; i < btns.length; i += 1) btns[i].addEventListener('click', openSwitcher);
+    for (var i = 0; i < btns.length; i += 1) btns[i].addEventListener('click', debounced(openSwitcher));
   }
 
   /** @param {string} msg @param {number} [ms] default 1800 @returns {any} the toast, or null off-browser */
@@ -1437,6 +1444,18 @@ var Arcade = (function () {
 
   /** @param {() => void} action @returns {() => void} the action, deaf while the guard is up */
   function ignoringSkipTap(action) { return function () { if (!guarded()) action(); }; }
+
+  /** A handler that ignores the second half of a double tap: the first call runs and deafens the page
+   *  for the guard window, and the second lands inside it. A toggle needs this — a double tap on mute,
+   *  voice or 📺 would otherwise flip twice and look dead — and so does anything that opens a sheet.
+   *  @param {(ev?:any) => void} fn @returns {(ev?:any) => void} */
+  function debounced(fn) {
+    return function (ev) {
+      if (guarded()) return;
+      fn(ev);
+      guardTaps();
+    };
+  }
 
   var FOCUSABLE = 'button:not([disabled]), [href], input, select, textarea, [tabindex]';
 
@@ -1531,7 +1550,7 @@ var Arcade = (function () {
     copyText: copyText, CED_NAMES: CED_NAMES, UNIT_NAMES: UNIT_NAMES, CED_TO_LEVEL: CED_TO_LEVEL,
     SPRING: SPRING, prefersReducedMotion: prefersReducedMotion, spring: spring,
     confetti: confetti, shake: shake, flash: flash,
-    guardTaps: guardTaps, guarded: guarded, ignoringSkipTap: ignoringSkipTap,
+    guardTaps: guardTaps, guarded: guarded, ignoringSkipTap: ignoringSkipTap, debounced: debounced,
     focusScreen: focusScreen, trapFocus: trapFocus,
     hearts: hearts, streak: streak, timerBar: timerBar, endScreen: endScreen,
     medalFor: medalFor, safeMedal: safeMedal, stampFor: stampFor, titleFor: titleFor, titlePoints: titlePoints, career: career,

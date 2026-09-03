@@ -377,7 +377,9 @@ const INTRO = [
     rec.best = Math.max(rec.best || 0, result.realValue);
     rec.realPct = Math.max(rec.realPct || 0, result.realPct);
     rec.stamp = Math.max(rec.stamp || 0, result.stamp);
-    rec.badges = (rec.badges || []).concat(result.badges.filter(function (b) { return (rec.badges || []).indexOf(b) < 0; }));
+    // A stored record is a text file the student owns: a `badges` that is not an array is treated as none.
+    var had = Array.isArray(rec.badges) ? rec.badges : [];
+    rec.badges = had.concat(result.badges.filter(function (b) { return had.indexOf(b) < 0; }));
     p.levels[String(n)] = rescore(rec);
     if (rec.stamp >= 3) p.unlocked = Math.max(p.unlocked, n + 1);
     Arcade.store.set('arcade.investor.progress', p);
@@ -417,7 +419,7 @@ const INTRO = [
     meta.appendChild(chip('muted', rec && rec.cleared ? 'Best real ' + money(rec.best) + ' · stamp ' + rec.stamp : locked ? 'Locked' : S.blurb));
     if (rec && rec.exam) meta.appendChild(chip('tag', 'Exam ' + rec.exam.right + '/' + rec.exam.total));
     if (rec && rec.examPerfect) meta.appendChild(chip('ribbon', 'Exam Ready'));
-    (rec && rec.badges || []).forEach(function (b) { if (BADGES[b]) meta.appendChild(chip('tag', BADGES[b].emoji + ' ' + BADGES[b].name)); });
+    (rec && Array.isArray(rec.badges) ? rec.badges : []).forEach(function (b) { if (BADGES[b]) meta.appendChild(chip('tag', BADGES[b].emoji + ' ' + BADGES[b].name)); });
     info.appendChild(meta);
     open.appendChild(info);
     open.appendChild(chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));

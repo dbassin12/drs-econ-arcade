@@ -871,3 +871,34 @@ test('the switcher lists the seven games, each with a page that exists', () => {
   });
   Arcade.mountSwitcher({ current: 'shift' });   // a no-op with no document
 });
+
+/* ===== the double-tap guard on toggles ===== */
+
+test('debounced runs the first tap and swallows the one inside the guard window', async () => {
+  let n = 0;
+  const f = Arcade.debounced(() => { n += 1; });
+  f();
+  f();
+  assert.equal(n, 1);
+  assert.equal(Arcade.guarded(), true, 'the page is deaf for the guard window');
+  await new Promise((r) => setTimeout(r, 380));
+  f();
+  assert.equal(n, 2, 'and hears again after it');
+  await new Promise((r) => setTimeout(r, 380));
+});
+
+test('a persona exists for every voice the games ask for', () => {
+  ['hawk', 'dove', 'anchor', 'president', 'chair'].forEach((who) => assert.equal(Arcade.say('x', { who }), false, who + ' is a no-op without speech, not a throw'));
+});
+
+test('bests reads a hand-edited record back the way saveBest would have written it', () => {
+  Arcade.store.set('arcade.spec-junk.best', { score: 1e9, initials: 'ok', level: 'x', date: 42 });
+  assert.deepEqual(Arcade.bests('spec-junk'), { score: 1e9, initials: 'OK?', date: '' });
+  Arcade.store.set('arcade.spec-junk.best', { score: 'five', initials: 'DSB' });
+  assert.equal(Arcade.bests('spec-junk'), null);
+  Arcade.store.set('arcade.spec-junk.best', { score: Infinity, initials: 'DSB' });
+  assert.equal(Arcade.bests('spec-junk'), null);
+  Arcade.store.set('arcade.spec-junk.best', { score: 7, initials: 'dsb', level: 3, date: '2026-09-03T00:00:00.000Z' });
+  assert.deepEqual(Arcade.bests('spec-junk'), { score: 7, initials: 'DSB', level: 3, date: '2026-09-03T00:00:00.000Z' });
+  Arcade.store.remove('arcade.spec-junk.best');
+});

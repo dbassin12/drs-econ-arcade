@@ -680,9 +680,10 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
     Arcade.mountBigTypeButton(byId('bigTypeBtn'));   // this also applies the stored Arcade Night state
     initialsBtn.textContent = Arcade.initials();
     initialsBtn.setAttribute('aria-expanded', 'false');
-    initialsBtn.addEventListener('click', function () {
+    // Debounced: a double tap on the chip used to open the sheet and close it again in one motion.
+    initialsBtn.addEventListener('click', Arcade.debounced(function () {
       showInitials(initialsBtn.getAttribute('aria-expanded') !== 'true');
-    });
+    }));
     byId('initialsClose').addEventListener('click', function () { showInitials(false); });
     boardRefresh.addEventListener('click', function () { refreshBoard(); });
     // Bound after Arcade's own toggle, so this runs once the big-type class has flipped.
