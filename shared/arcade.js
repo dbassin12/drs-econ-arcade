@@ -435,6 +435,7 @@ var Arcade = (function () {
     '3.4': { game: 'shift', level: 3 }, '3.5': { game: 'shift', level: 3 },
     '3.7': { game: 'shift', level: 3 }, '3.9': { game: 'shift', level: 3 },
     '4.3': { game: 'sort', level: 2 },                                         // what money is
+    '4.1': { game: 'investor', level: 1 },                                     // bonds and rates, real returns
     '4.2': { game: 'calc', level: 3 }, '4.4': { game: 'calc', level: 3 },    // Fisher, reserves, the multiplier
     '4.5': { game: 'shift', level: 4 },                                        // the money market
     '4.6': { game: 'fed', level: 1 }, '5.1': { game: 'fed', level: 1 },        // policy is the Fed's game
@@ -492,6 +493,9 @@ var Arcade = (function () {
     }
     if (target.game === 'doctor') {
       return { game: 'doctor', level: target.level, url: 'games/graph-doctor.html?level=' + target.level, label: 'Graph Doctor · Ward ' + target.level };
+    }
+    if (target.game === 'investor') {
+      return { game: 'investor', level: target.level, url: 'games/investor.html?level=' + target.level, label: 'The Investor · Run ' + target.level };
     }
     return {
       game: 'shift',

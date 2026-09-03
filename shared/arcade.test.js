@@ -232,6 +232,9 @@ test('playNext routes the weakest topic to the level that drills it', () => {
   for (const ced of ['2.3', '2.6']) assert.deepEqual([next(ced).game, next(ced).level], ['calc', 1], ced + ' is a measurement');
   assert.deepEqual([next('3.2').game, next('3.2').level], ['calc', 2], 'multipliers are arithmetic');
   for (const ced of ['4.2', '4.4']) assert.deepEqual([next(ced).game, next(ced).level], ['calc', 3], ced + ' is money arithmetic');
+  assert.deepEqual(next('4.1'), {
+    game: 'investor', level: 1, url: 'games/investor.html?level=1', label: 'The Investor · Run 1'
+  });
   // a still-unmapped topic falls through to the hardest shift level
   assert.deepEqual(next('2.7'), {
     game: 'shift', level: 3, url: 'games/shift-happens.html?level=3', label: 'Shift Happens · Level 3'

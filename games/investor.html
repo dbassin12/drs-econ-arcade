@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Investor — DRS Econ Arcade</title>
+<!-- The arcade is static pages that talk to nobody. The policy says so out loud: nothing loads
+     that is not this origin's own script and stylesheet, the two Google Fonts hosts, or a data:
+     favicon, and connect-src 'none' means no page here can ever send a student's play anywhere. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+
+<script>
+/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. */
+if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
+/* ================================================================================
+   CONTENT — every scenario, quarter, signal, lesson, badge and exam item, one entry per line.
+   Nothing here is logic; the game reads this and nothing else for its content. The return
+   rules live in investor.model.js.
+
+   A scenario is twelve quarters: { news, signal:{text, lean, reliable}, dRate, inflation,
+   growth, shock? }. `lean` is what the whisper says the Fed will do; `reliable` is whether it
+   is right. A lesson is what a quarter teaches, written as the exam would state it.
+   ================================================================================ */
+const ASSETS = [
+  { id: 'cash', name: 'Cash', emoji: '💵', rule: 'earns the short rate; inflation eats it.' },
+  { id: 'cd', name: '1-yr CD', emoji: '🔒', rule: 'locks the rate on offer when you buy it.' },
+  { id: 'bonds', name: '10-yr bonds', emoji: '📜', rule: 'prices move inverse to rates; a one-point hike costs about 3.5%.' },
+  { id: 'stocks', name: 'Stocks', emoji: '📈', rule: 'love growth, hate rate spikes, crash now and then.' },
+  { id: 'realestate', name: 'Real estate', emoji: '🏠', rule: 'loves falling mortgage rates, sells off when they climb.' }
+];
+
+const SCENARIOS = [
+  { n: 1, name: 'Soft Landing', blurb: 'A calm Fed eases as inflation cools — can you ride the cuts?', fed: { name: 'Chair Calm', style: 'reads the data, moves a quarter point at a time' }, rate0: 5.0, highInflation: false,
+    quarters: [
+      { news: 'Inflation cools to 3.4%; hiring steady', signal: { text: 'Whispers: the Fed holds this meeting', lean: 'hold', reliable: true }, dRate: 0, inflation: 3.4, growth: 2.0 },
+      { news: 'Wage growth slows; retailers cautious', signal: { text: 'A governor hints a cut is “coming soon”', lean: 'cut', reliable: false }, dRate: 0, inflation: 3.0, growth: 1.8 },
+      { news: 'Core inflation down to 2.8%', signal: { text: 'Markets price a quarter-point cut', lean: 'cut', reliable: true }, dRate: -0.25, inflation: 2.8, growth: 1.9 },
+      { news: 'Unemployment ticks up to 4.3%', signal: { text: 'Dovish minutes: another cut likely', lean: 'cut', reliable: true }, dRate: -0.25, inflation: 2.6, growth: 1.5 },
+      { news: 'Stocks rally on cheaper money', signal: { text: 'A pause while the cuts work through', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.5, growth: 2.2, shock: 'rally' },
+      { news: 'Oil dips; inflation 2.3%', signal: { text: 'Hawkish op-ed: “the Fed is done cutting”', lean: 'hold', reliable: false }, dRate: -0.25, inflation: 2.3, growth: 2.4 },
+      { news: 'Housing starts jump as mortgage rates fall', signal: { text: 'Hold expected', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.4, growth: 2.6, shock: 'housingBoom' },
+      { news: 'Growth 2.8%; inflation steady', signal: { text: 'Hike whispers if growth runs hot', lean: 'hike', reliable: false }, dRate: 0, inflation: 2.5, growth: 2.8 },
+      { news: 'Inflation 2.2%: on target', signal: { text: 'A final cut is telegraphed', lean: 'cut', reliable: true }, dRate: -0.25, inflation: 2.2, growth: 2.5 },
+      { news: 'Calm markets, steady jobs', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.1, growth: 2.3 },
+      { news: 'A soft patch: growth 1.6%', signal: { text: 'Cut chatter returns on the soft data', lean: 'cut', reliable: false }, dRate: 0, inflation: 2.0, growth: 1.6 },
+      { news: 'The landing sticks', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.0, growth: 2.2 }
+    ] },
+  { n: 2, name: 'Inflation Scare', blurb: 'Prices take off and a hawk takes the chair — protect your real value', fed: { name: 'Chair Hawk', style: 'moves early and moves big' }, rate0: 2.0, highInflation: true,
+    quarters: [
+      { news: 'Prices jump 6.1% on supply snarls', signal: { text: 'Hawkish speech: “we will act”', lean: 'hike', reliable: true }, dRate: 0.5, inflation: 6.1, growth: 2.5 },
+      { news: 'Inflation 7.0%; rents surge', signal: { text: 'Dovish whisper: “it’s transitory”', lean: 'hold', reliable: false }, dRate: 0.75, inflation: 7.0, growth: 2.0 },
+      { news: 'Inflation peaks near 8%', signal: { text: 'Another big hike telegraphed', lean: 'hike', reliable: true }, dRate: 0.75, inflation: 7.8, growth: 1.2 },
+      { news: 'Mortgage rates hit 7%; home sales stall', signal: { text: 'Hike expected', lean: 'hike', reliable: true }, dRate: 0.5, inflation: 7.2, growth: 0.5, shock: 'housingBust' },
+      { news: 'Stocks crater as earnings warnings pile up', signal: { text: 'Rumor: the Fed pauses to calm markets', lean: 'hold', reliable: false }, dRate: 0.25, inflation: 6.5, growth: -0.5, shock: 'crash' },
+      { news: 'Flight to safety: Treasuries rally', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 5.8, growth: -1.0, shock: 'flight' },
+      { news: 'Inflation 5.0%; unemployment 5.5%', signal: { text: 'One last small hike', lean: 'hike', reliable: true }, dRate: 0.25, inflation: 5.0, growth: 0.0 },
+      { news: 'Inflation 4.2%', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 4.2, growth: 0.8 },
+      { news: 'Inflation 3.6%; stocks find a floor', signal: { text: 'Whispers of a cut', lean: 'cut', reliable: false }, dRate: 0, inflation: 3.6, growth: 1.5, shock: 'rally' },
+      { news: 'Inflation 3.1%', signal: { text: 'Cut likely', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 3.1, growth: 1.8 },
+      { news: 'Inflation 2.8%', signal: { text: 'Another cut', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 2.8, growth: 2.2 },
+      { news: 'Back near target', signal: { text: 'A quarter point to finish', lean: 'cut', reliable: true }, dRate: -0.25, inflation: 2.6, growth: 2.4 }
+    ] },
+  { n: 3, name: 'Recession & Rescue', blurb: 'A crash, a dove at the Fed, and a recovery to catch', fed: { name: 'Chair Dove', style: 'cuts first and asks later' }, rate0: 4.5, highInflation: false,
+    quarters: [
+      { news: 'Factory orders fall; layoffs begin', signal: { text: 'Emergency-cut talk', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 2.0, growth: -1.0 },
+      { news: 'Stocks plunge 15% in a week', signal: { text: 'Another cut', lean: 'cut', reliable: true }, dRate: -0.75, inflation: 1.8, growth: -2.5, shock: 'crash' },
+      { news: 'Home prices slide', signal: { text: 'Cut', lean: 'cut', reliable: true }, dRate: -0.5, inflation: 1.2, growth: -2.0, shock: 'housingBust' },
+      { news: 'Unemployment 7%', signal: { text: 'The Fed says it is “near the floor”', lean: 'hold', reliable: false }, dRate: -0.25, inflation: 1.0, growth: -1.0 },
+      { news: 'Green shoots: orders stabilize', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 1.0, growth: 0.5 },
+      { news: 'Stocks roar back', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 1.3, growth: 2.5, shock: 'rally' },
+      { news: 'Housing recovers on cheap mortgages', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 1.6, growth: 3.2, shock: 'housingBoom' },
+      { news: 'Growth 3.5%: hike talk begins', signal: { text: 'Hike whispers', lean: 'hike', reliable: false }, dRate: 0, inflation: 2.0, growth: 3.5 },
+      { news: 'Inflation 2.4%', signal: { text: 'First hike', lean: 'hike', reliable: true }, dRate: 0.25, inflation: 2.4, growth: 3.0 },
+      { news: 'Inflation 2.6%', signal: { text: 'Hike', lean: 'hike', reliable: true }, dRate: 0.25, inflation: 2.6, growth: 2.8 },
+      { news: 'Steady as she goes', signal: { text: 'Hold', lean: 'hold', reliable: true }, dRate: 0, inflation: 2.4, growth: 2.5 },
+      { news: 'Normal again', signal: { text: 'One more hike', lean: 'hike', reliable: false }, dRate: 0, inflation: 2.3, growth: 2.3 }
+    ] }
+];
+
+/* What each quarter teaches — chosen by the model's lessonFor(), written as the exam states it. */
+const LESSONS = {
+  bondsDown: { ced: '4.1', skill: 2, why: 'Interest rates rose, so the prices of previously issued bonds fell: their fixed payments are worth less beside new bonds that pay more. Bond prices and interest rates move in opposite directions.' },
+  bondsUp: { ced: '4.1', skill: 2, why: 'Interest rates fell, so the prices of previously issued bonds rose: their fixed payments are worth more beside new bonds that pay less. Bond prices and interest rates move in opposite directions.' },
+  crash: { ced: '4.1', skill: 2, why: 'A crash in one asset is why portfolios are diversified: spreading wealth across assets whose returns do not move together reduces the risk of any one of them.' },
+  flight: { ced: '4.1', skill: 2, why: 'In a flight to safety investors sell risky assets and buy government bonds, so bond prices rise and their yields fall while stocks drop — the price of safety is a lower return.' },
+  housing: { ced: '4.6', skill: 2, why: 'Monetary policy reaches housing through mortgage rates: lower rates make borrowing cheaper and raise interest-sensitive spending, and higher rates do the reverse.' },
+  realVsNominal: { ced: '4.2', skill: 2, why: 'A nominal gain is not a real gain: the real return is approximately the nominal return minus the inflation rate, and with high inflation even a positive nominal return can lose purchasing power.' },
+  cdLock: { ced: '4.2', skill: 2, why: 'A certificate of deposit locks in a nominal interest rate: if inflation turns out higher than expected the lender’s real return is lower than expected, and the borrower gains.' },
+  transmission: { ced: '4.6', skill: 2, why: 'With the policy rate unchanged, cash earned the short-term rate and everything else earned its own risk premium: the central bank sets the short rate, and other returns are built on top of it.' }
+};
+
+const BADGES = {
+  bondWhisperer: { name: 'Bond Whisperer', emoji: '📜', blurb: 'Held 30%+ in bonds through a rate cut and profited' },
+  inflationSurvivor: { name: 'Inflation Survivor', emoji: '🔥', blurb: 'A positive real return in the Inflation Scare' },
+  diamondHands: { name: 'Diamond Hands', emoji: '💎', blurb: 'Held stocks through a crash all the way to the rally' }
+};
+
+/* The Exit Exam draws three of these from the lessons the run actually taught. */
+const EXAM_ITEMS = [
+  { lessons: ['bondsDown', 'bondsUp', 'flight'], stem: 'Interest rates in the economy rise. Which of the following happens to the price of previously issued bonds, and why?', choices: ['It rises, because the bonds’ fixed payments are now more valuable', 'It falls, because new bonds offer higher interest payments', 'It is unchanged, because the bonds’ payments are fixed', 'It rises, because demand for bonds increases when rates rise'], answer: 1, why: 'Bond prices and interest rates are inversely related: when new bonds pay more, the fixed payments of existing bonds are worth less, so their prices fall.', ced: '4.1', skill: 2 },
+  { lessons: ['bondsUp', 'bondsDown'], stem: 'Which of the following is most likely to increase the price of a previously issued bond?', choices: ['An increase in the expected inflation rate', 'A decrease in market interest rates', 'An increase in the bond’s default risk', 'A decrease in the money supply'], answer: 1, why: 'Lower market interest rates make the fixed payments of an existing bond relatively more attractive, raising its price.', ced: '4.1', skill: 2 },
+  { lessons: ['realVsNominal', 'cdLock', 'transmission'], stem: 'A savings account pays a nominal interest rate of 5 percent while the inflation rate is 7 percent. The real interest rate is approximately', choices: ['12 percent', '7 percent', '2 percent', '−2 percent'], answer: 3, why: 'The real interest rate is approximately the nominal rate minus the inflation rate: 5 − 7 = −2 percent; the saver’s purchasing power falls.', ced: '4.2', skill: 3 },
+  { lessons: ['cdLock', 'realVsNominal'], stem: 'A bank lends at a fixed nominal rate expecting 3 percent inflation. If inflation turns out to be 6 percent, which of the following is true?', choices: ['The lender gains and the borrower loses', 'The borrower gains and the lender loses', 'Neither gains, because the nominal rate was fixed', 'Both gain, because the loan is repaid in dollars'], answer: 1, why: 'Unexpected inflation lowers the real interest rate actually paid, so the borrower repays in cheaper dollars and gains at the lender’s expense.', ced: '4.2', skill: 2 },
+  { lessons: ['housing', 'transmission', 'bondsUp'], stem: 'The central bank lowers its policy interest rate. Which of the following is the most likely short-run effect?', choices: ['Interest-sensitive spending such as housing and investment increases', 'The prices of existing bonds fall', 'The money supply decreases', 'The real interest rate rises'], answer: 0, why: 'A lower policy rate lowers other interest rates, which raises interest-sensitive spending such as home building and business investment and shifts aggregate demand right.', ced: '4.6', skill: 2 },
+  { lessons: ['crash', 'flight'], stem: 'Which of the following best explains why an investor holds a mix of stocks, bonds and cash rather than a single asset?', choices: ['To maximize the expected nominal return', 'To reduce risk, because the assets’ returns do not move together', 'To avoid paying any interest', 'Because bonds always outperform stocks'], answer: 1, why: 'Diversification reduces risk: when the returns on different assets do not move together, a loss in one is offset by others.', ced: '4.1', skill: 2 },
+  { lessons: ['realVsNominal', 'transmission'], stem: 'Which of the following assets is most likely to lose purchasing power during a period of unexpectedly high inflation?', choices: ['Currency held in a wallet', 'A house', 'Shares of stock', 'A bond whose interest payments are indexed to inflation'], answer: 0, why: 'Currency earns no return, so inflation reduces its purchasing power one for one; real assets and indexed bonds are shielded.', ced: '2.5', skill: 2 },
+  { lessons: ['bondsDown', 'housing'], stem: 'Which of the following is a consequence of a central bank raising interest rates?', choices: ['Existing bond prices rise', 'Mortgage borrowing becomes cheaper', 'Interest-sensitive spending decreases', 'The price level rises in the short run'], answer: 2, why: 'Higher interest rates raise the cost of borrowing, so interest-sensitive spending on housing and investment falls and aggregate demand shifts left.', ced: '4.6', skill: 2 }
+];
+
+/* ================================================================================
+   TIMING — Teacher-tunable: seconds students get.  Numbers are seconds.
+   ================================================================================ */
+const TIMING = {
+  quarterSeconds: 45,         // to read the signal and set the buckets before the Fed speaks
+  warnSeconds: 6,             // when the bar turns red and the tick/tock starts
+  revealSeconds: 3.5,         // how long the quarter's WHY stays up; a tap ends it
+  examSeconds: 70             // the Exit Exam stays at the real exam's Section I pace
+};
+
+/* ================================================================================
+   HOW TO PLAY — the cards the first run opens on, and what the ? shows.
+   ================================================================================ */
+const HOWTO = [
+  { emoji: '\u{1FA99}', head: 'Ten coins, five buckets', body: 'Your $10,000 is ten coins. Press a bucket that has coins and drag one to another bucket. Cash, a 1-year CD, 10-year bonds, stocks, real estate — each follows one honest rule.' },
+  { emoji: '\u{1F5E3}', head: 'A whisper before every meeting', body: 'Each quarter brings a headline and a whisper about what the Fed will do. Whispers are sometimes wrong. Set your buckets, then lock in — before the announcement.' },
+  { emoji: '\u{1F3DB}', head: 'Then the Fed speaks', body: 'Rates move, every bucket earns or loses, and the board shows your value two ways: nominal, and real after inflation. Real is the score; beat the do-nothing portfolio by enough for a 5, and earn badges for what you held when it mattered.' },
+  { emoji: '\u{1F4DD}', head: 'Then the Exit Exam', body: 'Three questions in the exam’s own voice, drawn from what your twelve quarters taught. Optional — but gold needs it.' }
+];
+
+/* ================================================================================
+   WHAT IS THIS GAME? — the purpose, before the rules.
+   ================================================================================ */
+const INTRO = [
+  { emoji: '\u{1F4B0}', text: 'Ten coins, twelve quarters. The Fed moves rates, news drops, and you set your buckets before each announcement.' },
+  { emoji: '\u{1F393}', text: 'The rules are the exam’s: bond prices move inverse to rates, a nominal return is not a real one, and policy reaches you through the rates you borrow and save at. Every quarter closes with the sentence that earns the point.' },
+  { emoji: '\u{1F3AE}', text: 'Three Fed chairs, three stories. Your score is what your money is really worth at the end. The Exit Exam is the only multiple choice.' }
+];
+</script>
+
+<main class="app" id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div class="stack">
+      <h1 class="h1" tabindex="-1" data-focus>THE INVESTOR</h1>
+      <p class="muted">Ten thousand dollars, twelve quarters, one Fed to read.</p>
+      <div class="row">
+        <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+        <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+        <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      </div>
+      <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
+      <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <section class="panel stack intro" id="intro" aria-labelledby="introTitle"></section>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+  <!-- SELECT -->
+  <section class="screen" id="screen-select">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Runs</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="stack" id="runList"></div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="screen" id="screen-howto">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
+        <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="screen-play">
+    <div class="stack tight">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the run list">←</button>
+        <span class="tag" id="quarterTag">Q1</span>
+        <div class="topbar-stats"><span class="score" id="score">$10,000</span></div>
+        <button type="button" class="btn btn-ghost howto-btn" id="playHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="timer-bar" id="timer"></div>
+      <div class="panel inv-signal" id="signal">
+        <div class="inv-news" id="news"></div>
+        <div class="inv-whisper" id="whisper"></div>
+        <div class="inv-fed" id="fedLine"></div>
+      </div>
+      <!-- The board: five buckets; pressing one with coins lifts a coin to carry to another. -->
+      <div class="inv-board" id="board"></div>
+      <div class="inv-totals" id="totals">
+        <span class="real" id="realValue">Real $10,000</span>
+        <span class="nominal" id="nominalValue">Nominal $10,000</span>
+        <span class="prices" id="prices">Prices +0%</span>
+      </div>
+      <button type="button" class="btn btn-block btn-gold" id="lockBtn">Lock in</button>
+      <div class="muted" id="hint">Drag coins between buckets, then lock in</div>
+      <div class="row wrap kbd-answers" id="kbdRow" role="group" aria-label="Move coins with the keyboard"></div>
+      <div class="sr-only" id="boardRead" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- EXIT EXAM — the one screen in the game with multiple choice -->
+  <section class="screen" id="screen-exam">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the run list">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Exit Exam</h2>
+        <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="timer-bar" id="examTimer"></div>
+      <div class="row">
+        <span class="tag" id="examPace">70 s</span>
+        <span class="muted" id="examSub"></span>
+      </div>
+      <div class="panel"><div class="exam-stem" id="examStem"></div></div>
+      <div class="stack" id="examChoices"></div>
+    </div>
+  </section>
+
+  <!-- the end of a run and the exam result both render an Arcade.endScreen panel here -->
+  <section class="screen" id="screen-end"></section>
+
+</main>
+
+<div class="sheet" id="sheet" role="status">
+  <div class="stack">
+    <div class="sheet-msg" id="sheetMsg"></div>
+    <div class="sheet-why" id="sheetWhy"></div>
+    <button type="button" class="btn btn-block" id="sheetBtn">Got it</button>
+  </div>
+</div>
+
+<script src="../shared/arcade.js"></script>
+<script src="investor.model.js"></script>
+
+<script>
+/* ================================================================================
+   THE INVESTOR — the game. Sections: elements · screens · progress · run select ·
+   the board (coins and buckets) · the coin drag · quarter loop · exit exam · the run ·
+   end screens · boot.  During play the student's only input is dragging coins between
+   buckets (and the lock-in button that ends the turn); multiple choice appears nowhere but
+   the Exit Exam. Every quarter calls Arcade.track once: did the allocation beat cash in real
+   terms, under the lesson the quarter taught.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined' || typeof InvestorModel === 'undefined') return;
+
+  var M = InvestorModel;
+  var QUARTER_MS = TIMING.quarterSeconds * 1000;
+  var WARN_MS = TIMING.warnSeconds * 1000;
+  var REVEAL_MS = TIMING.revealSeconds * 1000;
+  var EXAM_MS = TIMING.examSeconds * 1000;
+  var KEYS = 'ABCD';
+  var START_YEAR = 2027;
+  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
+
+  /* ===== ELEMENTS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {number} ms @returns {Promise<void>} */
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function fill(cls, text) { var n = document.createElement('div'); n.className = cls; n.textContent = text; return n; }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function chip(cls, text) { var n = document.createElement('span'); n.className = cls; n.textContent = text; return n; }
+  /** @param {number} n @returns {string} 10412.3 -> "$10,412" */
+  function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+  /** @param {number} v @returns {string} "+1.2%" */
+  function pct(v) { return (v > 0 ? '+' : '') + v.toFixed(1) + '%'; }
+  /** @param {number} v @returns {string} "5.25%" */
+  function rate(v) { return v.toFixed(2) + '%'; }
+
+  var screens = {
+    title: byId('screen-title'), select: byId('screen-select'), howto: byId('screen-howto'),
+    play: byId('screen-play'), exam: byId('screen-exam'), end: byId('screen-end')
+  };
+  var runList = byId('runList');
+  var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
+  var quarterTag = byId('quarterTag'), scoreEl = byId('score'), timerEl = byId('timer');
+  var newsEl = byId('news'), whisperEl = byId('whisper'), fedLine = byId('fedLine');
+  var board = byId('board'), realValueEl = byId('realValue'), nominalValueEl = byId('nominalValue'), pricesEl = byId('prices');
+  var lockBtn = byId('lockBtn'), hintEl = byId('hint'), kbdRow = byId('kbdRow'), boardRead = byId('boardRead');
+  var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
+  var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
+  var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+  var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), introEl = byId('intro');
+
+  /** The run in progress. `token` is what tells an awaiting quarter it has been abandoned. */
+  var run = null;
+  var runToken = 0;
+  var exam = null;
+  var examToken = 0;
+  /** @param {number} token @returns {boolean} */
+  function alive(token) { return token === runToken; }
+  /** @param {number} token @returns {boolean} */
+  function examAlive(token) { return token === examToken; }
+
+  /* ===== SCREENS ===== */
+
+  var booted = false;
+  /** @param {string} name */
+  function show(name) {
+    Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+    if (booted) Arcade.guardTaps();
+    booted = true;
+    Arcade.focusScreen(screens[name]);
+  }
+
+  function abortRun() {
+    runToken += 1;
+    examToken += 1;
+    if (run && run.clock) run.clock.stop();
+    if (exam && exam.stop) exam.stop();
+    ackNow();
+    hideSheet();
+    endDrag();
+    Arcade.voice.stop();
+  }
+
+  /* ===== PROGRESS — arcade.investor.progress ===== */
+
+  /** @returns {{unlocked:number, levels:Object<string, any>}} */
+  function loadProgress() {
+    var p = Arcade.store.get('arcade.investor.progress', null);
+    if (!p || typeof p !== 'object') p = {};
+    var levels = {};
+    var raw = p.levels && typeof p.levels === 'object' ? p.levels : {};
+    Object.keys(raw).forEach(function (key) { if (raw[key] && typeof raw[key] === 'object') levels[key] = raw[key]; });
+    return { unlocked: typeof p.unlocked === 'number' && p.unlocked >= 1 ? p.unlocked : 1, levels: levels };
+  }
+
+  /** @returns {any} */
+  function blankRecord() { return { cleared: false, acc: 0, best: 0, stamp: 0, realPct: 0, medal: null, exam: null, examPerfect: false, badges: [] }; }
+
+  /** The medal follows the stamp: a 3 is bronze, a 4 silver, a 5 with the exam gold. @param {any} rec @returns {any} */
+  function rescore(rec) {
+    var passed = !!(rec.exam && rec.exam.right >= 2);
+    rec.medal = rec.stamp >= 5 && passed ? 'gold' : rec.stamp >= 4 ? 'silver' : rec.stamp >= 3 ? 'bronze' : null;
+    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total && rec.stamp >= 5);
+    return rec;
+  }
+
+  /** @param {number} n @param {{realValue:number, realPct:number, stamp:number, acc:number, badges:string[]}} result */
+  function saveProgress(n, result) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    rec.cleared = true;
+    rec.acc = Math.max(rec.acc || 0, result.acc);
+    rec.best = Math.max(rec.best || 0, result.realValue);
+    rec.realPct = Math.max(rec.realPct || 0, result.realPct);
+    rec.stamp = Math.max(rec.stamp || 0, result.stamp);
+    rec.badges = (rec.badges || []).concat(result.badges.filter(function (b) { return (rec.badges || []).indexOf(b) < 0; }));
+    p.levels[String(n)] = rescore(rec);
+    if (rec.stamp >= 3) p.unlocked = Math.max(p.unlocked, n + 1);
+    Arcade.store.set('arcade.investor.progress', p);
+  }
+
+  /** @param {number} n @param {number} right @param {number} total @returns {any} */
+  function saveExam(n, right, total) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    if (!rec.exam || right > rec.exam.right) rec.exam = { right: right, total: total };
+    p.levels[String(n)] = rescore(rec);
+    Arcade.store.set('arcade.investor.progress', p);
+    return rec;
+  }
+
+  /* ===== RUN SELECT ===== */
+
+  /** @param {number} n @returns {any} */
+  function scenarioOf(n) { for (var i = 0; i < SCENARIOS.length; i += 1) if (SCENARIOS[i].n === n) return SCENARIOS[i]; return undefined; }
+  /** @param {number} n @returns {boolean} */
+  function playable(n) { return !!scenarioOf(n) && n <= loadProgress().unlocked; }
+
+  /** @param {any} S @param {any} rec @param {boolean} locked @returns {any} */
+  function runTile(S, rec, locked) {
+    var tile = document.createElement('div');
+    tile.className = 'panel level-tile' + (locked ? ' locked' : '');
+    var medal = Arcade.safeMedal(rec && rec.medal);
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'tile-open';
+    open.disabled = locked;
+    open.setAttribute('aria-label', (locked ? 'Locked: run ' : 'Play run ') + S.n + ', ' + S.name + (medal === 'none' ? '' : ', ' + medal + ' medal'));
+    open.appendChild(chip('level-num', String(S.n)));
+    var info = chip('tile-info', '');
+    info.appendChild(chip('tile-name', S.name + (locked ? ' 🔒' : '')));
+    var meta = chip('tile-meta', '');
+    meta.appendChild(chip('muted', rec && rec.cleared ? 'Best real ' + money(rec.best) + ' · stamp ' + rec.stamp : locked ? 'Locked' : S.blurb));
+    if (rec && rec.exam) meta.appendChild(chip('tag', 'Exam ' + rec.exam.right + '/' + rec.exam.total));
+    if (rec && rec.examPerfect) meta.appendChild(chip('ribbon', 'Exam Ready'));
+    (rec && rec.badges || []).forEach(function (b) { if (BADGES[b]) meta.appendChild(chip('tag', BADGES[b].emoji + ' ' + BADGES[b].name)); });
+    info.appendChild(meta);
+    open.appendChild(info);
+    open.appendChild(chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
+    if (!locked) open.addEventListener('click', function () { startRun(S.n); });
+    tile.appendChild(open);
+    if (rec && rec.cleared) {
+      var sprint = document.createElement('button');
+      sprint.type = 'button';
+      sprint.className = 'btn btn-ghost tile-btn';
+      sprint.textContent = 'Exit Exam';
+      sprint.setAttribute('aria-label', 'Exit Exam for run ' + S.n);
+      sprint.addEventListener('click', function () { startExam(S.n, null); });
+      tile.appendChild(sprint);
+    }
+    return tile;
+  }
+
+  function paintSelect() {
+    var progress = loadProgress();
+    runList.textContent = '';
+    SCENARIOS.forEach(function (S) { runList.appendChild(runTile(S, progress.levels[String(S.n)] || null, S.n > progress.unlocked)); });
+  }
+
+  /* ===== THE BOARD — five buckets, ten coins ===== */
+
+  /** @type {any[]} */ var buckets = [];
+  var coins = [10, 0, 0, 0, 0];
+  var boardLocked = true;
+
+  function buildBoard() {
+    board.textContent = '';
+    buckets = ASSETS.map(function (asset, i) {
+      var b = document.createElement('div');
+      b.className = 'bucket';
+      b.setAttribute('data-index', String(i));
+      b.setAttribute('role', 'group');
+      b.setAttribute('aria-label', asset.name);
+      var emoji = fill('bucket-emoji', asset.emoji); emoji.setAttribute('aria-hidden', 'true');
+      var parts = { el: b, share: fill('bucket-share', '0%'), value: fill('bucket-value', '$0'), pips: fill('bucket-pips', ''), ret: fill('bucket-ret', '') };
+      b.appendChild(emoji);
+      b.appendChild(fill('bucket-name', asset.name));
+      b.appendChild(parts.share);
+      b.appendChild(parts.pips);
+      b.appendChild(parts.value);
+      b.appendChild(parts.ret);
+      board.appendChild(b);
+      return parts;
+    });
+  }
+
+  /** @param {number} value the portfolio's nominal value the coins are slicing */
+  function paintBoard(value) {
+    buckets.forEach(function (b, i) {
+      b.share.textContent = (coins[i] * 10) + '%';
+      b.value.textContent = money(value * coins[i] / 10);
+      b.pips.textContent = '';
+      for (var k = 0; k < coins[i]; k += 1) b.pips.appendChild(chip('bucket-pip', ''));
+      b.el.classList.toggle('empty', coins[i] === 0);
+    });
+    boardRead.textContent = ASSETS.map(function (a, i) { return a.name + ' ' + (coins[i] * 10) + '%'; }).join(', ');
+  }
+
+  /** @param {Object<string, number>|null} rets last quarter's returns, or null to clear */
+  function paintReturns(rets) {
+    buckets.forEach(function (b, i) {
+      var id = ASSETS[i].id;
+      if (!rets) { b.ret.textContent = ''; b.ret.className = 'bucket-ret'; return; }
+      var v = rets[id];
+      b.ret.textContent = pct(v);
+      b.ret.className = 'bucket-ret ' + (v > 0.05 ? 'up' : v < -0.05 ? 'down' : '');
+    });
+  }
+
+  /** @param {{value:number, priceLevel:number}} state */
+  function paintTotals(state) {
+    var real = state.value / state.priceLevel;
+    realValueEl.textContent = 'Real ' + money(real);
+    nominalValueEl.textContent = 'Nominal ' + money(state.value);
+    pricesEl.textContent = 'Prices ' + pct((state.priceLevel - 1) * 100);
+    scoreEl.textContent = money(real);
+  }
+
+  /** Move one coin. @param {number} from @param {number} to @returns {boolean} */
+  function moveCoin(from, to) {
+    if (from === to || coins[from] <= 0) return false;
+    coins[from] -= 1;
+    coins[to] += 1;
+    paintBoard(run.state.value);
+    Arcade.sfx.play('snap');
+    return true;
+  }
+
+  /* --- the coin drag: press a bucket with coins, carry a coin, drop it on another --- */
+
+  /** @type {any} */ var drag = null;
+  /** @type {any} */ var token = null;
+
+  /** @param {number} x @param {number} y @returns {number} the bucket index under a point, or -1 */
+  function bucketAt(x, y) {
+    var el = document.elementFromPoint(x, y);
+    var b = el && el.closest ? el.closest('.bucket') : null;
+    return b ? Number(b.getAttribute('data-index')) : -1;
+  }
+
+  function endDrag() {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    try { board.releasePointerCapture(d.pointerId); } catch (err) { /* already gone */ }
+    if (token && token.parentNode) token.parentNode.removeChild(token);
+    token = null;
+    buckets.forEach(function (b) { b.el.classList.remove('over', 'from'); });
+  }
+
+  board.addEventListener('pointerdown', function (ev) {
+    if (boardLocked || drag) return;
+    var from = bucketAt(ev.clientX, ev.clientY);
+    if (from < 0 || coins[from] <= 0) return;
+    ev.preventDefault();
+    drag = { pointerId: ev.pointerId, from: from };
+    try { board.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety */ }
+    token = fill('inv-token', '$' + Math.round(run.state.value / 10).toLocaleString('en-US'));
+    token.style.transform = 'translate(' + ev.clientX + 'px, ' + ev.clientY + 'px)';
+    document.body.appendChild(token);
+    buckets[from].el.classList.add('from');
+    Arcade.sfx.play('grab');
+  });
+  board.addEventListener('pointermove', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    token.style.transform = 'translate(' + ev.clientX + 'px, ' + ev.clientY + 'px)';
+    var over = bucketAt(ev.clientX, ev.clientY);
+    buckets.forEach(function (b, i) { b.el.classList.toggle('over', i === over && i !== drag.from); });
+  });
+  board.addEventListener('pointerup', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    var from = drag.from;
+    var to = bucketAt(ev.clientX, ev.clientY);
+    endDrag();
+    if (to >= 0 && to !== from) moveCoin(from, to);
+  });
+  board.addEventListener('pointercancel', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    endDrag();
+  });
+
+  /** The keyboard's road: a pair of buttons per bucket that moves a coin from cash. */
+  function buildKbdRow() {
+    kbdRow.textContent = '';
+    ASSETS.forEach(function (asset, i) {
+      if (i === 0) return;
+      [['+', 0, i], ['−', i, 0]].forEach(function (spec) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn btn-ghost';
+        b.textContent = asset.name + ' ' + spec[0];
+        b.setAttribute('aria-label', (spec[0] === '+' ? 'Move a coin from cash into ' : 'Move a coin out of ') + asset.name);
+        b.addEventListener('click', function () { if (!boardLocked && !drag) moveCoin(spec[1], spec[2]); });
+        kbdRow.appendChild(b);
+      });
+    });
+  }
+
+  /* ===== QUARTER CHROME ===== */
+
+  /** @param {number} i @returns {string} */
+  function quarterLabel(i) { return 'Q' + ((i % 4) + 1) + ' ' + (START_YEAR + Math.floor(i / 4)); }
+
+  /** @param {string} kind @param {string} msg @param {string} why @param {boolean} ack */
+  function paintSheet(kind, msg, why, ack) {
+    sheetMsg.textContent = msg;
+    sheetWhy.textContent = why;
+    sheetBtn.style.display = ack ? '' : 'none';
+    sheet.className = 'sheet ' + kind + ' open';
+  }
+  function hideSheet() { sheet.classList.remove('open'); sheetBtn.style.display = 'none'; }
+
+  /** @type {(() => void)|null} */ var ackResolve = null;
+  function ackNow() { if (!ackResolve) return; var r = ackResolve; ackResolve = null; r(); }
+  sheetBtn.addEventListener('click', function () { hideSheet(); ackNow(); });
+
+  /** @param {string} msg @param {string} why @param {string} [label] @param {string} [kind] @returns {Promise<void>} */
+  function sheetAsk(msg, why, label, kind) {
+    ackNow();
+    sheetBtn.textContent = label || 'Got it';
+    paintSheet(kind || 'wrong', msg, why, true);
+    return new Promise(function (resolve) { ackResolve = resolve; });
+  }
+
+  /** A moment to read, or a tap anywhere to move on. @param {number} ms @returns {Promise<void>} */
+  function readBeat(ms) {
+    return new Promise(function (resolve) {
+      var timer = setTimeout(done, ms);
+      function done() { clearTimeout(timer); document.removeEventListener('pointerdown', done); resolve(); }
+      document.addEventListener('pointerdown', done);
+    });
+  }
+
+  /** The quarter's clock: resolves when the student locks in or the bar empties.
+   *  @param {number} ms @returns {{next:() => Promise<void>, remaining:() => number, pause:() => void, resume:() => void, stop:() => void}} */
+  function quarterClock(ms) {
+    var done = false;
+    /** @type {(() => void)|null} */ var resolveNext = null;
+    var timer = Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: finish });
+    function finish() { if (done) return; done = true; timer.stop(); if (resolveNext) { var r = resolveNext; resolveNext = null; r(); } }
+    timer.start();
+    lockBtn.onclick = function () { if (!boardLocked) finish(); };
+    return {
+      next: function () { return done ? Promise.resolve() : new Promise(function (resolve) { resolveNext = resolve; }); },
+      remaining: function () { return timer.remaining(); },
+      pause: function () { timer.pause(); },
+      resume: function () { if (!done) timer.resume(); },
+      stop: finish
+    };
+  }
+
+  function pauseClocks() { if (run && run.clock) run.clock.pause(); if (exam && exam.pause) exam.pause(); }
+  function resumeClocks() { if (run && run.clock) run.clock.resume(); if (exam && exam.resume) exam.resume(); }
+
+  /** @param {any} q @param {any} S @returns {string} the announcement */
+  function fedSays(q, S) {
+    var after = q.rate + q.dRate;
+    if (q.dRate > 0) return '🏛️ ' + S.fed.name + ' raises rates by ' + q.dRate.toFixed(2) + ' to ' + rate(after);
+    if (q.dRate < 0) return '🏛️ ' + S.fed.name + ' cuts rates by ' + Math.abs(q.dRate).toFixed(2) + ' to ' + rate(after);
+    return '🏛️ ' + S.fed.name + ' holds at ' + rate(after);
+  }
+
+  /** @param {any} src the content quarter @returns {string} whether the whisper was right */
+  function whisperVerdict(src) {
+    var did = src.dRate > 0 ? 'hike' : src.dRate < 0 ? 'cut' : 'hold';
+    return did === src.signal.lean ? 'The whisper was right.' : 'The whisper was wrong.';
+  }
+
+  /* ===== QUARTER LOOP ===== */
+
+  /** @param {any} S @param {number} i @param {number} token */
+  async function playQuarter(S, i, token) {
+    var src = S.quarters[i];
+    var q = { rate: run.rate, dRate: src.dRate, inflation: src.inflation, growth: src.growth, shock: src.shock || null };
+    quarterTag.textContent = quarterLabel(i) + ' · ' + (i + 1) + '/12';
+    newsEl.textContent = src.news;
+    whisperEl.textContent = '🗣 ' + src.signal.text;
+    fedLine.textContent = 'Rate now ' + rate(run.rate) + ' · inflation ' + src.inflation.toFixed(1) + '% · ' + S.fed.name + ' ' + S.fed.style;
+    paintReturns(null);
+    paintBoard(run.state.value);
+    paintTotals(run.state);
+    hintEl.textContent = 'Drag coins between buckets, then lock in — before the Fed speaks';
+    Arcade.sfx.play('card');
+    if (Arcade.voice.enabled) Arcade.say(src.news + '. ' + src.signal.text, { who: 'anchor' });
+    boardLocked = false;
+    lockBtn.disabled = false;
+    run.clock = quarterClock(QUARTER_MS);
+    await run.clock.next();
+    if (!alive(token)) return;
+    boardLocked = true;
+    lockBtn.disabled = true;
+    endDrag();
+
+    // the Fed speaks
+    var result = M.step(run.state, coins, q);
+    var lessonId = M.lessonFor(q, result.returns);
+    var lesson = LESSONS[lessonId] || LESSONS.transmission;
+    var cashReal = M.realReturn(q.rate / 4, q.inflation);
+    var beatCash = result.realPct >= cashReal - 0.01;
+    run.history.push({ q: q, coins: coins.slice(), result: result });
+    run.lessons[lessonId] = true;
+    run.asked += 1;
+    if (beatCash) run.correct += 1;
+    Arcade.track(lesson.ced, lesson.skill, beatCash);
+    fedLine.textContent = fedSays(q, S) + ' · ' + whisperVerdict(src);
+    Arcade.sfx.play(q.dRate > 0 ? 'wrong' : q.dRate < 0 ? 'coin' : 'stamp');
+    if (Arcade.voice.enabled) Arcade.say(fedSays(q, S).replace('🏛️ ', ''), { who: 'chair' });
+    await wait(450);
+    if (!alive(token)) return;
+    paintReturns(result.returns);
+    run.state = { value: result.value, priceLevel: result.priceLevel, cdRate: result.cdRate };
+    run.rate = Math.round((run.rate + q.dRate) * 100) / 100;
+    paintBoard(run.state.value);
+    paintTotals(run.state);
+    Arcade.sfx.play(result.realPct >= 0 ? 'correct' : 'wrong');
+    var head = (result.nominalPct >= 0 ? '▲ ' : '▼ ') + pct(result.nominalPct) + ' nominal · ' + pct(result.realPct) + ' real' + (q.shock ? ' · ' + shockName(q.shock) : '');
+    paintSheet(result.realPct >= 0 ? 'correct' : 'wrong', head, lesson.why, false);
+    await readBeat(REVEAL_MS);
+    if (!alive(token)) return;
+    hideSheet();
+  }
+
+  /** @param {string} shock @returns {string} */
+  function shockName(shock) {
+    return { crash: 'stock crash', rally: 'stock rally', flight: 'flight to safety', housingBust: 'housing bust', housingBoom: 'housing boom' }[shock] || shock;
+  }
+
+  /* ===== EXIT EXAM ===== */
+
+  /** Three items from the lessons the run taught (or any, for a replayed exam). @param {Object<string, boolean>|null} lessons @returns {any[]} */
+  function pickExam(lessons) {
+    var pool = EXAM_ITEMS.filter(function (item) { return !lessons || item.lessons.some(function (l) { return lessons[l]; }); });
+    if (pool.length < 3) pool = EXAM_ITEMS.slice();
+    var out = [];
+    while (out.length < 3 && pool.length) { var k = Math.floor(Math.random() * pool.length); out.push(pool.splice(k, 1)[0]); }
+    return out;
+  }
+
+  /** @param {any} q @param {number} index @param {number} total @param {number} token @returns {Promise<boolean>} */
+  async function askQuestion(q, index, total, token) {
+    examCountEl.textContent = (index + 1) + '/' + total;
+    examStemEl.textContent = q.stem;
+    examChoicesEl.textContent = '';
+    var buttons = q.choices.map(function (text, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-block choice';
+      b.textContent = KEYS.charAt(i) + '. ' + text;
+      examChoicesEl.appendChild(b);
+      return b;
+    });
+    var picked = await new Promise(function (resolve) {
+      var settled = false;
+      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { warnAt: WARN_MS, onEnd: function () { finish(-1); } });
+      function finish(i) { if (settled) return; settled = true; timer.stop(); resolve(i); }
+      buttons.forEach(function (b, i) { b.addEventListener('click', function () { finish(i); }); });
+      exam.stop = function () { finish(-1); };
+      exam.pause = function () { timer.pause(); };
+      exam.resume = function () { if (!settled) timer.resume(); };
+      timer.start();
+    });
+    if (!examAlive(token)) return false;
+    var ok = picked === q.answer;
+    buttons.forEach(function (b, i) { b.classList.add('marked'); if (i === q.answer) b.classList.add('right'); else if (i === picked) b.classList.add('wrong'); });
+    Arcade.sfx.play(ok ? 'correct' : 'wrong');
+    Arcade.track(q.ced, q.skill, ok);
+    await sheetAsk(ok ? '✓ Correct' : '✗ ' + KEYS.charAt(q.answer) + ' is the answer', q.why, 'Next', ok ? 'correct' : 'wrong');
+    if (!examAlive(token)) return ok;
+    hideSheet();
+    return ok;
+  }
+
+  /** @param {number} n @param {Object<string, boolean>|null} lessons */
+  function startExam(n, lessons) {
+    var S = scenarioOf(n);
+    if (!S) return;
+    abortRun();
+    show('exam');
+    runExam(S, pickExam(lessons)).catch(function () { Arcade.toast('Something went wrong — back to the runs'); goSelect(); });
+  }
+
+  /** @param {any} S @param {any[]} items */
+  async function runExam(S, items) {
+    examToken += 1;
+    var token = examToken;
+    exam = { S: S, stop: null };
+    examSubEl.textContent = 'Run ' + S.n + ' · ' + S.name;
+    hideSheet();
+    var right = 0;
+    for (var i = 0; i < items.length; i += 1) {
+      var ok = await askQuestion(items[i], i, items.length, token);
+      if (!examAlive(token)) return;
+      if (ok) right += 1;
+    }
+    examToken += 1;
+    showExamResult(S, right, items.length);
+  }
+
+  /** @param {any} S @param {number} right @param {number} total */
+  function showExamResult(S, right, total) {
+    var rec = saveExam(S.n, right, total);
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'EXIT EXAM', sub: 'Exit Exam: ' + right + '/' + total,
+      score: Math.round(rec.best || 0), accuracy: rec.acc || 0,
+      medal: rec.medal, stamp: rec.stamp || 1,
+      ribbon: rec.examPerfect ? 'Exam Ready' : '',
+      stats: [{ label: 'Run ' + S.n, value: S.name }, { label: 'Best exam', value: rec.exam.right + '/' + rec.exam.total }],
+      note: rec.medal === 'gold' ? '' : 'Gold needs a 5 on the run and 2 of 3 here.',
+      buttons: [
+        { label: 'Runs', primary: true, onClick: goSelect },
+        { label: 'Run it again', onClick: function () { startExam(S.n, null); } },
+        ARCADE_BUTTON
+      ]
+    });
+    Arcade.focusScreen(screens.end);
+    if (right === total) Arcade.confetti();
+  }
+
+  /* ===== THE RUN ===== */
+
+  /** @param {number} n */
+  function startRun(n) {
+    var S = scenarioOf(n);
+    if (!S) return;
+    abortRun();
+    if (!howtoSeen(n)) { openHowto(n, function () { markHowtoSeen(n); beginRun(S); }, goSelect); return; }
+    beginRun(S);
+  }
+
+  /** @param {any} S */
+  function beginRun(S) {
+    show('play');
+    playRun(S).catch(function () { Arcade.toast('Something went wrong — back to the runs'); goSelect(); });
+  }
+
+  /** @param {any} S */
+  async function playRun(S) {
+    runToken += 1;
+    var token = runToken;
+    coins = [10, 0, 0, 0, 0];
+    run = { S: S, state: M.initial(), rate: S.rate0, history: [], lessons: {}, asked: 0, correct: 0, clock: null };
+    buildBoard();
+    buildKbdRow();
+    hideSheet();
+    for (var i = 0; i < S.quarters.length; i += 1) {
+      await playQuarter(S, i, token);
+      if (!alive(token)) return;
+    }
+    showEnd(S);
+  }
+
+  /* ===== END SCREENS ===== */
+
+  function goHome() { window.location.href = '../index.html'; }
+  var ARCADE_BUTTON = { label: 'Arcade', onClick: goHome };
+
+  /** @param {any} panel @param {any} before */
+  function showTitle(panel, before) {
+    if (!panel) return;
+    var after = Arcade.titleFor();
+    var rose = after.rank > before.rank;
+    var line = fill('title-chip' + (rose ? ' up' : ''), 'Title: ' + after.name + (rose ? ' · 🎉 New title!' : ''));
+    var head = panel.querySelector('.end-head');
+    head.parentNode.insertBefore(line, head.nextSibling);
+    if (rose) Arcade.sfx.play('coin');
+  }
+
+  /** @param {any} panel @param {string[]} earned */
+  function showBadges(panel, earned) {
+    if (!panel || !earned.length) return;
+    var row = fill('inv-badges', '');
+    earned.forEach(function (b) { if (BADGES[b]) row.appendChild(chip('ribbon', BADGES[b].emoji + ' ' + BADGES[b].name)); });
+    panel.insertBefore(row, panel.lastElementChild);
+  }
+
+  /** @param {any} S */
+  function showEnd(S) {
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    var realValue = run.state.value / run.state.priceLevel;
+    var realPct = (realValue / M.START_VALUE - 1) * 100;
+    var par = M.benchmark(S);
+    var stampNow = M.stamp(realPct, par);
+    var earned = M.badges(S, run.history, realPct);
+    var acc = run.asked ? run.correct / run.asked : 0;
+    var beforeTitle = Arcade.titleFor();
+    saveProgress(S.n, { realValue: realValue, realPct: realPct, stamp: stampNow, acc: acc, badges: earned });
+    Arcade.saveBest('investor', { score: Math.round(realValue), initials: Arcade.initials(), level: S.n });
+    var saved = loadProgress();
+    var rec = saved.levels[String(S.n)] || {};
+    var medal = stampNow >= 5 && rec.exam && rec.exam.right >= 2 ? 'gold' : stampNow >= 4 ? 'silver' : stampNow >= 3 ? 'bronze' : null;
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: realPct >= 0 ? 'TWELVE QUARTERS DONE' : 'TWELVE QUARTERS · POORER', sub: 'Run ' + S.n + ' · ' + S.name + ' · real ' + pct(realPct),
+      tone: stampNow >= 3 ? undefined : 'fail',
+      score: Math.round(realValue), accuracy: acc, stamp: stampNow, medal: medal,
+      stats: [
+        { label: 'Nominal ' + money(run.state.value), value: 'prices ' + pct((run.state.priceLevel - 1) * 100) },
+        { label: 'Do-nothing portfolio', value: pct(par) + ' real' }
+      ],
+      note: EXAM_FRAME + (saved.unlocked > S.n ? '' : ' · A 3 unlocks the next run.'),
+      buttons: [
+        { label: 'Exit Exam →', primary: true, variant: 'gold', onClick: function () { startExam(S.n, run.lessons); } },
+        { label: 'Runs', onClick: goSelect },
+        { label: 'Replay', onClick: function () { startRun(S.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    showTitle(panel, beforeTitle);
+    showBadges(panel, earned);
+    Arcade.focusScreen(screens.end);
+    if (stampNow >= 3) Arcade.confetti();
+  }
+
+  function goSelect() {
+    abortRun();
+    sheetBtn.textContent = 'Got it';
+    paintSelect();
+    show('select');
+  }
+
+  /* ===== HOW TO PLAY ===== */
+
+  /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {(() => void)|null} */ var howtoBackTo = null;
+
+  /** @param {number} n @returns {boolean} */
+  function howtoSeen(n) {
+    var saved = Arcade.store.get('arcade.investor.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen : [];
+    return seen.indexOf(n) >= 0;
+  }
+  /** @param {number} n */
+  function markHowtoSeen(n) {
+    var saved = Arcade.store.get('arcade.investor.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen.filter(function (v) { return typeof v === 'number'; }) : [];
+    if (seen.indexOf(n) < 0) seen.push(n);
+    Arcade.store.set('arcade.investor.howto', { seen: seen });
+  }
+
+  /** @param {number} n */
+  function paintHowto(n) {
+    var S = scenarioOf(n);
+    howtoTitle.textContent = S ? 'How to play · ' + S.name : 'How to play';
+    howtoCards.textContent = '';
+    var cards = HOWTO.slice();
+    if (S) cards.unshift({ emoji: '\u{1F3DB}', head: 'Run ' + S.n + ' · ' + S.name, body: S.blurb + '. ' + S.fed.name + ' ' + S.fed.style + '. Rates start at ' + rate(S.rate0) + '.' });
+    cards.push({ emoji: '\u{1F4CB}', head: 'The five rules', body: ASSETS.map(function (a) { return a.name + ': ' + a.rule; }).join(' ') });
+    cards.forEach(function (card) {
+      var panel = fill('panel howto-card', '');
+      var emoji = fill('howto-emoji', card.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      panel.appendChild(emoji);
+      var body = fill('', '');
+      body.appendChild(fill('howto-head', card.head));
+      body.appendChild(fill('howto-body', card.body));
+      panel.appendChild(body);
+      howtoCards.appendChild(panel);
+    });
+  }
+
+  /** @param {number} n @param {() => void} after @param {() => void} [back] */
+  function openHowto(n, after, back) { howtoAfter = after; howtoBackTo = back || after; paintHowto(n); show('howto'); }
+  /** @param {boolean} [backwards] */
+  function closeHowto(backwards) { var go = backwards === true ? howtoBackTo : howtoAfter; howtoAfter = null; howtoBackTo = null; if (go) go(); }
+
+  function paintIntro() {
+    introEl.textContent = '';
+    var title = fill('intro-title', 'What is this game?');
+    title.id = 'introTitle';
+    introEl.appendChild(title);
+    INTRO.forEach(function (line) {
+      var row = fill('intro-line', '');
+      var emoji = fill('intro-emoji', line.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      row.appendChild(fill('intro-text', line.text));
+      introEl.appendChild(row);
+    });
+  }
+
+  /* ===== BOOT ===== */
+
+  Arcade.bigType(Arcade.store.get('arcade.bigType', false));
+  Arcade.sfx.bindMuteButton(byId('muteBtn'));
+  Arcade.voice.bindButton(byId('voiceBtn'));
+  sheetBtn.style.display = 'none';
+  lockBtn.disabled = true;
+  paintIntro();
+
+  initialsBtn.textContent = Arcade.initials();
+  initialsBtn.addEventListener('click', function () {
+    if (!initialsPanel.hidden) { initialsPanel.hidden = true; return; }
+    initialsPanel.hidden = false;
+    Arcade.initialsEntry(initialsMount, { onDone: function (value) { initialsBtn.textContent = value; initialsPanel.hidden = true; } });
+  });
+
+  byId('examPace').textContent = TIMING.examSeconds + ' s';
+  byId('playBtn').addEventListener('click', goSelect);
+  byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
+  byId('playBack').addEventListener('click', goSelect);
+  byId('examBack').addEventListener('click', goSelect);
+  byId('howtoBack').addEventListener('click', function () { closeHowto(true); });
+  byId('howtoGo').addEventListener('click', function () { closeHowto(false); });
+  byId('selectHowto').addEventListener('click', function () { openHowto(0, function () { show('select'); }); });
+  byId('playHowto').addEventListener('click', function () {
+    if (!run) return;
+    pauseClocks();
+    openHowto(run.S.n, function () { show('play'); resumeClocks(); });
+  });
+
+  paintSelect();
+  var deepLink = parseInt(String(Arcade.qs('level', '')), 10);
+  if (Number.isFinite(deepLink)) {
+    if (playable(deepLink)) startRun(deepLink);
+    else { show('select'); Arcade.toast(scenarioOf(deepLink) ? 'Run ' + deepLink + ' is still locked' : 'No run ' + deepLink); }
+  }
+  booted = true;
+}());
+</script>
+
+</body>
+</html>
