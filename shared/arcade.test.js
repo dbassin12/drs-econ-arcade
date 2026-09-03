@@ -818,3 +818,56 @@ test('titlePoints counts a medal on any of the seven levels', () => {
   const late = progressOf({ medals: [null, null, null, 'bronze', 'silver', 'bronze'] });
   assert.equal(Arcade.titleFor(late).name, 'Analyst', 'a bronze, a silver and a bronze on Levels 4–6 are 4 points');
 });
+
+/* ===== the best hook and the career record — what the class board is built on ===== */
+
+test('onBest fires once per new best with the stored record, never on a lower score', () => {
+  Arcade.store.remove('arcade.spec-hook.best');
+  /** @type {any[]} */
+  const seen = [];
+  const off = Arcade.onBest((game, rec) => seen.push({ game, score: rec.score, initials: rec.initials, level: rec.level }));
+  assert.equal(Arcade.saveBest('spec-hook', { score: 100, initials: 'abc', level: 3 }), true);
+  assert.equal(Arcade.saveBest('spec-hook', { score: 90, initials: 'abc', level: 3 }), false);
+  assert.equal(Arcade.saveBest('spec-hook', { score: 120, initials: 'abc', level: 4 }), true);
+  assert.deepEqual(seen, [
+    { game: 'spec-hook', score: 100, initials: 'ABC', level: 3 },
+    { game: 'spec-hook', score: 120, initials: 'ABC', level: 4 }
+  ]);
+  off();
+  assert.equal(Arcade.saveBest('spec-hook', { score: 130, initials: 'abc' }), true);
+  assert.equal(seen.length, 2, 'an unsubscribed listener hears nothing more');
+  Arcade.store.remove('arcade.spec-hook.best');
+});
+
+test('a listener that throws does not cost the student the best', () => {
+  Arcade.store.remove('arcade.spec-hook.best');
+  const off = Arcade.onBest(() => { throw new Error('boom'); });
+  assert.equal(Arcade.saveBest('spec-hook', { score: 5, initials: 'DSB' }), true);
+  assert.equal(Arcade.bests('spec-hook').score, 5);
+  off();
+  Arcade.store.remove('arcade.spec-hook.best');
+});
+
+test('career sums the same points the title ladder reads and names the rung', () => {
+  const c = Arcade.career({ shift: { levels: { 1: { medal: 'gold', examPerfect: true } } }, fed: { score: 3 }, games: [] });
+  assert.equal(c.points, 8, 'gold 3 + a perfect sprint 2 + a Fed stamp of 3');
+  assert.equal(c.name, 'Analyst');
+  assert.equal(c.rank, 1);
+  assert.equal(c.emoji, '📈');
+  assert.deepEqual(Arcade.career({ shift: null, fed: null, games: [] }), { points: 0, rank: 0, name: 'Intern', emoji: '🧾' });
+  assert.equal(Arcade.titlePoints({ shift: null, fed: { score: 5 }, games: [] }), 5, 'titlePoints is exported for the board');
+});
+
+
+/* ===== the game switcher's list ===== */
+
+test('the switcher lists the seven games, each with a page that exists', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  assert.deepEqual(Arcade.GAME_LIST.map((g) => g.id), ['shift', 'fed', 'sort', 'calc', 'doctor', 'investor', 'crisis']);
+  Arcade.GAME_LIST.forEach((g) => {
+    assert.ok(g.name && g.emoji, g.id + ' has a name and an emoji');
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'games', g.page)), g.page + ' exists');
+  });
+  Arcade.mountSwitcher({ current: 'shift' });   // a no-op with no document
+});

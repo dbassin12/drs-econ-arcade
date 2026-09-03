@@ -64,6 +64,19 @@ var Arcade = (function () {
     return b && typeof b === 'object' && typeof b.score === 'number' ? b : null;
   }
 
+  /** Told about every new best once it is stored. The class board (shared/leaderboard.js) posts
+   *  from here, which is how a game can join the board without a line of network code of its own.
+   *  @type {((game:string, rec:{score:number, initials:string, date:string, level?:number}) => void)[]} */
+  var bestListeners = [];
+
+  /** @param {(game:string, rec:{score:number, initials:string, date:string, level?:number}) => void} fn
+   *  @returns {() => void} unsubscribes */
+  function onBest(fn) {
+    if (typeof fn !== 'function') return function () { };
+    bestListeners.push(fn);
+    return function () { var i = bestListeners.indexOf(fn); if (i >= 0) bestListeners.splice(i, 1); };
+  }
+
   /** @param {string} game @param {{score:number, initials?:string, level?:number}} entry
    *  @returns {boolean} true when this run beat the stored best */
   function saveBest(game, entry) {
@@ -74,7 +87,10 @@ var Arcade = (function () {
     /** @type {{score:number, initials:string, date:string, level?:number}} */
     var rec = { score: score, initials: normalizeInitials(entry.initials || initials()), date: new Date().toISOString() };
     if (entry.level !== undefined && entry.level !== null) rec.level = entry.level;
-    return store.set('arcade.' + game + '.best', rec);
+    var ok = store.set('arcade.' + game + '.best', rec);
+    // The record is already stored: a listener that throws costs the student nothing.
+    if (ok) bestListeners.slice().forEach(function (fn) { try { fn(game, rec); } catch (err) { /* see above */ } });
+    return ok;
   }
 
   /** @param {string} name @param {*} [fallback] @returns {*} query-string value, or fallback off-browser */
@@ -1124,11 +1140,25 @@ var Arcade = (function () {
   /** The rank the player has earned across every game.
    *  @param {TitleProgress} [progress] used verbatim when given; otherwise read from the store
    *  @returns {{rank:number, name:string, emoji:string, next:{name:string, need:number}|null}} */
-  function titleFor(progress) {
-    var p = progress || {
+  /** Every record the ladder reads, as it stands in the store. @returns {TitleProgress} */
+  function storedProgress() {
+    return {
       shift: store.get('arcade.shift.progress', null), fed: bests('fed'),
       games: TITLE_GAMES.map(function (id) { return store.get('arcade.' + id + '.progress', null); })
     };
+  }
+
+  /** The career as one record — the points and the rung they buy — which is what a class board
+   *  ranks players by. @param {TitleProgress} [progress] used verbatim when given, else the store
+   *  @returns {{points:number, rank:number, name:string, emoji:string}} */
+  function career(progress) {
+    var p = progress || storedProgress();
+    var t = titleFor(p);
+    return { points: titlePoints(p), rank: t.rank, name: t.name, emoji: t.emoji };
+  }
+
+  function titleFor(progress) {
+    var p = progress || storedProgress();
     var points = titlePoints(p);
     var rank = 0;
     for (var i = 1; i < TITLES.length; i += 1) if (points >= TITLES[i].at) rank = i;
@@ -1287,6 +1317,99 @@ var Arcade = (function () {
     bigType();
   }
 
+  /* ===== GAME SWITCHER — the sheet behind every 🎮: the hub and the seven games, one tap away =====
+     A game page mounts it once with its own id; every .switch-btn on the page opens the same sheet.
+     The current game is a button that only closes the sheet, so it cannot reload a run by accident. */
+
+  /** The seven games as the switcher lists them: id, name, emoji, page (inside games/). */
+  var GAME_LIST = [
+    { id: 'shift', name: 'Shift Happens', emoji: '🧠', page: 'shift-happens.html' },
+    { id: 'fed', name: 'Fed Chair', emoji: '🏦', page: 'fed-chair.html' },
+    { id: 'sort', name: 'Sort Circuit', emoji: '🔀', page: 'sort-circuit.html' },
+    { id: 'calc', name: 'Calc Blitz', emoji: '🧮', page: 'calc-blitz.html' },
+    { id: 'doctor', name: 'Graph Doctor', emoji: '🩺', page: 'graph-doctor.html' },
+    { id: 'investor', name: 'The Investor', emoji: '📈', page: 'investor.html' },
+    { id: 'crisis', name: 'Crisis Country', emoji: '🌍', page: 'crisis-country.html' }
+  ];
+
+  /** @type {any} */ var switcherEl = null;
+  /** @type {(() => void)|null} */ var releaseSwitcher = null;
+  var switcherSeq = 0;
+
+  /** @param {string} cls @param {string} text @returns {any} a span */
+  function span(cls, text) {
+    var el = document.createElement('span');
+    el.className = cls;
+    el.textContent = text;
+    return el;
+  }
+
+  function closeSwitcher() {
+    if (!switcherEl || switcherEl.hidden) return;
+    switcherSeq += 1;
+    var seq = switcherSeq;
+    if (releaseSwitcher) { var release = releaseSwitcher; releaseSwitcher = null; release(); }
+    switcherEl.classList.remove('open');
+    // the slide-out first, then off the page; reduced motion still runs a 1 ms transition
+    setTimeout(function () { if (seq === switcherSeq) switcherEl.hidden = true; }, 300);
+  }
+
+  function openSwitcher() {
+    if (!switcherEl) return;
+    switcherSeq += 1;
+    switcherEl.hidden = false;
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function () { switcherEl.classList.add('open'); });
+    else switcherEl.classList.add('open');
+    releaseSwitcher = trapFocus(switcherEl, closeSwitcher);
+  }
+
+  /** @param {{current?:string, base?:string, hub?:string}} o @returns {any} the sheet, appended to body */
+  function buildSwitcher(o) {
+    var base = o.base === undefined ? '' : o.base;            // '' from a game page; 'games/' from the hub
+    var hub = o.hub === undefined ? '../index.html' : o.hub;
+    var sheet = make('sheet switcher');
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-label', 'Switch game');
+    sheet.hidden = true;
+    var stack = make('stack');
+    stack.appendChild(make('sheet-msg', 'Switch game'));
+    var grid = make('switch-grid');
+    var items = [{ id: 'hub', name: 'Arcade hub', emoji: '🏠', href: hub }].concat(GAME_LIST.map(function (g) {
+      return { id: g.id, name: g.name, emoji: g.emoji, href: base + g.page };
+    }));
+    items.forEach(function (it) {
+      var current = it.id === o.current;
+      var node = document.createElement(current ? 'button' : 'a');
+      node.className = 'btn btn-ghost switch-item' + (current ? ' current' : '');
+      if (current) {
+        node.type = 'button';
+        node.setAttribute('aria-current', 'page');
+        node.addEventListener('click', closeSwitcher);
+      } else {
+        node.href = it.href;
+      }
+      var emoji = span('switch-emoji', it.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      node.appendChild(emoji);
+      node.appendChild(span('switch-name', it.name));
+      grid.appendChild(node);
+    });
+    stack.appendChild(grid);
+    stack.appendChild(button('Close', 'btn btn-ghost btn-block', closeSwitcher));
+    sheet.appendChild(stack);
+    document.body.appendChild(sheet);
+    return sheet;
+  }
+
+  /** Build the sheet once and bind every .switch-btn on the page to it.
+   *  @param {{current?:string, base?:string, hub?:string}} [opts] `current` is this page's game id */
+  function mountSwitcher(opts) {
+    if (typeof document === 'undefined' || !document.body) return;
+    if (!switcherEl) switcherEl = buildSwitcher(opts || {});
+    var btns = document.querySelectorAll('.switch-btn');
+    for (var i = 0; i < btns.length; i += 1) btns[i].addEventListener('click', openSwitcher);
+  }
+
   /** @param {string} msg @param {number} [ms] default 1800 @returns {any} the toast, or null off-browser */
   function toast(msg, ms) {
     if (typeof document === 'undefined' || !document.body) return null;
@@ -1411,8 +1534,10 @@ var Arcade = (function () {
     guardTaps: guardTaps, guarded: guarded, ignoringSkipTap: ignoringSkipTap,
     focusScreen: focusScreen, trapFocus: trapFocus,
     hearts: hearts, streak: streak, timerBar: timerBar, endScreen: endScreen,
-    medalFor: medalFor, safeMedal: safeMedal, stampFor: stampFor, titleFor: titleFor, initialsEntry: initialsEntry,
-    bigType: bigType, mountBigTypeButton: mountBigTypeButton, toast: toast
+    medalFor: medalFor, safeMedal: safeMedal, stampFor: stampFor, titleFor: titleFor, titlePoints: titlePoints, career: career,
+    onBest: onBest, initialsEntry: initialsEntry,
+    bigType: bigType, mountBigTypeButton: mountBigTypeButton, toast: toast,
+    GAME_LIST: GAME_LIST, mountSwitcher: mountSwitcher
   };
 }());
 

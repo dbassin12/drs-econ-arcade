@@ -4,10 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crisis Country — DRS Econ Arcade</title>
-<!-- The arcade is static pages that talk to nobody. The policy says so out loud: nothing loads
-     that is not this origin's own script and stylesheet, the two Google Fonts hosts, or a data:
-     favicon, and connect-src 'none' means no page here can ever send a student's play anywhere. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<!-- The arcade is static pages that talk to almost nobody. The policy says so out loud: nothing
+     loads that is not this origin's own scripts and stylesheet, the two Google Fonts hosts, or a
+     data: favicon. connect-src names the one place a page may ever send anything: the class
+     leaderboard's Apps Script endpoint set in shared/leaderboard.js, which receives initials, a
+     game, a level, a score and title points on a new personal best, and nothing else. Inline game
+     scripts are why 'unsafe-inline' is in script-src; frame-ancestors is ignored in a meta tag, so
+     the frame-buster below and vercel.json's real headers cover clickjacking. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -187,6 +191,7 @@ const INTRO = [
         <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
         <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
         <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+        <button type="button" class="btn btn-ghost switch-btn" aria-label="Switch game">🎮</button>
       </div>
       <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
       <button type="button" class="btn btn-block" id="playBtn">Play</button>
@@ -201,7 +206,7 @@ const INTRO = [
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
         <h2 class="panel-title" tabindex="-1" data-focus>Crises</h2>
-        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
         <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
       </header>
       <div class="stack" id="crisisList"></div>
@@ -214,7 +219,7 @@ const INTRO = [
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
         <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
-        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
       </header>
       <div class="stack" id="howtoCards"></div>
       <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
@@ -252,7 +257,7 @@ const INTRO = [
         <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the crisis list">←</button>
         <h2 class="panel-title" tabindex="-1" data-focus>Exit Exam</h2>
         <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
-        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
       </header>
       <div class="timer-bar" id="examTimer"></div>
       <div class="row">
@@ -278,6 +283,7 @@ const INTRO = [
 </div>
 
 <script src="../shared/arcade.js"></script>
+<script src="../shared/leaderboard.js"></script>
 <script src="crisis.model.js"></script>
 
 <script>
@@ -992,6 +998,7 @@ const INTRO = [
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
+  Arcade.mountSwitcher({ current: 'crisis' });
   sheetBtn.style.display = 'none';
   paintIntro();
 

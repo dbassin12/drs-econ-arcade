@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DRS Econ Arcade</title>
-<!-- The arcade is three static pages that talk to nobody. The policy says so out loud:
-     nothing loads that is not this origin's own script and stylesheet, the two Google Fonts
-     hosts, or a data: favicon, and connect-src 'none' means no page here can ever send a
-     student's play anywhere. Inline game scripts are why 'unsafe-inline' is in script-src.
-     frame-ancestors is ignored in a meta tag, so the frame-buster below and vercel.json's
-     real headers cover clickjacking. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<!-- The arcade is static pages that talk to almost nobody. The policy says so out loud: nothing
+     loads that is not this origin's own scripts and stylesheet, the two Google Fonts hosts, or a
+     data: favicon. connect-src names the one place a page may ever send anything: the class
+     leaderboard's Apps Script endpoint set in shared/leaderboard.js, which receives initials, a
+     game, a level, a score and title points on a new personal best, and nothing else. Inline game
+     scripts are why 'unsafe-inline' is in script-src; frame-ancestors is ignored in a meta tag, so
+     the frame-buster below and vercel.json's real headers cover clickjacking. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -142,14 +143,20 @@
     <div class="stack" id="readinessBody">Play a level to see your heat map</div>
   </section>
 
-  <!-- Arcade Night. The CSS shows it only under html.big-type; the podium rows are rendered always. -->
-  <section class="panel podium stack" id="podium">
-    <h2 class="panel-title">Arcade Night</h2>
-    <div class="muted">Top scores on this device.</div>
-    <div class="stack" id="podiumBody"></div>
+  <!-- The class board: every student's bests, read from the class endpoint named in
+       shared/leaderboard.js, or this device's bests until a class is connected. In Arcade Night
+       (big type) it leads the column and re-reads itself while the projector is up. -->
+  <section class="panel board stack" id="board" aria-labelledby="boardTitle">
+    <div class="row board-head">
+      <h2 class="panel-title" id="boardTitle">Class Board</h2>
+      <button type="button" class="btn btn-ghost btn-sm board-refresh" id="boardRefresh" aria-label="Refresh the class board" hidden>↻</button>
+    </div>
+    <div class="muted board-note" id="boardNote" role="status">This device’s bests.</div>
+    <div class="row board-tabs" id="boardTabs" role="tablist" aria-label="Which board" hidden></div>
+    <div class="stack board-rows" id="boardBody" role="list"></div>
   </section>
 
-  <footer class="muted">No accounts. Scores live on this device.</footer>
+  <footer class="muted" id="footNote">No accounts. Scores live on this device.</footer>
 
 </main>
 
@@ -168,10 +175,11 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
 </script>
 
 <script src="shared/arcade.js"></script>
+<script src="shared/leaderboard.js"></script>
 <script>
 /* ================================================================================
    THE HUB — the one page students bookmark. Sections: elements · game cards ·
-   readiness · Arcade Night · controls · boot.
+   readiness · class board · controls · boot.
    Every figure here is read back out of localStorage through Arcade: the bests and
    medals the games wrote, and arcade.mastery, which readiness() turns into the heat
    map, the weakest topic, the score estimate, the next level to play and the code
@@ -180,7 +188,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
    ================================================================================ */
 (function () {
   'use strict';
-  if (typeof Arcade === 'undefined') return;
+  if (typeof Arcade === 'undefined' || typeof Leaderboard === 'undefined') return;
 
   var GOOD = 0.80;                    // the heat map's three bands
   var WARN = 0.60;
@@ -237,7 +245,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
   var bestInvestor = byId('bestInvestor'), medalsInvestor = byId('medalsInvestor');
   var bestCrisis = byId('bestCrisis'), medalsCrisis = byId('medalsCrisis');
   var titleChip = byId('titleChip');
-  var readinessBody = byId('readinessBody'), podiumBody = byId('podiumBody');
+  var readinessBody = byId('readinessBody');
 
   /* ===== GAME CARDS — the bests and medals the games left on this device ===== */
 
@@ -475,47 +483,143 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
     readinessBody.appendChild(out);
   }
 
-  /* ===== ARCADE NIGHT — the projector podium: this device's bests, in giant type ===== */
+  /* ===== CLASS BOARD — every student's bests, or this device's until a class is connected =====
+     shared/leaderboard.js reads the board; this paints it. `board` is the last successful read,
+     null when there is none to show, and `boardTab` the game on screen. In Arcade Night the panel
+     re-reads itself every refreshSeconds, so the projector moves as students post. */
 
-  /** How each game's best reads on the podium. Scores are not comparable across games, so the
-   *  rows are ordered by when they were set, newest first: the projector shows tonight's bests. */
-  var PODIUM_GAMES = [
-    { id: 'shift', name: 'Shift Happens', unit: 'L', value: function (b) { return commas(b.score); } },
-    { id: 'fed', name: 'Fed Chair', unit: '', value: function (b) { return 'Stamp ' + b.score; } },
-    { id: 'sort', name: 'Sort Circuit', unit: 'Deck ', value: function (b) { return commas(b.score); } },
-    { id: 'calc', name: 'Calc Blitz', unit: 'Ladder ', value: function (b) { return commas(b.score); } },
-    { id: 'doctor', name: 'Graph Doctor', unit: 'Ward ', value: function (b) { return commas(b.score); } },
-    { id: 'investor', name: 'The Investor', unit: 'Run ', value: function (b) { return 'Real $' + commas(b.score); } },
-    { id: 'crisis', name: 'Crisis Country', unit: 'Crisis ', value: function (b) { return b.score + ' pts'; } }
-  ];
+  var boardNote = byId('boardNote'), boardTabs = byId('boardTabs'), boardBody = byId('boardBody');
+  var boardRefresh = byId('boardRefresh'), footNote = byId('footNote');
+  /** @type {any} */ var board = null;
+  var boardTab = 'overall';
+  var boardTimer = 0;
+  var boardBusy = false;
+  var TABS = [{ id: 'overall', label: 'Overall' }].concat(Leaderboard.GAME_IDS.map(function (id) {
+    return { id: id, label: Leaderboard.GAMES[id].short };
+  }));
 
-  /** This device's bests as podium rows, newest first.
-   *  @returns {{when:number, initials:string, value:string, game:string}[]} */
-  function podiumRows() {
-    var rows = [];
-    PODIUM_GAMES.forEach(function (g) {
-      var b = Arcade.bests(g.id);
-      if (!b) return;
-      var when = Date.parse(b.date || '') || 0;
-      rows.push({ when: when, initials: b.initials, value: g.value(b), game: g.name + (b.level && g.unit ? ' · ' + g.unit + b.level : '') });
-    });
-    rows.sort(function (a, b) { return b.when - a.when; });
-    return rows;
+  /** @returns {string} the tab the student last opened, while it is still a tab */
+  function savedTab() {
+    var t = Arcade.store.get('arcade.board.tab', 'overall');
+    return TABS.some(function (x) { return x.id === t; }) ? t : 'overall';
   }
 
-  function renderPodium() {
-    var rows = podiumRows();
-    podiumBody.textContent = '';
-    for (var i = 0; i < 3; i += 1) {
-      var row = fill('podium-row');
-      var who = fill('podium-who');
-      who.appendChild(fill('podium-initials mono', rows[i] ? rows[i].initials : '—'));
-      who.appendChild(fill('podium-game', rows[i] ? rows[i].game : 'No score yet'));
-      row.appendChild(chip('podium-rank', RANKS[i]));
-      row.appendChild(who);
-      row.appendChild(chip('podium-score mono', rows[i] ? rows[i].value : '—'));
-      podiumBody.appendChild(row);
+  function paintTabs() {
+    boardTabs.textContent = '';
+    TABS.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-sm board-tab';
+      b.textContent = t.label;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', t.id === boardTab ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        boardTab = t.id;
+        Arcade.store.set('arcade.board.tab', t.id);
+        paintTabs();
+        paintBoard();
+      });
+      boardTabs.appendChild(b);
+    });
+  }
+
+  /** @param {{rank:number, initials:string, value:string, sub:string, you:boolean}} r @returns {any} */
+  function boardRow(r) {
+    var row = fill('board-row' + (r.you ? ' you' : ''));
+    row.setAttribute('role', 'listitem');
+    if (r.you) row.setAttribute('aria-label', 'You, ' + r.initials + ', rank ' + r.rank + ', ' + r.value);
+    row.appendChild(chip('board-rank mono', r.rank <= 3 ? RANKS[r.rank - 1] : String(r.rank)));
+    var who = fill('board-who');
+    who.appendChild(fill('board-initials mono', r.initials));
+    if (r.sub) who.appendChild(fill('board-sub', r.sub));
+    row.appendChild(who);
+    row.appendChild(chip('board-value mono', r.value));
+    return row;
+  }
+
+  function paintBoard() {
+    boardBody.textContent = '';
+    if (board) {
+      var list = Leaderboard.withYou(Leaderboard.rows(board, boardTab), Arcade.initials(), 10);
+      if (!list.length) {
+        boardBody.appendChild(fill('muted', boardTab === 'overall'
+          ? 'Nobody on the board yet. Set your initials, play a level, and be first.'
+          : 'No one has posted a ' + Leaderboard.GAMES[boardTab].name + ' score yet.'));
+      }
+      list.forEach(function (r) { boardBody.appendChild(boardRow(r)); });
+      return;
     }
+    var rows = Leaderboard.deviceRows();
+    if (!rows.length) { boardBody.appendChild(fill('muted', 'No score on this device yet.')); return; }
+    rows.slice(0, 5).forEach(function (r, i) {
+      boardBody.appendChild(boardRow({ rank: i + 1, initials: r.initials, value: r.value, sub: r.sub, you: false }));
+    });
+  }
+
+  /** @param {number} ms @returns {string} "3:05 PM" */
+  function clockOf(ms) { return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+
+  /** @param {string} state 'off' | 'loading' | 'live' | 'stale' | 'offline' */
+  function paintBoardNote(state) {
+    var when = board ? Date.parse(board.updated || '') : 0;
+    if (state === 'live' && board) {
+      boardNote.textContent = (board.className || 'Class') + ' · '
+        + (board.players === 1 ? '1 player' : (board.players || 0) + ' players') + (when ? ' · read at ' + clockOf(when) : '');
+    } else if (state === 'stale') {
+      boardNote.textContent = 'Can’t reach the class board right now' + (when ? ' · last read at ' + clockOf(when) : '');
+    } else if (state === 'loading') {
+      boardNote.textContent = 'Reading the class board…';
+    } else if (state === 'offline') {
+      boardNote.textContent = 'Can’t reach the class board right now. This device’s bests:';
+    } else {
+      boardNote.textContent = 'This device’s bests. The class board switches on when your teacher connects it.';
+    }
+    footNote.textContent = Leaderboard.configured()
+      ? 'No accounts. Scores live on this device; a new best posts to the class board as initials only.'
+      : 'No accounts. Scores live on this device.';
+  }
+
+  /** Post anything still waiting, read the board, paint it. A read that fails keeps the last
+   *  board on screen rather than dropping the projector back to one device's bests.
+   *  @returns {Promise<void>} */
+  function refreshBoard() {
+    if (!Leaderboard.configured()) {
+      board = null;
+      boardTabs.hidden = true;
+      boardRefresh.hidden = true;
+      paintBoardNote('off');
+      paintBoard();
+      return Promise.resolve();
+    }
+    if (boardBusy) return Promise.resolve();
+    boardBusy = true;
+    boardRefresh.hidden = false;
+    boardRefresh.disabled = true;
+    if (!board) paintBoardNote('loading');
+    return Leaderboard.flush().then(function () { return Leaderboard.load(); }).then(function (b) {
+      boardBusy = false;
+      boardRefresh.disabled = false;
+      if (b) {
+        board = b;
+        boardTab = savedTab();
+        boardTabs.hidden = false;
+        paintTabs();
+        paintBoardNote('live');
+      } else if (board) {
+        paintBoardNote('stale');
+      } else {
+        boardTabs.hidden = true;
+        paintBoardNote('offline');
+      }
+      paintBoard();
+    });
+  }
+
+  /** In Arcade Night the projector re-reads on its own; anywhere else a visit is enough. */
+  function scheduleBoard() {
+    if (boardTimer) { clearInterval(boardTimer); boardTimer = 0; }
+    if (!Leaderboard.configured() || !document.documentElement.classList.contains('big-type')) return;
+    boardTimer = setInterval(function () { if (!document.hidden) refreshBoard(); }, Leaderboard.config().refreshSeconds * 1000);
   }
 
   /* ===== CONTROLS — sound, voice, Arcade Night and the initials chip ===== */
@@ -559,6 +663,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
     Arcade.initialsEntry(initialsMount, {
       onDone: function (value) {
         initialsBtn.textContent = value;
+        paintBoard();                     // the student's own row is the one that lights up
         showInitials(false);
       }
     });
@@ -579,6 +684,10 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
       showInitials(initialsBtn.getAttribute('aria-expanded') !== 'true');
     });
     byId('initialsClose').addEventListener('click', function () { showInitials(false); });
+    boardRefresh.addEventListener('click', function () { refreshBoard(); });
+    // Bound after Arcade's own toggle, so this runs once the big-type class has flipped.
+    byId('bigTypeBtn').addEventListener('click', scheduleBoard);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && boardTimer) refreshBoard(); });
   }
 
   /* ===== BOOT ===== */
@@ -586,7 +695,8 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
   wireControls();
   renderBests();
   renderReadiness();
-  renderPodium();
+  refreshBoard();
+  scheduleBoard();
 
   // A back-gesture out of a game restores this page from the bfcache, which replays no script: the
   // hub would still show the bests, medals, title and heat map it drew before the level was played.
@@ -595,7 +705,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
     if (!ev.persisted) return;
     renderBests();
     renderReadiness();
-    renderPodium();
+    refreshBoard();
   });
 }());
 </script>

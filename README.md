@@ -4,14 +4,15 @@ A hub of browser games for AP Macroeconomics, built by David Bassin for his AP M
 playing on phones, Chromebooks, and home laptops. Every game trains a skill the exam actually
 grades — graph manipulation, cause→effect chains, calculations, and policy judgment — and every
 scored interaction is tagged with its CED topic, so the hub can grow a "My AP Readiness" heat map
-that turns play into a diagnostic. Plain HTML/CSS/JS: no frameworks, no build step, no accounts, no backend. Scores live in
-`localStorage` on the student's own device.
+that turns play into a diagnostic. Plain HTML/CSS/JS: no frameworks, no build step, no accounts. Scores live in
+`localStorage` on the student's own device; the one optional backend is a class leaderboard, a Google Sheet the
+teacher owns that receives initials and scores on every new personal best.
 
 ## File tree
 
 ```
 .
-├── index.html                    # hub: marquee, initials, game cards, AP readiness panel
+├── index.html                    # hub: marquee, initials, game cards, AP readiness panel, class board
 ├── games/
 │   ├── shift-happens.html        # graph surgery under time pressure: seven levels, five markets
 │   ├── fed-chair.html            # you are the Fed chair in 1975, 1980, 2008 or 2021
@@ -36,7 +37,14 @@ that turns play into a diagnostic. Plain HTML/CSS/JS: no frameworks, no build st
 │   ├── arcade.js                 # sound, storage, juice, initials, track()/readiness()
 │   ├── arcade.test.js
 │   ├── graph.js                  # the SVG graph engine — markets are data
-│   └── graph.test.js
+│   ├── graph.test.js
+│   ├── leaderboard.js            # the class board's client: posts every new best, reads the board back
+│   └── leaderboard.test.js
+├── leaderboard/
+│   ├── apps-script.js            # the class board's server: one Google Apps Script web app on one Sheet
+│   ├── apps-script.test.js
+│   ├── fake-gas.js               # the four Google services, stubbed, so the script runs under node
+│   └── SETUP.md                  # how the teacher deploys it
 ├── .gitignore
 ├── vercel.json                   # security headers for the static deploy — no build settings
 ├── CLAUDE.md                     # the build contract
@@ -76,7 +84,7 @@ Then open <http://localhost:5590/>. Use 5591 if 5590 is busy; never port 3000. O
 Tests (Node's built-in runner, no dependencies):
 
 ```sh
-node --test shared/*.test.js games/*.test.js
+node --test shared/*.test.js games/*.test.js leaderboard/*.test.js
 ```
 
 ## Student URL
@@ -89,3 +97,12 @@ republishes in about a minute.
 `npx vercel --prod` from the repo root. Once it is live, the `*.vercel.app` URL goes here. Either URL
 gets pinned in Schoology → Materials plus a QR poster for the board; both work on phones over cellular
 if school Wi-Fi blocks one of them.
+
+## Class leaderboard
+
+Every new personal best a student sets can post to a class board — initials, game, level, score and title
+points, nothing else — and the hub shows the class's bests per game and overall, with the student's own row
+highlighted. The board is a Google Sheet the teacher owns, fronted by the Apps Script in
+`leaderboard/apps-script.js`; `leaderboard/SETUP.md` is the five-minute deployment. Until a URL is set in
+`shared/leaderboard.js`, the panel shows the device's own bests and nothing leaves the page. In Arcade Night
+(the 📺 button) the board leads the page and re-reads itself while the projector is up.
