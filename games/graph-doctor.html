@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph Doctor — DRS Econ Arcade</title>
+<!-- The arcade is static pages that talk to nobody. The policy says so out loud: nothing loads
+     that is not this origin's own script and stylesheet, the two Google Fonts hosts, or a data:
+     favicon, and connect-src 'none' means no page here can ever send a student's play anywhere. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+
+<script>
+/* Nothing here is ever meant to run inside someone else's frame: break out, or go blank. */
+if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
+/* ================================================================================
+   CONTENT — every lesion, ward and exam question in the game, one entry per line.
+   Nothing here is logic; the game reads this and nothing else for its content.
+
+   A lesion is one error planted on a correctly drawn market from shared/graph.js:
+   { id, kind, curve?, axis?, wrong?, why, ced, skill }.  Kinds the game knows how to plant:
+     axisY / axisX  — the axis label reads `wrong`
+     tag            — the curve's label reads `wrong`          missingTag — the curve has no label
+     slope          — the curve is drawn sloping the wrong way  vertical   — a vertical curve is drawn sloped
+     dot            — the equilibrium dot sits off the intersection
+     tick           — the reference tick on the x-axis reads `wrong`
+   `why` is always the sentence that would earn the FRQ graphing point.  A ward is a level:
+   { n, name, blurb, ced, markets, lesionsPer, charts, exam[] }.  Every clock lives in TIMING.
+   ================================================================================ */
+const MARKET_CED = { adas: '3.5', money: '4.5', lf: '4.7', forex: '6.3', phillips: '5.2' };
+const MARKET_NAME = { adas: 'the AD–AS model', money: 'the money market', lf: 'the loanable funds market', forex: 'the foreign exchange market for dollars', phillips: 'the Phillips curve' };
+const MARKET_SHORT = { adas: 'AD–AS', money: 'Money market', lf: 'Loanable funds', forex: 'Market for $', phillips: 'Phillips curve' };
+
+const LESIONS = {
+  adas: [
+    { id: 'adas-y', kind: 'axisY', wrong: 'Real interest rate', why: 'The AD–AS graph puts the price level on the vertical axis and real GDP on the horizontal; the interest rate is the price in the money and loanable funds markets.', ced: '3.5', skill: 4 },
+    { id: 'adas-x', kind: 'axisX', wrong: 'Quantity of money', why: 'The horizontal axis of the AD–AS graph measures real GDP (real output), not a quantity of money.', ced: '3.5', skill: 4 },
+    { id: 'adas-ad-tag', kind: 'tag', curve: 'AD', wrong: 'SRAS', why: 'The downward-sloping curve is aggregate demand; short-run aggregate supply slopes upward.', ced: '3.1', skill: 4 },
+    { id: 'adas-sras-tag', kind: 'tag', curve: 'SRAS', wrong: 'AD', why: 'The upward-sloping curve is short-run aggregate supply; aggregate demand slopes downward.', ced: '3.3', skill: 4 },
+    { id: 'adas-lras-tag', kind: 'tag', curve: 'LRAS', wrong: 'SRAS', why: 'The vertical curve at full-employment output is long-run aggregate supply, not SRAS.', ced: '3.4', skill: 4 },
+    { id: 'adas-ad-slope', kind: 'slope', curve: 'AD', why: 'Aggregate demand slopes downward: a lower price level raises real wealth, lowers interest rates and raises net exports.', ced: '3.1', skill: 4 },
+    { id: 'adas-sras-slope', kind: 'slope', curve: 'SRAS', why: 'Short-run aggregate supply slopes upward: with input prices sticky, a higher price level raises profit per unit and firms produce more.', ced: '3.3', skill: 4 },
+    { id: 'adas-lras-slope', kind: 'vertical', curve: 'LRAS', why: 'Long-run aggregate supply is vertical at full-employment output: in the long run, output does not depend on the price level.', ced: '3.4', skill: 4 },
+    { id: 'adas-dot', kind: 'dot', why: 'Short-run equilibrium is where AD and SRAS intersect; the equilibrium point must sit on both curves.', ced: '3.5', skill: 4 },
+    { id: 'adas-tick', kind: 'tick', wrong: 'u*', why: 'The output level where LRAS meets the axis is full-employment output, labeled Yf; u* is the natural rate of unemployment, which belongs on a Phillips curve.', ced: '3.4', skill: 4 },
+    { id: 'adas-ad-none', kind: 'missingTag', curve: 'AD', why: 'Every curve must be labeled; an unlabeled aggregate demand curve earns no point.', ced: '3.1', skill: 4 },
+    { id: 'adas-sras-none', kind: 'missingTag', curve: 'SRAS', why: 'Every curve must be labeled; an unlabeled short-run aggregate supply curve earns no point.', ced: '3.3', skill: 4 }
+  ],
+  money: [
+    { id: 'money-y', kind: 'axisY', wrong: 'Real interest rate', why: 'The money market determines the nominal interest rate; its vertical axis is the nominal rate.', ced: '4.5', skill: 4 },
+    { id: 'money-x', kind: 'axisX', wrong: 'Real GDP', why: 'The horizontal axis of the money market measures the quantity of money.', ced: '4.5', skill: 4 },
+    { id: 'money-ms-tag', kind: 'tag', curve: 'MS', wrong: 'MD', why: 'The vertical curve is the money supply, fixed by the central bank; money demand slopes downward.', ced: '4.5', skill: 4 },
+    { id: 'money-md-tag', kind: 'tag', curve: 'MD', wrong: 'MS', why: 'The downward-sloping curve is money demand; the money supply is vertical.', ced: '4.5', skill: 4 },
+    { id: 'money-ms-slope', kind: 'vertical', curve: 'MS', why: 'The money supply is vertical because the central bank sets it independently of the interest rate.', ced: '4.5', skill: 4 },
+    { id: 'money-md-slope', kind: 'slope', curve: 'MD', why: 'Money demand slopes downward: a higher nominal interest rate raises the opportunity cost of holding money, so less is demanded.', ced: '4.5', skill: 4 },
+    { id: 'money-dot', kind: 'dot', why: 'The equilibrium nominal interest rate is where money supply and money demand intersect; the point must sit on both curves.', ced: '4.5', skill: 4 },
+    { id: 'money-md-none', kind: 'missingTag', curve: 'MD', why: 'Every curve must be labeled; an unlabeled money demand curve earns no point.', ced: '4.5', skill: 4 }
+  ],
+  lf: [
+    { id: 'lf-y', kind: 'axisY', wrong: 'Nominal interest rate', why: 'The loanable funds market determines the real interest rate; its vertical axis is the real rate.', ced: '4.7', skill: 4 },
+    { id: 'lf-x', kind: 'axisX', wrong: 'Quantity of money', why: 'The horizontal axis of the loanable funds market measures the quantity of loanable funds, not money.', ced: '4.7', skill: 4 },
+    { id: 'lf-s-tag', kind: 'tag', curve: 'S', wrong: 'D', why: 'The upward-sloping curve is the supply of loanable funds (saving); demand for loanable funds slopes downward.', ced: '4.7', skill: 4 },
+    { id: 'lf-d-tag', kind: 'tag', curve: 'D', wrong: 'S', why: 'The downward-sloping curve is the demand for loanable funds (borrowing); supply slopes upward.', ced: '4.7', skill: 4 },
+    { id: 'lf-s-slope', kind: 'slope', curve: 'S', why: 'The supply of loanable funds slopes upward: a higher real interest rate rewards saving, so more funds are supplied.', ced: '4.7', skill: 4 },
+    { id: 'lf-d-slope', kind: 'slope', curve: 'D', why: 'The demand for loanable funds slopes downward: a higher real interest rate makes borrowing for investment more costly.', ced: '4.7', skill: 4 },
+    { id: 'lf-dot', kind: 'dot', why: 'The equilibrium real interest rate is where the supply of and demand for loanable funds intersect; the point must sit on both curves.', ced: '4.7', skill: 4 },
+    { id: 'lf-s-none', kind: 'missingTag', curve: 'S', why: 'Every curve must be labeled; an unlabeled supply of loanable funds earns no point.', ced: '4.7', skill: 4 }
+  ],
+  forex: [
+    { id: 'fx-y', kind: 'axisY', wrong: 'Price level', why: 'The vertical axis of the market for dollars is the price of the dollar in foreign currency (the exchange rate), not the price level.', ced: '6.3', skill: 4 },
+    { id: 'fx-x', kind: 'axisX', wrong: 'Quantity of yen', why: 'In the market for dollars the horizontal axis measures the quantity of dollars; a market for yen would be a different graph.', ced: '6.3', skill: 4 },
+    { id: 'fx-s-tag', kind: 'tag', curve: 'S', wrong: 'D$', why: 'The upward-sloping curve is the supply of dollars, from Americans buying foreign goods and assets; demand for dollars slopes downward.', ced: '6.3', skill: 4 },
+    { id: 'fx-d-tag', kind: 'tag', curve: 'D', wrong: 'S$', why: 'The downward-sloping curve is the demand for dollars, from foreigners buying U.S. goods and assets; supply slopes upward.', ced: '6.3', skill: 4 },
+    { id: 'fx-s-slope', kind: 'slope', curve: 'S', why: 'The supply of dollars slopes upward: a stronger dollar makes foreign goods cheaper for Americans, who supply more dollars to buy them.', ced: '6.3', skill: 4 },
+    { id: 'fx-d-slope', kind: 'slope', curve: 'D', why: 'The demand for dollars slopes downward: a cheaper dollar makes U.S. goods cheaper for foreigners, who demand more dollars to buy them.', ced: '6.3', skill: 4 },
+    { id: 'fx-dot', kind: 'dot', why: 'The equilibrium exchange rate is where the supply of and demand for dollars intersect; the point must sit on both curves.', ced: '6.3', skill: 4 },
+    { id: 'fx-d-none', kind: 'missingTag', curve: 'D', why: 'Every curve must be labeled; an unlabeled demand for dollars earns no point.', ced: '6.3', skill: 4 }
+  ],
+  phillips: [
+    { id: 'pc-y', kind: 'axisY', wrong: 'Price level', why: 'The Phillips curve plots the inflation rate, not the price level, on the vertical axis.', ced: '5.2', skill: 4 },
+    { id: 'pc-x', kind: 'axisX', wrong: 'Real GDP', why: 'The Phillips curve plots the unemployment rate on the horizontal axis; real GDP belongs to the AD–AS graph.', ced: '5.2', skill: 4 },
+    { id: 'pc-srpc-tag', kind: 'tag', curve: 'SRPC', wrong: 'LRPC', why: 'The downward-sloping curve is the short-run Phillips curve; the long-run Phillips curve is vertical at the natural rate of unemployment.', ced: '5.2', skill: 4 },
+    { id: 'pc-lrpc-tag', kind: 'tag', curve: 'LRPC', wrong: 'SRPC', why: 'The vertical curve at the natural rate of unemployment is the long-run Phillips curve.', ced: '5.2', skill: 4 },
+    { id: 'pc-srpc-slope', kind: 'slope', curve: 'SRPC', why: 'The short-run Phillips curve slopes downward: lower unemployment comes with higher inflation along a given curve.', ced: '5.2', skill: 4 },
+    { id: 'pc-lrpc-slope', kind: 'vertical', curve: 'LRPC', why: 'The long-run Phillips curve is vertical at the natural rate of unemployment: in the long run there is no trade-off between inflation and unemployment.', ced: '5.2', skill: 4 },
+    { id: 'pc-srpc-none', kind: 'missingTag', curve: 'SRPC', why: 'Every curve must be labeled; an unlabeled short-run Phillips curve earns no point.', ced: '5.2', skill: 4 }
+  ]
+};
+
+const WARDS = [
+  { n: 1, name: 'AD–AS Ward', blurb: 'The graph the FRQ always asks for, drawn wrong five ways', ced: '3.5', markets: ['adas'], lesionsPer: 2, charts: 5,
+    exam: [
+      { stem: 'In a correctly labeled graph of aggregate demand and aggregate supply, which of the following is measured on the vertical axis?', choices: ['Real gross domestic product', 'The price level', 'The nominal interest rate', 'The unemployment rate'], answer: 1, why: 'The AD–AS graph plots the price level against real GDP; the price level is on the vertical axis.', ced: '3.5', skill: 4 },
+      { stem: 'Which of the following correctly describes the long-run aggregate supply curve?', choices: ['Upward sloping, because higher prices raise profits', 'Downward sloping, because of the wealth effect', 'Vertical at the full-employment level of output', 'Horizontal at the current price level'], answer: 2, why: 'In the long run output is determined by resources and technology, not the price level, so LRAS is vertical at full-employment output.', ced: '3.4', skill: 4 },
+      { stem: 'On a correctly labeled AD–AS graph, the short-run equilibrium price level and output are found at which of the following?', choices: ['The intersection of AD and LRAS', 'The intersection of SRAS and LRAS', 'The intersection of AD and SRAS', 'The point where AD meets the horizontal axis'], answer: 2, why: 'Short-run macroeconomic equilibrium is at the intersection of aggregate demand and short-run aggregate supply.', ced: '3.5', skill: 4 }
+    ] },
+  { n: 2, name: 'Money Ward', blurb: 'The money market and the loanable funds market: nominal or real, money or funds', ced: '4.5', markets: ['money', 'lf'], lesionsPer: 2, charts: 5,
+    exam: [
+      { stem: 'In a correctly labeled graph of the money market, the vertical axis measures which of the following?', choices: ['The real interest rate', 'The nominal interest rate', 'The price level', 'The inflation rate'], answer: 1, why: 'The money market determines the nominal interest rate, which is measured on its vertical axis.', ced: '4.5', skill: 4 },
+      { stem: 'Which of the following is true of the money supply curve in the money market graph?', choices: ['It slopes upward because banks lend more at higher rates', 'It slopes downward because of the opportunity cost of holding money', 'It is vertical because the central bank sets the quantity of money', 'It is horizontal at the federal funds rate'], answer: 2, why: 'The money supply is set by the central bank independently of the interest rate, so it is drawn as a vertical line.', ced: '4.5', skill: 4 },
+      { stem: 'In a correctly labeled graph of the loanable funds market, which of the following is measured on the vertical axis?', choices: ['The nominal interest rate', 'The real interest rate', 'The quantity of money', 'The price level'], answer: 1, why: 'The loanable funds market determines the real interest rate, which is measured on its vertical axis, with the quantity of loanable funds on the horizontal axis.', ced: '4.7', skill: 4 }
+    ] },
+  { n: 3, name: 'Open Economy Ward', blurb: 'The market for dollars and the Phillips curve, three errors a chart', ced: '6.3', markets: ['forex', 'phillips'], lesionsPer: 3, charts: 5,
+    exam: [
+      { stem: 'In a correctly labeled graph of the foreign exchange market for the U.S. dollar, the vertical axis measures which of the following?', choices: ['The U.S. price level', 'The quantity of dollars', 'The price of the dollar in terms of a foreign currency', 'The U.S. real interest rate'], answer: 2, why: 'The price in the market for dollars is the exchange rate: the price of a dollar in units of foreign currency.', ced: '6.3', skill: 4 },
+      { stem: 'Which of the following correctly describes the long-run Phillips curve?', choices: ['Downward sloping, showing the inflation–unemployment trade-off', 'Vertical at the natural rate of unemployment', 'Horizontal at the expected inflation rate', 'Upward sloping, because expectations adjust'], answer: 1, why: 'In the long run unemployment returns to its natural rate whatever the inflation rate, so the long-run Phillips curve is vertical at the natural rate.', ced: '5.2', skill: 4 },
+      { stem: 'On a correctly labeled short-run Phillips curve graph, which of the following is measured on the horizontal axis?', choices: ['Real GDP', 'The inflation rate', 'The unemployment rate', 'The price level'], answer: 2, why: 'The Phillips curve plots the inflation rate (vertical) against the unemployment rate (horizontal).', ced: '5.2', skill: 4 }
+    ] }
+];
+
+/* ================================================================================
+   TIMING — Teacher-tunable: seconds students get.  Numbers are seconds.
+   ================================================================================ */
+const TIMING = {
+  chartSeconds: 40,           // one chart: find every planted error
+  bossSeconds: 45,            // the last chart of a ward carries one extra error
+  warnSeconds: 6,             // when the bar turns red and the tick/tock starts
+  readGrace: 8,               // opening seconds that all pay the full speed bonus
+  whySeconds: 2.2,            // how long a found error's WHY line stays up; a tap ends it
+  examSeconds: 70             // the Exam Sprint stays at the real exam's Section I pace
+};
+
+/* ================================================================================
+   HOW TO PLAY — the cards the first run of a ward opens on, and what the ? shows.
+   ================================================================================ */
+const HOWTO = [
+  { emoji: '\u{1FA7A}', head: 'A graph with something wrong', body: 'Each chart is a market drawn by a student who lost points. Two or three things are wrong: an axis label, a curve’s label, a slope, where the dot sits.' },
+  { emoji: '\u{1F446}', head: 'Drag the stethoscope onto the error', body: 'Pick it up from the tray and drop its tip on the part that is wrong. A hit heals it and shows the sentence that earns the point; a probe on a healthy part costs a heart.' },
+  { emoji: '❤️', head: 'Three hearts, and a streak', body: 'Errors still hiding when the clock runs out cost a heart too. Three finds in a row start a multiplier that climbs to ×5. The last chart is grand rounds: one more error, a longer clock, half again the points.' },
+  { emoji: '\u{1F4DD}', head: 'Then the Exam Sprint', body: 'Three questions in the exam’s own voice at the exam’s own pace. Optional — but gold needs it.' }
+];
+
+/* ================================================================================
+   WHAT IS THIS GAME? — the purpose, before the rules.
+   ================================================================================ */
+const INTRO = [
+  { emoji: '\u{1F4C9}', text: 'FRQ graphing points are lost to small things: a real rate labeled nominal, a curve with no name, a dot floating off its intersection. This game is spotting exactly those.' },
+  { emoji: '\u{1F393}', text: 'Every error you find heals into the correct drawing with the sentence that earns the point, so the eye you train is the grader’s.' },
+  { emoji: '\u{1F3AE}', text: 'Three wards of five charts, hearts and a streak, a grand-rounds finale. The Exam Sprint at the end is the only multiple choice.' }
+];
+</script>
+
+<main class="app" id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div class="stack">
+      <h1 class="h1" tabindex="-1" data-focus>GRAPH DOCTOR</h1>
+      <p class="muted">You are the doctor on call for badly drawn graphs.</p>
+      <div class="row">
+        <button type="button" class="btn btn-ghost mono" id="initialsBtn" aria-label="Set your three-letter initials">???</button>
+        <button type="button" class="btn btn-ghost" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">🔊</button>
+        <button type="button" class="btn btn-ghost" id="voiceBtn" aria-label="Read-aloud voice on or off" aria-pressed="false">🗣</button>
+      </div>
+      <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
+      <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <section class="panel stack intro" id="intro" aria-labelledby="introTitle"></section>
+      <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
+    </div>
+  </section>
+
+  <!-- SELECT -->
+  <section class="screen" id="screen-select">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="selectBack" aria-label="Back to the title screen">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Wards</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+        <button type="button" class="btn btn-ghost howto-btn" id="selectHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="stack" id="wardList"></div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="screen" id="screen-howto">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="howtoBack" aria-label="Back">←</button>
+        <h2 class="panel-title" id="howtoTitle" tabindex="-1" data-focus>How to play</h2>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="screen-play">
+    <div class="stack tight">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="playBack" aria-label="Quit to the ward list">←</button>
+        <div class="hearts" id="hearts"></div>
+        <div class="topbar-stats">
+          <span class="combo" id="combo"></span>
+          <span class="score" id="score">0</span>
+        </div>
+        <button type="button" class="btn btn-ghost howto-btn" id="playHowto" aria-label="How to play">?</button>
+      </header>
+      <div class="timer-bar" id="timer"></div>
+      <div class="row sort-head">
+        <span class="tag" id="chartTag">Chart 1</span>
+        <span class="muted" id="chartBrief"></span>
+        <span class="muted mono" id="chartCount"></span>
+      </div>
+      <!-- The patient: a market drawn by the graph engine, then wounded. The tray holds the probe. -->
+      <div class="doc-stage" id="stage">
+        <div class="graph-wrap doc-graph" id="graphWrap"></div>
+        <div class="doc-tray" id="tray">
+          <div class="doc-probe" id="probe" role="img" aria-label="Stethoscope probe"><span class="doc-probe-icon" aria-hidden="true">🩺</span></div>
+          <div class="muted doc-found" id="found"></div>
+        </div>
+      </div>
+      <div class="muted" id="hint">Drag the stethoscope onto what’s wrong</div>
+      <div class="row wrap kbd-answers" id="kbdRow" role="group" aria-label="Probe a part with the keyboard"></div>
+      <div class="sr-only" id="chartRead" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- EXAM SPRINT — the one screen in the game with multiple choice -->
+  <section class="screen" id="screen-exam">
+    <div class="stack">
+      <header class="topbar">
+        <button type="button" class="btn btn-ghost topbar-back" id="examBack" aria-label="Quit to the ward list">←</button>
+        <h2 class="panel-title" tabindex="-1" data-focus>Exam Sprint</h2>
+        <div class="topbar-stats"><span class="mono" id="examCount"></span></div>
+        <a class="btn btn-ghost howto-btn home-btn" href="../index.html" aria-label="Back to the arcade">🏠</a>
+      </header>
+      <div class="timer-bar" id="examTimer"></div>
+      <div class="row">
+        <span class="tag" id="examPace">70 s</span>
+        <span class="muted" id="examSub"></span>
+      </div>
+      <div class="panel"><div class="exam-stem" id="examStem"></div></div>
+      <div class="stack" id="examChoices"></div>
+    </div>
+  </section>
+
+  <!-- CLEAR, FAIL and the sprint result all render an Arcade.endScreen panel here -->
+  <section class="screen" id="screen-end"></section>
+
+</main>
+
+<div class="sheet" id="sheet" role="status">
+  <div class="stack">
+    <div class="sheet-msg" id="sheetMsg"></div>
+    <div class="sheet-why" id="sheetWhy"></div>
+    <button type="button" class="btn btn-block" id="sheetBtn">Got it</button>
+  </div>
+</div>
+
+<script src="../shared/arcade.js"></script>
+<script src="../shared/graph.js"></script>
+
+<script>
+/* ================================================================================
+   GRAPH DOCTOR — the game. Sections: elements · screens · progress · ward select ·
+   the patient (planting and healing lesions) · the probe (drag) · round chrome ·
+   round loop · exam sprint · the run · end screens · boot.
+   During play the student's only input is dragging the probe; multiple choice appears
+   nowhere but the Exam Sprint. Every lesion calls Arcade.track once, found or missed.
+   ================================================================================ */
+(function () {
+  'use strict';
+  if (typeof Arcade === 'undefined' || typeof ArcadeGraph === 'undefined') return;
+
+  var CHART_MS = TIMING.chartSeconds * 1000;
+  var BOSS_MS = TIMING.bossSeconds * 1000;
+  var WARN_MS = TIMING.warnSeconds * 1000;
+  var GRACE_MS = TIMING.readGrace * 1000;
+  var WHY_MS = TIMING.whySeconds * 1000;
+  var EXAM_MS = TIMING.examSeconds * 1000;
+  var HEARTS = 3;
+  var RADIUS = { text: 14, dot: 18, line: 22 };   // how close the tip must land to a part, by kind, in px
+  var TIP_LIFT = 44;          // the tip rides this far above the finger so the target stays visible
+  var KEYS = 'ABCD';
+  var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
+
+  /* ===== ELEMENTS ===== */
+
+  /** @param {string} id @returns {any} */
+  function byId(id) { return document.getElementById(id); }
+  /** @param {number} ms @returns {Promise<void>} */
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function fill(cls, text) { var n = document.createElement('div'); n.className = cls; n.textContent = text; return n; }
+  /** @param {string} cls @param {string} text @returns {any} */
+  function chip(cls, text) { var n = document.createElement('span'); n.className = cls; n.textContent = text; return n; }
+
+  var screens = {
+    title: byId('screen-title'), select: byId('screen-select'), howto: byId('screen-howto'),
+    play: byId('screen-play'), exam: byId('screen-exam'), end: byId('screen-end')
+  };
+  var wardList = byId('wardList');
+  var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
+  var heartsEl = byId('hearts'), comboEl = byId('combo'), scoreEl = byId('score'), timerEl = byId('timer');
+  var chartTag = byId('chartTag'), chartBrief = byId('chartBrief'), chartCount = byId('chartCount'), chartRead = byId('chartRead');
+  var stage = byId('stage'), graphWrap = byId('graphWrap'), tray = byId('tray'), probe = byId('probe'), foundEl = byId('found');
+  var hintEl = byId('hint'), kbdRow = byId('kbdRow');
+  var examTimerEl = byId('examTimer'), examCountEl = byId('examCount'), examSubEl = byId('examSub');
+  var examStemEl = byId('examStem'), examChoicesEl = byId('examChoices');
+  var sheet = byId('sheet'), sheetMsg = byId('sheetMsg'), sheetWhy = byId('sheetWhy'), sheetBtn = byId('sheetBtn');
+  var howtoTitle = byId('howtoTitle'), howtoCards = byId('howtoCards'), introEl = byId('intro');
+
+  /** The run in progress. `token` is what tells an awaiting round it has been abandoned. */
+  var run = null;
+  var runToken = 0;
+  var exam = null;
+  var examToken = 0;
+  /** @param {number} token @returns {boolean} */
+  function alive(token) { return token === runToken; }
+  /** @param {number} token @returns {boolean} */
+  function examAlive(token) { return token === examToken; }
+
+  /* ===== SCREENS ===== */
+
+  var booted = false;
+  /** @param {string} name */
+  function show(name) {
+    Object.keys(screens).forEach(function (key) { screens[key].classList.toggle('active', key === name); });
+    if (booted) Arcade.guardTaps();
+    booted = true;
+    Arcade.focusScreen(screens[name]);
+  }
+
+  function abortRun() {
+    runToken += 1;
+    examToken += 1;
+    if (run && run.clock) run.clock.stop();
+    if (exam && exam.stop) exam.stop();
+    ackNow();
+    hideSheet();
+    endDrag(true);
+    Arcade.voice.stop();
+  }
+
+  /* ===== PROGRESS — arcade.doctor.progress ===== */
+
+  /** @returns {{unlocked:number, levels:Object<string, any>}} */
+  function loadProgress() {
+    var p = Arcade.store.get('arcade.doctor.progress', null);
+    if (!p || typeof p !== 'object') p = {};
+    var levels = {};
+    var raw = p.levels && typeof p.levels === 'object' ? p.levels : {};
+    Object.keys(raw).forEach(function (key) { if (raw[key] && typeof raw[key] === 'object') levels[key] = raw[key]; });
+    return { unlocked: typeof p.unlocked === 'number' && p.unlocked >= 1 ? p.unlocked : 1, levels: levels };
+  }
+
+  /** @returns {any} */
+  function blankRecord() { return { cleared: false, acc: 0, best: 0, medal: null, exam: null, examPerfect: false }; }
+
+  /** @param {any} rec @returns {any} */
+  function rescore(rec) {
+    rec.medal = Arcade.medalFor(rec.acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) });
+    rec.examPerfect = !!(rec.exam && rec.exam.total > 0 && rec.exam.right === rec.exam.total && rec.acc >= 0.95);
+    return rec;
+  }
+
+  /** @param {number} n @param {number} score @param {number} acc */
+  function saveProgress(n, score, acc) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    rec.cleared = true;
+    rec.acc = Math.max(rec.acc || 0, acc);
+    rec.best = Math.max(rec.best || 0, score);
+    p.levels[String(n)] = rescore(rec);
+    if (rec.acc >= 0.75) p.unlocked = Math.max(p.unlocked, n + 1);
+    Arcade.store.set('arcade.doctor.progress', p);
+  }
+
+  /** @param {number} n @param {number} right @param {number} total @returns {any} */
+  function saveExam(n, right, total) {
+    var p = loadProgress();
+    var rec = p.levels[String(n)] || blankRecord();
+    if (!rec.exam || right > rec.exam.right) rec.exam = { right: right, total: total };
+    p.levels[String(n)] = rescore(rec);
+    Arcade.store.set('arcade.doctor.progress', p);
+    return rec;
+  }
+
+  /* ===== WARD SELECT ===== */
+
+  /** @param {number} n @returns {any} */
+  function wardOf(n) { for (var i = 0; i < WARDS.length; i += 1) if (WARDS[i].n === n) return WARDS[i]; return undefined; }
+  /** @param {number} n @returns {boolean} */
+  function playable(n) { return !!wardOf(n) && n <= loadProgress().unlocked; }
+
+  /** @param {any} W @param {any} rec @param {boolean} locked @returns {any} */
+  function wardTile(W, rec, locked) {
+    var tile = document.createElement('div');
+    tile.className = 'panel level-tile' + (locked ? ' locked' : '');
+    var medal = Arcade.safeMedal(rec && rec.medal);
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'tile-open';
+    open.disabled = locked;
+    open.setAttribute('aria-label', (locked ? 'Locked: ward ' : 'Play ward ') + W.n + ', ' + W.name + (medal === 'none' ? '' : ', ' + medal + ' medal'));
+    open.appendChild(chip('level-num', String(W.n)));
+    var info = chip('tile-info', '');
+    info.appendChild(chip('tile-name', W.name + (locked ? ' 🔒' : '')));
+    var meta = chip('tile-meta', '');
+    meta.appendChild(chip('muted', rec && rec.cleared ? 'Best ' + rec.best + ' · ' + Math.round(rec.acc * 100) + '%' : locked ? 'Locked' : W.blurb));
+    if (rec && rec.exam) meta.appendChild(chip('tag', 'Sprint ' + rec.exam.right + '/' + rec.exam.total));
+    if (rec && rec.examPerfect) meta.appendChild(chip('ribbon', 'Exam Ready'));
+    info.appendChild(meta);
+    open.appendChild(info);
+    open.appendChild(chip('medal ' + medal, medal === 'none' ? '—' : medal.charAt(0).toUpperCase()));
+    if (!locked) open.addEventListener('click', function () { startWard(W.n); });
+    tile.appendChild(open);
+    if (rec && rec.cleared) {
+      var sprint = document.createElement('button');
+      sprint.type = 'button';
+      sprint.className = 'btn btn-ghost tile-btn';
+      sprint.textContent = 'Exam Sprint';
+      sprint.setAttribute('aria-label', 'Exam Sprint for ward ' + W.n);
+      sprint.addEventListener('click', function () { startExam(W.n); });
+      tile.appendChild(sprint);
+    }
+    return tile;
+  }
+
+  function paintSelect() {
+    var progress = loadProgress();
+    wardList.textContent = '';
+    WARDS.forEach(function (W) { wardList.appendChild(wardTile(W, progress.levels[String(W.n)] || null, W.n > progress.unlocked)); });
+  }
+
+  /* ===== THE PATIENT — a market from the graph engine, wounded and healed in place =====
+     The engine draws the market correctly and is locked; each lesion then edits the svg
+     (a label's text, a path's endpoints, the dot's centre) and remembers what it changed,
+     so a find can put it back. Targets are page-space geometry the probe is measured against. */
+
+  /** @type {any} */ var graph = null;
+  /** @type {any} */ var chart = null;   // { market, lesions:[{lesion, target, undo, found}], parts }
+
+  /** The engine's svg pieces, by role. @param {any} svg @returns {any} */
+  function partsOf(svg) {
+    var axisLabels = Array.prototype.slice.call(svg.querySelectorAll('.axes .axis-label'));
+    var out = {
+      svg: svg,
+      xLabel: axisLabels.find(function (t) { return !t.getAttribute('transform'); }) || null,
+      yLabel: axisLabels.find(function (t) { return !!t.getAttribute('transform'); }) || null,
+      tick: svg.querySelector('.axes .axis-tick'),
+      dot: svg.querySelector('.dot .eq'),
+      dotGhost: svg.querySelector('.dot .eq-ghost'),
+      dotHalo: svg.querySelector('.dot .eq-halo'),
+      curves: {}
+    };
+    Array.prototype.forEach.call(svg.querySelectorAll('.curve'), function (g) {
+      out.curves[g.getAttribute('data-curve')] = { g: g, line: g.querySelector('.line'), halo: g.querySelector('.halo'), ghost: g.querySelector('.ghost'), tag: g.querySelector('.tag') };
+    });
+    return out;
+  }
+
+  /** @param {string} d @returns {{x1:number, y1:number, x2:number, y2:number}} a two-point path */
+  function endsOf(d) {
+    var m = String(d).match(/-?\d+(\.\d+)?/g) || [];
+    var n = m.map(Number);
+    return { x1: n[0] || 0, y1: n[1] || 0, x2: n[n.length - 2] || 0, y2: n[n.length - 1] || 0 };
+  }
+  /** @param {{x1:number, y1:number, x2:number, y2:number}} e @returns {string} */
+  function pathOf(e) { return 'M ' + e.x1.toFixed(1) + ' ' + e.y1.toFixed(1) + ' L ' + e.x2.toFixed(1) + ' ' + e.y2.toFixed(1); }
+
+  /** Plant one lesion; returns what to measure the probe against and how to undo it.
+   *  @param {any} lesion @param {any} parts @returns {{target:any, undo:() => void}|null} */
+  function plant(lesion, parts) {
+    var c = lesion.curve ? parts.curves[lesion.curve] : null;
+    if (lesion.kind === 'axisY' || lesion.kind === 'axisX') {
+      var t = lesion.kind === 'axisY' ? parts.yLabel : parts.xLabel;
+      if (!t) return null;
+      var was = t.textContent;
+      t.textContent = lesion.wrong;
+      return { target: { kind: 'text', el: t }, undo: function () { t.textContent = was; } };
+    }
+    if (lesion.kind === 'tag' || lesion.kind === 'missingTag') {
+      if (!c || !c.tag) return null;
+      var wasTag = c.tag.textContent;
+      c.tag.textContent = lesion.kind === 'tag' ? lesion.wrong : '';
+      return { target: { kind: lesion.kind === 'tag' ? 'text' : 'line', el: lesion.kind === 'tag' ? c.tag : c.line, curve: lesion.curve }, undo: function () { c.tag.textContent = wasTag; } };
+    }
+    if (lesion.kind === 'slope' || lesion.kind === 'vertical') {
+      if (!c || !c.line) return null;
+      var d0 = c.line.getAttribute('d'), h0 = c.halo.getAttribute('d'), g0 = c.ghost.getAttribute('d');
+      var e = endsOf(d0);
+      // A mirror image through the plot's middle would lie exactly on the sibling curve (AD and
+      // SRAS are each other's mirror), so the wrong slope is drawn shallow and offset instead:
+      // the wrong way, and clearly its own line everywhere but the crossing.
+      var slopesDown = e.y2 > e.y1;   // svg y grows downward: a curve that falls left to right
+      var flipped = lesion.kind === 'slope'
+        ? (slopesDown ? { x1: 0, y1: 200, x2: 290, y2: 90 } : { x1: 0, y1: 90, x2: 290, y2: 200 })
+        : { x1: Math.max(0, e.x1 - 70), y1: Math.max(e.y1, e.y2), x2: Math.min(290, e.x1 + 70), y2: Math.min(e.y1, e.y2) };   // a vertical drawn leaning
+      var d1 = pathOf(flipped);
+      c.line.setAttribute('d', d1); c.halo.setAttribute('d', d1); c.ghost.setAttribute('d', d1);
+      // the ghost only has a path once the engine has drawn a drag; put back exactly what was there
+      return { target: { kind: 'line', el: c.line, curve: lesion.curve }, undo: function () { c.line.setAttribute('d', d0); c.halo.setAttribute('d', h0); if (g0 === null) c.ghost.removeAttribute('d'); else c.ghost.setAttribute('d', g0); } };
+    }
+    if (lesion.kind === 'dot') {
+      if (!parts.dot) return null;
+      var cx = Number(parts.dot.getAttribute('cx')), cy = Number(parts.dot.getAttribute('cy'));
+      var nx = cx + (cx > 145 ? -70 : 70), ny = cy + (cy > 145 ? -55 : 55);
+      [parts.dot, parts.dotGhost, parts.dotHalo].forEach(function (el) { if (el) { el.setAttribute('cx', String(nx)); el.setAttribute('cy', String(ny)); } });
+      return { target: { kind: 'dot', el: parts.dot }, undo: function () { [parts.dot, parts.dotGhost, parts.dotHalo].forEach(function (el) { if (el) { el.setAttribute('cx', String(cx)); el.setAttribute('cy', String(cy)); } }); } };
+    }
+    if (lesion.kind === 'tick') {
+      if (!parts.tick) return null;
+      var wasTick = parts.tick.textContent;
+      parts.tick.textContent = lesion.wrong;
+      return { target: { kind: 'text', el: parts.tick }, undo: function () { parts.tick.textContent = wasTick; } };
+    }
+    return null;
+  }
+
+  /** Which svg piece a lesion occupies, so two lesions never share one. @param {any} l @returns {string} */
+  function slotOf(l) {
+    if (l.kind === 'axisY' || l.kind === 'axisX' || l.kind === 'dot' || l.kind === 'tick') return l.kind;
+    return 'curve:' + l.curve;
+  }
+
+  /** Every part of the drawing the probe can land on, healthy or wounded.
+   *  @param {string} market @param {any} parts @returns {any[]} */
+  function targetsOf(market, parts) {
+    var out = [];
+    if (parts.yLabel) out.push({ kind: 'text', el: parts.yLabel, name: 'Y axis' });
+    if (parts.xLabel) out.push({ kind: 'text', el: parts.xLabel, name: 'X axis' });
+    Object.keys(parts.curves).forEach(function (name) {
+      var c = parts.curves[name];
+      var shown = ArcadeGraph.MARKETS[market].curves[name].label || name;
+      if (c.tag) out.push({ kind: 'text', el: c.tag, curve: name, name: shown + ' label' });
+      if (c.line) out.push({ kind: 'line', el: c.line, curve: name, name: shown + ' line' });
+    });
+    if (parts.dot && ArcadeGraph.MARKETS[market].eq) out.push({ kind: 'dot', el: parts.dot, name: 'Dot' });
+    if (parts.tick) out.push({ kind: 'text', el: parts.tick, name: 'Tick' });
+    return out;
+  }
+
+  /** Draw the ward's next patient and wound it.
+   *  @param {string} market @param {number} count @returns {any} the chart */
+  function buildChart(market, count) {
+    if (graph) { try { graph.destroy(); } catch (err) { /* nothing to tear down */ } graph = null; }
+    graphWrap.textContent = '';
+    graph = ArcadeGraph.create(graphWrap, { market: market });
+    graph.lock();
+    var parts = partsOf(graph.el);
+    var pool = LESIONS[market].map(function (l) { return { l: l, w: Arcade.cardWeight(l.ced) }; });
+    var picked = [];
+    var slots = {};
+    var guard = 0;
+    while (picked.length < count && pool.length && guard < 60) {
+      guard += 1;
+      var one = Arcade.weightedSample(pool, pool.map(function (p) { return p.w; }), 1)[0];
+      pool.splice(pool.indexOf(one), 1);
+      if (slots[slotOf(one.l)]) continue;
+      var planted = plant(one.l, parts);
+      if (!planted) continue;
+      slots[slotOf(one.l)] = true;
+      picked.push({ lesion: one.l, target: planted.target, undo: planted.undo, found: false });
+    }
+    var targets = targetsOf(market, parts);
+    // an unlabeled curve is probed on its line; every other lesion on the part it changed
+    picked.forEach(function (entry) {
+      entry.target = targets.find(function (t) { return t.el === entry.target.el; }) || entry.target;
+    });
+    return { market: market, lesions: picked, parts: parts, targets: targets };
+  }
+
+  /** Put a lesion right and light it green. @param {any} entry */
+  function heal(entry) {
+    entry.undo();
+    entry.found = true;
+    var el = entry.target.kind === 'line' || entry.target.kind === 'text' && entry.target.curve ? entry.target.el.parentNode : entry.target.el;
+    el.classList.add('healed');
+    setTimeout(function () { el.classList.remove('healed'); }, 1400);
+  }
+
+  /* --- measuring the probe against the patient, in page px --- */
+
+  /** @param {any} target @param {number} x @param {number} y @returns {number} px from the tip to the target */
+  function distanceTo(target, x, y) {
+    var r = target.el.getBoundingClientRect();
+    if (target.kind === 'text') {
+      var dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom);
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    if (target.kind === 'dot') {
+      var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      return Math.max(0, Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) - r.width / 2);
+    }
+    // a line: distance to the segment between the path's two ends
+    var svgR = chart.parts.svg.getBoundingClientRect();
+    var s = svgR.width / 360;
+    var e = endsOf(target.el.getAttribute('d'));
+    var ax = svgR.left + (48 + e.x1) * s, ay = svgR.top + (16 + e.y1) * s, bx = svgR.left + (48 + e.x2) * s, by = svgR.top + (16 + e.y2) * s;
+    var vx = bx - ax, vy = by - ay, len2 = vx * vx + vy * vy || 1;
+    var t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / len2));
+    var px = ax + t * vx, py = ay + t * vy;
+    return Math.sqrt((x - px) * (x - px) + (y - py) * (y - py));
+  }
+
+  /** What a drop at (x, y) means: the nearest part within its radius decides, so a probe on a
+   *  healthy label next to a wounded tick is a miss on the label, not a lucky find.
+   *  @param {number} x @param {number} y @returns {{hit:any}|{miss:true, part:string}|{nothing:true}} */
+  function diagnose(x, y) {
+    // distances are scaled by each part's radius, so a label sitting on the end of its own
+    // curve wins a drop on the label even though the curve's reach is wider
+    var best = null, bestD = Infinity;
+    chart.targets.forEach(function (t) {
+      var d = distanceTo(t, x, y) / RADIUS[t.kind];
+      if (d < bestD) { bestD = d; best = t; }
+    });
+    if (best && bestD <= 1) {
+      var wound = chart.lesions.find(function (entry) { return entry.target.el === best.el && !entry.found; });
+      if (wound) return { hit: wound };
+      return { miss: true, part: best.name };
+    }
+    var r = chart.parts.svg.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return { miss: true, part: '' };
+    return { nothing: true };
+  }
+
+  /* ===== THE PROBE — one token, dragged from the tray onto the graph =====
+     The token follows the finger with its tip TIP_LIFT px above it, so the part being probed
+     is never under the thumb. Letting go over the graph is the answer; letting go anywhere
+     else just sends the token home. */
+
+  /** @type {any} */ var drag = null;
+  var probeLocked = true;
+  /** @type {((r:any) => void)|null} */ var probeResolve = null;
+
+  /** @returns {Promise<any>} the next diagnosis, or null when the clock wins */
+  function nextProbe() { return new Promise(function (resolve) { probeResolve = resolve; }); }
+  /** @param {any} r */
+  function handOver(r) { if (!probeResolve) return; var f = probeResolve; probeResolve = null; f(r); }
+
+  /** @param {number} x @param {number} y page px of the finger */
+  function placeProbe(x, y) {
+    var home = tray.getBoundingClientRect();
+    var pr = probe.getBoundingClientRect();
+    var dx = x - (home.left + 28), dy = (y - TIP_LIFT) - (home.top + 28);
+    probe.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px)';
+    void pr;
+  }
+  function probeHome() { probe.style.transition = 'transform .2s ease-out'; probe.style.transform = 'translate(0, 0)'; setTimeout(function () { probe.style.transition = ''; }, 220); }
+
+  /** @param {boolean} [silent] */
+  function endDrag(silent) {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    try { probe.releasePointerCapture(d.pointerId); } catch (err) { /* already gone */ }
+    probe.classList.remove('dragging');
+    if (!silent) probeHome();
+    else { probe.style.transition = ''; probe.style.transform = 'translate(0, 0)'; }
+  }
+
+  probe.addEventListener('pointerdown', function (ev) {
+    if (probeLocked || drag) return;
+    ev.preventDefault();
+    drag = { pointerId: ev.pointerId, x: ev.clientX, y: ev.clientY };
+    try { probe.setPointerCapture(ev.pointerId); } catch (err) { /* capture is a nicety */ }
+    probe.style.transition = 'none';
+    probe.classList.add('dragging');
+    Arcade.sfx.play('grab');
+    placeProbe(ev.clientX, ev.clientY);
+  });
+  probe.addEventListener('pointermove', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    drag.x = ev.clientX; drag.y = ev.clientY;
+    placeProbe(ev.clientX, ev.clientY);
+  });
+  probe.addEventListener('pointerup', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    var x = ev.clientX, y = ev.clientY - TIP_LIFT;
+    endDrag(false);
+    if (probeLocked) return;
+    var r = diagnose(x, y);
+    if (r.nothing) return;
+    handOver(r);
+  });
+  probe.addEventListener('pointercancel', function (ev) {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    endDrag(false);
+  });
+
+  /** The keyboard's road to the same answer: a button per probe-able part. @param {any} ch */
+  function buildKbdRow(ch) {
+    kbdRow.textContent = '';
+    ch.targets.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost';
+      b.textContent = t.name;
+      b.setAttribute('aria-label', 'Probe the ' + t.name);
+      b.addEventListener('click', function () {
+        if (probeLocked || drag) return;
+        var wound = ch.lesions.find(function (entry) { return entry.target.el === t.el && !entry.found; });
+        handOver(wound ? { hit: wound } : { miss: true, part: t.name });
+      });
+      kbdRow.appendChild(b);
+    });
+  }
+
+  /* ===== ROUND CHROME ===== */
+
+  /** @param {any} ch @param {number} index @param {number} total @param {boolean} boss */
+  function paintChart(ch, index, total, boss) {
+    chartTag.textContent = boss ? '👑 Rounds' : 'Chart ' + (index + 1);
+    chartTag.classList.toggle('lightning', boss);
+    chartBrief.textContent = MARKET_SHORT[ch.market] + ' · ' + ch.lesions.length + ' wrong';
+    chartCount.textContent = (index + 1) + ' / ' + total;
+    paintFound(ch);
+    probe.style.transition = 'none';
+    probe.style.transform = 'translate(0, 0)';
+    chartRead.textContent = 'A graph of ' + MARKET_NAME[ch.market] + ' with ' + ch.lesions.length + ' errors. Use the buttons to probe each part.';
+  }
+
+  /** @param {any} ch */
+  function paintFound(ch) {
+    var done = ch.lesions.filter(function (e) { return e.found; }).length;
+    foundEl.textContent = done + ' / ' + ch.lesions.length + ' found';
+  }
+
+  /** @param {string} kind @param {string} msg @param {string} why @param {boolean} ack */
+  function paintSheet(kind, msg, why, ack) {
+    sheetMsg.textContent = msg;
+    sheetWhy.textContent = why;
+    sheetBtn.style.display = ack ? '' : 'none';
+    sheet.className = 'sheet ' + kind + ' open';
+  }
+  function hideSheet() { sheet.classList.remove('open'); sheetBtn.style.display = 'none'; }
+
+  /** @type {(() => void)|null} */ var ackResolve = null;
+  function ackNow() { if (!ackResolve) return; var r = ackResolve; ackResolve = null; r(); }
+  sheetBtn.addEventListener('click', function () { hideSheet(); ackNow(); });
+
+  /** @param {string} msg @param {string} why @param {string} [label] @param {string} [kind] @returns {Promise<void>} */
+  function sheetAsk(msg, why, label, kind) {
+    ackNow();
+    sheetBtn.textContent = label || 'Got it';
+    paintSheet(kind || 'wrong', msg, why, true);
+    return new Promise(function (resolve) { ackResolve = resolve; });
+  }
+
+  /** A moment to read, or a tap anywhere to move on. @param {number} ms @returns {Promise<void>} */
+  function readBeat(ms) {
+    return new Promise(function (resolve) {
+      var timer = setTimeout(done, ms);
+      function done() { clearTimeout(timer); document.removeEventListener('pointerdown', done); resolve(); }
+      document.addEventListener('pointerdown', done);
+    });
+  }
+
+  /** The chart's clock. @param {number} ms
+   *  @returns {{next:() => Promise<any>, remaining:() => number, pause:() => void, resume:() => void, stop:() => void, expired:() => boolean}} */
+  function roundClock(ms) {
+    var expired = false;
+    var timer = Arcade.timerBar(timerEl, ms, { warnAt: WARN_MS, onEnd: atZero });
+    function atZero() {
+      if (expired) return;
+      expired = true;
+      probeLocked = true;
+      endDrag(true);
+      handOver(null);
+    }
+    timer.start();
+    return {
+      next: function () { return expired ? Promise.resolve(null) : nextProbe(); },
+      remaining: function () { return timer.remaining(); },
+      pause: function () { timer.pause(); },
+      resume: function () { if (!expired) timer.resume(); },
+      stop: function () { expired = true; timer.stop(); handOver(null); },
+      expired: function () { return expired; }
+    };
+  }
+
+  function pauseClocks() { if (run && run.clock) run.clock.pause(); if (exam && exam.pause) exam.pause(); }
+  function resumeClocks() { if (run && run.clock) run.clock.resume(); if (exam && exam.resume) exam.resume(); }
+
+  function punish() {
+    Arcade.shake(stage);
+    run.hearts.lose();
+    run.streak.miss();
+  }
+
+  /** @param {number} points */
+  function award(points) { run.score += points; scoreEl.textContent = String(run.score); }
+
+  /** @param {number} left @param {number} total @param {number} cap @returns {number} */
+  function speedBonus(left, total, cap) {
+    var window = total - GRACE_MS;
+    var frac = window > 0 ? Math.min(1, Math.max(0, left / window)) : (left > 0 ? 1 : 0);
+    var bonus = Math.round(cap * frac);
+    run.speedTotal += bonus;
+    return bonus;
+  }
+
+  function streakUp() {
+    run.streak.hit();
+    run.bestStreak = Math.max(run.bestStreak, run.streak.count);
+    var lines = { 3: '🔥 Three in a row · ×2', 6: '🔥🔥 Six straight · ×3', 9: '🔥🔥🔥 Nine straight · ×4', 12: '🔥 ×5 · MAXED OUT' };
+    if (lines[run.streak.count]) Arcade.toast(lines[run.streak.count], 1400);
+  }
+
+  /** The ward's patients: markets in turn, the last chart carrying one extra lesion. @param {any} W @returns {{market:string, count:number}[]} */
+  function schedule(W) {
+    var out = [];
+    for (var i = 0; i < W.charts; i += 1) out.push({ market: W.markets[i % W.markets.length], count: W.lesionsPer + (i === W.charts - 1 ? 1 : 0) });
+    return out;
+  }
+
+  /* ===== ROUND LOOP ===== */
+
+  /** @param {{market:string, count:number}} plan @param {number} index @param {number} total @param {boolean} boss @param {number} token */
+  async function playChart(plan, index, total, boss, token) {
+    chart = buildChart(plan.market, plan.count);
+    paintChart(chart, index, total, boss);
+    buildKbdRow(chart);
+    hintEl.textContent = 'Drag the stethoscope onto what’s wrong';
+    Arcade.sfx.play('card');
+    if (Arcade.voice.enabled) Arcade.say('A graph of ' + MARKET_NAME[chart.market] + ' with ' + chart.lesions.length + ' errors.', { who: 'anchor' });
+    var ms = boss ? BOSS_MS : CHART_MS;
+    run.clock = roundClock(ms);
+    probeLocked = false;
+    var per = boss ? 150 : 100;
+
+    while (chart.lesions.some(function (e) { return !e.found; })) {
+      var r = await run.clock.next();
+      if (!alive(token)) return;
+      if (r === null) break;                       // the clock won
+      if (r.hit) {
+        probeLocked = true;
+        heal(r.hit);
+        paintFound(chart);
+        Arcade.sfx.play('correct');
+        run.asked += 1; run.correct += 1;
+        Arcade.track(r.hit.lesion.ced, r.hit.lesion.skill, true);
+        award(Math.round(per * run.streak.mult));
+        streakUp();
+        paintSheet('correct', '✓ Healed', r.hit.lesion.why, false);
+        await readBeat(WHY_MS);
+        if (!alive(token)) return;
+        hideSheet();
+        probeLocked = !alive(token) || run.clock.expired();
+      } else if (r.miss) {
+        probeLocked = true;
+        Arcade.sfx.play('wrong');
+        run.asked += 1;
+        Arcade.track(MARKET_CED[chart.market], 4, false);
+        punish();
+        run.clock.pause();
+        await sheetAsk(r.part ? '✗ The ' + r.part.toLowerCase() + ' is drawn right' : '✗ Nothing wrong there', 'Check the axis labels, the name on every curve, which way each slopes, and whether the dot sits where the curves cross.');
+        if (!alive(token)) return;
+        hideSheet();
+        run.clock.resume();
+        if (run.hearts.get() === 0) { run.clock.stop(); return; }
+        probeLocked = run.clock.expired();
+      }
+    }
+    var left = run.clock.remaining();
+    var expired = run.clock.expired();
+    run.clock.stop();
+    probeLocked = true;
+    var unfound = chart.lesions.filter(function (e) { return !e.found; });
+    if (!unfound.length) {
+      var bonus = speedBonus(left, ms, 60);
+      award(Math.round(bonus * run.streak.mult));
+      Arcade.sfx.play('win');
+      Arcade.toast('🩺 All clear' + (bonus ? ' · +' + bonus + ' speed' : ''), 1000);
+      await wait(700);
+      return;
+    }
+    if (expired) {
+      unfound.forEach(function (e) { run.asked += 1; Arcade.track(e.lesion.ced, e.lesion.skill, false); run.missed.push(e.lesion); heal(e); });
+      punish();
+      var lines = unfound.map(function (e) { return e.lesion.why; }).join(' ');
+      await sheetAsk('✗ Out of time — ' + unfound.length + ' still wrong', lines);
+      if (!alive(token)) return;
+      hideSheet();
+    }
+  }
+
+  /* ===== EXAM SPRINT ===== */
+
+  /** @param {any} q @param {number} index @param {number} total @param {number} token @returns {Promise<boolean>} */
+  async function askQuestion(q, index, total, token) {
+    examCountEl.textContent = (index + 1) + '/' + total;
+    examStemEl.textContent = q.stem;
+    examChoicesEl.textContent = '';
+    var buttons = q.choices.map(function (text, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-ghost btn-block choice';
+      b.textContent = KEYS.charAt(i) + '. ' + text;
+      examChoicesEl.appendChild(b);
+      return b;
+    });
+    var picked = await new Promise(function (resolve) {
+      var settled = false;
+      var timer = Arcade.timerBar(examTimerEl, EXAM_MS, { warnAt: WARN_MS, onEnd: function () { finish(-1); } });
+      function finish(i) { if (settled) return; settled = true; timer.stop(); resolve(i); }
+      buttons.forEach(function (b, i) { b.addEventListener('click', function () { finish(i); }); });
+      exam.stop = function () { finish(-1); };
+      exam.pause = function () { timer.pause(); };
+      exam.resume = function () { if (!settled) timer.resume(); };
+      timer.start();
+    });
+    if (!examAlive(token)) return false;
+    var ok = picked === q.answer;
+    buttons.forEach(function (b, i) { b.classList.add('marked'); if (i === q.answer) b.classList.add('right'); else if (i === picked) b.classList.add('wrong'); });
+    Arcade.sfx.play(ok ? 'correct' : 'wrong');
+    Arcade.track(q.ced, q.skill, ok);
+    await sheetAsk(ok ? '✓ Correct' : '✗ ' + KEYS.charAt(q.answer) + ' is the answer', q.why, 'Next', ok ? 'correct' : 'wrong');
+    if (!examAlive(token)) return ok;
+    hideSheet();
+    return ok;
+  }
+
+  /** @param {number} n */
+  function startExam(n) {
+    var W = wardOf(n);
+    if (!W || !W.exam || !W.exam.length) return;
+    abortRun();
+    show('exam');
+    runExam(W).catch(function () { Arcade.toast('Something went wrong — back to the wards'); goSelect(); });
+  }
+
+  /** @param {any} W */
+  async function runExam(W) {
+    examToken += 1;
+    var token = examToken;
+    exam = { W: W, stop: null };
+    examSubEl.textContent = 'Ward ' + W.n + ' · ' + W.name;
+    hideSheet();
+    var right = 0;
+    for (var i = 0; i < W.exam.length; i += 1) {
+      var ok = await askQuestion(W.exam[i], i, W.exam.length, token);
+      if (!examAlive(token)) return;
+      if (ok) right += 1;
+    }
+    examToken += 1;
+    showExamResult(W, right, W.exam.length);
+  }
+
+  /** @param {any} W @param {number} right @param {number} total */
+  function showExamResult(W, right, total) {
+    var rec = saveExam(W.n, right, total);
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    Arcade.endScreen(screens.end, {
+      title: 'EXAM SPRINT', sub: 'Exam Sprint: ' + right + '/' + total,
+      score: rec.best || 0, accuracy: rec.acc || 0,
+      medal: rec.medal, stamp: Arcade.stampFor(rec.acc || 0),
+      ribbon: rec.examPerfect ? 'Exam Ready' : '',
+      stats: [{ label: 'Ward ' + W.n, value: W.name }, { label: 'Best sprint', value: rec.exam.right + '/' + rec.exam.total }],
+      note: rec.medal === 'gold' ? '' : 'Gold needs 95% on the ward and 2 of 3 here.',
+      buttons: [
+        { label: 'Wards', primary: true, onClick: goSelect },
+        { label: 'Run it again', onClick: function () { startExam(W.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    Arcade.focusScreen(screens.end);
+    if (right === total) Arcade.confetti();
+  }
+
+  /* ===== THE RUN ===== */
+
+  /** @param {number} n */
+  function startWard(n) {
+    var W = wardOf(n);
+    if (!W) return;
+    abortRun();
+    if (!howtoSeen(n)) { openHowto(n, function () { markHowtoSeen(n); beginWard(W); }, goSelect); return; }
+    beginWard(W);
+  }
+
+  /** @param {any} W */
+  function beginWard(W) {
+    show('play');
+    playWard(W).catch(function () { Arcade.toast('Something went wrong — back to the wards'); goSelect(); });
+  }
+
+  /** @param {any} W */
+  async function playWard(W) {
+    runToken += 1;
+    var token = runToken;
+    run = { W: W, hearts: Arcade.hearts(heartsEl, HEARTS), streak: Arcade.streak(), score: 0, asked: 0, correct: 0, bestStreak: 0, speedTotal: 0, clock: null, missed: [] };
+    run.streak.render(comboEl);
+    scoreEl.textContent = '0';
+    hideSheet();
+    var plans = schedule(W);
+    for (var i = 0; i < plans.length; i += 1) {
+      var boss = i === plans.length - 1;
+      if (boss) { Arcade.sfx.play('boss'); Arcade.toast('👑 Grand rounds', 1200); await wait(500); if (!alive(token)) return; }
+      await playChart(plans[i], i, plans.length, boss, token);
+      if (!alive(token)) return;
+      if (run.hearts.get() === 0) { showFail(W); return; }
+    }
+    showClear(W);
+  }
+
+  /* ===== END SCREENS ===== */
+
+  function goHome() { window.location.href = '../index.html'; }
+  var ARCADE_BUTTON = { label: 'Arcade', onClick: goHome };
+
+  /** @returns {number} */
+  function accuracy() { return run.asked ? run.correct / run.asked : 0; }
+
+  /** @param {any} panel */
+  function showMissed(panel) {
+    if (!panel || !run.missed.length) return;
+    var list = fill('missed-list', '');
+    list.appendChild(chip('muted', 'Missed: '));
+    run.missed.forEach(function (l, i) { list.appendChild(chip('missed-head', (i ? ' · ' : '') + l.why.split(/[;:]/)[0].slice(0, 56))); });
+    panel.insertBefore(list, panel.lastElementChild);
+  }
+
+  /** @param {any} panel @param {any} before */
+  function showTitle(panel, before) {
+    if (!panel) return;
+    var after = Arcade.titleFor();
+    var rose = after.rank > before.rank;
+    var line = fill('title-chip' + (rose ? ' up' : ''), 'Title: ' + after.name + (rose ? ' · 🎉 New title!' : ''));
+    var head = panel.querySelector('.end-head');
+    head.parentNode.insertBefore(line, head.nextSibling);
+    if (rose) Arcade.sfx.play('coin');
+  }
+
+  /** @param {any} W */
+  function showClear(W) {
+    var acc = accuracy();
+    var score = run.score;
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    var beforeTitle = Arcade.titleFor();
+    saveProgress(W.n, score, acc);
+    Arcade.saveBest('doctor', { score: score, initials: Arcade.initials(), level: W.n });
+    var saved = loadProgress();
+    var rec = saved.levels[String(W.n)] || {};
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: 'WARD CLEARED', sub: 'Ward ' + W.n + ' · ' + W.name,
+      score: score, accuracy: acc, stamp: Arcade.stampFor(acc),
+      medal: Arcade.medalFor(acc, { examPassed: !!(rec.exam && rec.exam.right >= 2) }),
+      stats: [{ label: 'Best streak', value: String(run.bestStreak) }, { label: 'Speed bonus', value: '+' + run.speedTotal }],
+      note: EXAM_FRAME + (saved.unlocked > W.n ? '' : ' · Clear 75% to unlock the next ward.'),
+      buttons: [
+        { label: 'Exam Sprint →', primary: true, variant: 'gold', onClick: function () { startExam(W.n); } },
+        { label: 'Wards', onClick: goSelect },
+        { label: 'Replay', onClick: function () { startWard(W.n); } },
+        ARCADE_BUTTON
+      ]
+    });
+    showTitle(panel, beforeTitle);
+    showMissed(panel);
+    Arcade.focusScreen(screens.end);
+    Arcade.confetti();
+  }
+
+  /** @param {any} W */
+  function showFail(W) {
+    var acc = accuracy();
+    runToken += 1;
+    Arcade.voice.stop();
+    sheetBtn.textContent = 'Got it';
+    show('end');
+    var panel = Arcade.endScreen(screens.end, {
+      title: 'WARD LOST', sub: 'Three hearts gone. Scrub in again?', tone: 'fail',
+      score: run.score, accuracy: acc, medal: null, stamp: Arcade.stampFor(acc),
+      stats: [{ label: 'Best streak', value: String(run.bestStreak) }, { label: 'Found', value: run.correct + '/' + run.asked }],
+      buttons: [
+        { label: 'Retry', primary: true, onClick: function () { startWard(W.n); } },
+        { label: 'Wards', onClick: goSelect },
+        ARCADE_BUTTON
+      ]
+    });
+    showMissed(panel);
+    Arcade.focusScreen(screens.end);
+  }
+
+  function goSelect() {
+    abortRun();
+    sheetBtn.textContent = 'Got it';
+    paintSelect();
+    show('select');
+  }
+
+  /* ===== HOW TO PLAY ===== */
+
+  /** @type {(() => void)|null} */ var howtoAfter = null;
+  /** @type {(() => void)|null} */ var howtoBackTo = null;
+
+  /** @param {number} n @returns {boolean} */
+  function howtoSeen(n) {
+    var saved = Arcade.store.get('arcade.doctor.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen : [];
+    return seen.indexOf(n) >= 0;
+  }
+  /** @param {number} n */
+  function markHowtoSeen(n) {
+    var saved = Arcade.store.get('arcade.doctor.howto', null);
+    var seen = saved && Array.isArray(saved.seen) ? saved.seen.filter(function (v) { return typeof v === 'number'; }) : [];
+    if (seen.indexOf(n) < 0) seen.push(n);
+    Arcade.store.set('arcade.doctor.howto', { seen: seen });
+  }
+
+  /** @param {number} n */
+  function paintHowto(n) {
+    var W = wardOf(n);
+    howtoTitle.textContent = W ? 'How to play · ' + W.name : 'How to play';
+    howtoCards.textContent = '';
+    var cards = HOWTO.slice();
+    if (W) cards.unshift({ emoji: '\u{1F3E5}', head: 'Ward ' + W.n + ' · ' + W.name, body: W.blurb + '. ' + W.charts + ' charts, ' + W.lesionsPer + ' errors each, one more on rounds.' });
+    cards.forEach(function (card) {
+      var panel = fill('panel howto-card', '');
+      var emoji = fill('howto-emoji', card.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      panel.appendChild(emoji);
+      var body = fill('', '');
+      body.appendChild(fill('howto-head', card.head));
+      body.appendChild(fill('howto-body', card.body));
+      panel.appendChild(body);
+      howtoCards.appendChild(panel);
+    });
+  }
+
+  /** @param {number} n @param {() => void} after @param {() => void} [back] */
+  function openHowto(n, after, back) { howtoAfter = after; howtoBackTo = back || after; paintHowto(n); show('howto'); }
+  /** @param {boolean} [backwards] */
+  function closeHowto(backwards) { var go = backwards === true ? howtoBackTo : howtoAfter; howtoAfter = null; howtoBackTo = null; if (go) go(); }
+
+  function paintIntro() {
+    introEl.textContent = '';
+    var title = fill('intro-title', 'What is this game?');
+    title.id = 'introTitle';
+    introEl.appendChild(title);
+    INTRO.forEach(function (line) {
+      var row = fill('intro-line', '');
+      var emoji = fill('intro-emoji', line.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      row.appendChild(fill('intro-text', line.text));
+      introEl.appendChild(row);
+    });
+  }
+
+  /* ===== BOOT ===== */
+
+  Arcade.bigType(Arcade.store.get('arcade.bigType', false));
+  Arcade.sfx.bindMuteButton(byId('muteBtn'));
+  Arcade.voice.bindButton(byId('voiceBtn'));
+  sheetBtn.style.display = 'none';
+  paintIntro();
+
+  initialsBtn.textContent = Arcade.initials();
+  initialsBtn.addEventListener('click', function () {
+    if (!initialsPanel.hidden) { initialsPanel.hidden = true; return; }
+    initialsPanel.hidden = false;
+    Arcade.initialsEntry(initialsMount, { onDone: function (value) { initialsBtn.textContent = value; initialsPanel.hidden = true; } });
+  });
+
+  byId('examPace').textContent = TIMING.examSeconds + ' s';
+  byId('playBtn').addEventListener('click', goSelect);
+  byId('selectBack').addEventListener('click', function () { abortRun(); show('title'); });
+  byId('playBack').addEventListener('click', goSelect);
+  byId('examBack').addEventListener('click', goSelect);
+  byId('howtoBack').addEventListener('click', function () { closeHowto(true); });
+  byId('howtoGo').addEventListener('click', function () { closeHowto(false); });
+  byId('selectHowto').addEventListener('click', function () { openHowto(0, function () { show('select'); }); });
+  byId('playHowto').addEventListener('click', function () {
+    if (!run) return;
+    pauseClocks();
+    openHowto(run.W.n, function () { show('play'); resumeClocks(); });
+  });
+
+  paintSelect();
+  var deepLink = parseInt(String(Arcade.qs('level', '')), 10);
+  if (Number.isFinite(deepLink)) {
+    if (playable(deepLink)) startWard(deepLink);
+    else { show('select'); Arcade.toast(wardOf(deepLink) ? 'Ward ' + deepLink + ' is still locked' : 'No ward ' + deepLink); }
+  }
+  booted = true;
+}());
+</script>
+
+</body>
+</html>

@@ -490,6 +490,9 @@ var Arcade = (function () {
     if (target.game === 'calc') {
       return { game: 'calc', level: target.level, url: 'games/calc-blitz.html?level=' + target.level, label: 'Calc Blitz · Ladder ' + target.level };
     }
+    if (target.game === 'doctor') {
+      return { game: 'doctor', level: target.level, url: 'games/graph-doctor.html?level=' + target.level, label: 'Graph Doctor · Ward ' + target.level };
+    }
     return {
       game: 'shift',
       level: target.level,
