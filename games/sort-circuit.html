@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
 </head>
 <body>
 
@@ -52,6 +52,8 @@ const DECKS = [
       { id: 'g-repave', text: 'The town repaves Central Avenue', emoji: '🚧', bin: 0, why: 'Government purchases of goods and services, such as road repaving, are part of GDP as G.', ced: '2.1', skill: 1 }
     ],
     exam: [
+      { stem: 'Which of the following is counted as investment spending in the calculation of gross domestic product?', choices: ['A household’s purchase of shares of stock', 'A firm’s purchase of new machinery', 'A student’s deposit in a savings account', 'The government’s purchase of a new fire truck'], answer: 1, why: 'Investment in GDP means spending by firms on new capital goods, new construction and changes in inventories; buying financial assets is not investment in the national income accounts.', ced: '2.1', skill: 1 },
+      { stem: 'Which of the following transactions would be counted in this year’s United States gross domestic product?', choices: ['A used car sold by a dealer to a family', 'A house built last year and sold this year', 'Legal services provided by an attorney this year', 'A bond issued by a corporation'], answer: 2, why: 'GDP counts the market value of final goods and services produced within the country during the current period; services produced this year count, while used goods, houses built in earlier years and financial transactions do not.', ced: '2.1', skill: 1 },
       { stem: 'Which of the following is included in the calculation of a country’s gross domestic product?', choices: ['The purchase of a used car from a neighbor', 'A Social Security payment to a retiree', 'The purchase of a newly built home', 'The sale of shares of stock on an exchange'], answer: 2, why: 'GDP counts newly produced final goods and services; a newly built home is residential investment, while used goods, transfer payments and financial transactions are excluded.', ced: '2.1', skill: 1 },
       { stem: 'A bakery buys flour and uses it to produce bread that it sells to consumers. Including the value of the flour in GDP as well as the value of the bread would result in which of the following?', choices: ['An accurate measure of production', 'Double counting', 'An understatement of GDP', 'The exclusion of intermediate goods'], answer: 1, why: 'The flour is an intermediate good whose value is already included in the price of the bread; counting it separately would double count.', ced: '2.1', skill: 2 },
       { stem: 'Which of the following would most likely cause measured GDP to understate a country’s total production?', choices: ['A large volume of exports', 'An increase in government purchases', 'A large amount of unpaid household production', 'A rise in the price level'], answer: 2, why: 'GDP excludes non-market production such as unpaid household work, so where such production is large, measured GDP understates total output.', ced: '2.2', skill: 1 }
@@ -62,7 +64,7 @@ const DECKS = [
     bins: ['M1 money', 'Not M1'],
     pool: [
       { id: 'm-cash', text: 'The twenties in your wallet', emoji: '💵', bin: 0, why: 'Currency held by the public is the most liquid form of money and is included in M1.', ced: '4.3', skill: 1 },
-      { id: 'm-coins', text: 'A jar of quarters on a Cedarhurst dresser', emoji: '🪙', bin: 0, why: 'Coins in circulation are currency, a component of M1.', ced: '4.3', skill: 1 },
+      { id: 'm-coins', text: 'A jar of quarters on a Cedarhurst dresser', emoji: '🪙', bin: 0, why: 'Coins in circulation are currency held by the public, and currency is the most liquid component of M1.', ced: '4.3', skill: 1 },
       { id: 'm-checking', text: 'The balance in a Lawrence family’s checking account', emoji: '🏦', bin: 0, why: 'Checkable (demand) deposits can be spent directly by check or debit, so they are included in M1.', ced: '4.3', skill: 1 },
       { id: 'm-cd', text: 'A six-month certificate of deposit', emoji: '📜', bin: 1, why: 'A small time deposit cannot be spent until it matures, so it is near-money: part of M2 but not M1.', ced: '4.3', skill: 1 },
       { id: 'm-mmf', text: 'Shares in a money market mutual fund', emoji: '💹', bin: 1, why: 'Retail money market fund balances are included in M2 as near-money but are not part of M1.', ced: '4.3', skill: 1 },
@@ -81,6 +83,8 @@ const DECKS = [
       { id: 'm-mattress', text: 'A $100 bill kept under a mattress', emoji: '🛏️', bin: 0, why: 'Currency outside the banking system counts in M1 even when it is hoarded rather than spent; M1 measures what could be spent at once.', ced: '4.3', skill: 2 }
     ],
     exam: [
+      { stem: 'A worker accepts a paycheck knowing it can be used to buy groceries, gasoline and rent. Which function of money does this best illustrate?', choices: ['Store of value', 'Unit of account', 'Medium of exchange', 'Standard of deferred payment'], answer: 2, why: 'Money serves as a medium of exchange when it is generally accepted in payment for goods and services, which is what makes a paycheck useful.', ced: '4.3', skill: 1 },
+      { stem: 'Which of the following best explains why a savings bond is not part of the M1 money supply?', choices: ['Its value is fixed in dollars', 'It cannot be used directly as a medium of exchange', 'It is issued by the government', 'It earns interest'], answer: 1, why: 'M1 consists of currency and checkable deposits, the assets that can be spent directly; a bond must first be sold for money, so it is a financial asset rather than money.', ced: '4.3', skill: 2 },
       { stem: 'Which of the following is included in the M1 measure of the money supply?', choices: ['A six-month certificate of deposit', 'Balances in checking accounts', 'Shares of stock in a corporation', 'The unused portion of a credit card limit'], answer: 1, why: 'M1 consists of currency in circulation and checkable deposits — the most liquid forms of money that can be spent directly.', ced: '4.3', skill: 1 },
       { stem: 'A bagel shop posts its prices in dollars. Which function of money does this best illustrate?', choices: ['Medium of exchange', 'Store of value', 'Unit of account', 'Standard of deferred payment'], answer: 2, why: 'Stating prices in dollars uses money as a unit of account, the common measure in which values are expressed.', ced: '4.3', skill: 1 },
       { stem: 'Which of the following assets is the most liquid?', choices: ['A house', 'A checking account balance', 'A two-year certificate of deposit', 'A corporate bond'], answer: 1, why: 'Liquidity is the ease of converting an asset to a medium of exchange; a checking balance can be spent immediately, so it is the most liquid asset listed.', ced: '4.3', skill: 1 }
@@ -106,6 +110,8 @@ const DECKS = [
       { id: 'p-credit', text: 'Congress passes an investment tax credit', emoji: '🧾', bin: 0, why: 'An investment tax credit raises the after-tax return on capital and increases investment spending, shifting aggregate demand right: expansionary fiscal policy.', ced: '3.8', skill: 1 }
     ],
     exam: [
+      { stem: 'Assume an economy is experiencing inflation above its target and the banking system has limited reserves. Which of the following central bank actions would be most appropriate?', choices: ['Buying government bonds on the open market', 'Selling government bonds on the open market', 'Lowering the discount rate', 'Lowering the reserve requirement'], answer: 1, why: 'With limited reserves, an open-market sale drains reserves and decreases the money supply, raising the nominal interest rate, lowering interest-sensitive spending and shifting aggregate demand left, which reduces inflation.', ced: '4.6', skill: 1 },
+      { stem: 'Which of the following is an example of discretionary expansionary fiscal policy?', choices: ['Unemployment insurance payments rising during a recession', 'Income tax revenues falling as incomes fall', 'Congress passing a new infrastructure spending bill', 'The central bank lowering its policy interest rate'], answer: 2, why: 'Discretionary fiscal policy is a deliberate change in government spending or taxes by the legislature; a new spending bill increases government purchases and aggregate demand, unlike automatic stabilizers or monetary policy.', ced: '3.8', skill: 1 },
       { stem: 'Assume an economy is operating below full employment. Which of the following combinations of fiscal and monetary policy would be most effective in increasing real output?', choices: ['Increase taxes and sell government bonds', 'Increase government spending and lower the policy interest rate', 'Decrease government spending and buy government bonds', 'Decrease taxes and raise the policy interest rate'], answer: 1, why: 'Expansionary fiscal policy (higher government spending) and expansionary monetary policy (a lower policy rate) both shift aggregate demand right, raising real output toward full employment.', ced: '5.1', skill: 1 },
       { stem: 'Which of the following is an example of an automatic stabilizer?', choices: ['A new law that increases highway spending during a recession', 'Unemployment insurance payments that rise as unemployment rises', 'An open-market purchase of bonds by the central bank', 'A one-time tax rebate passed by Congress'], answer: 1, why: 'Automatic stabilizers change government spending or taxes with the business cycle without new legislation; unemployment insurance payments rise automatically in a downturn.', ced: '3.9', skill: 1 },
       { stem: 'Assume the banking system has ample reserves and the central bank wants to reduce inflation. Which of the following actions would be appropriate?', choices: ['Lowering the interest rate paid on reserve balances', 'Raising the interest rate paid on reserve balances', 'Increasing government purchases', 'Buying long-term bonds'], answer: 1, why: 'With ample reserves the central bank tightens by raising its administered rates; a higher interest rate on reserve balances raises market interest rates, lowers interest-sensitive spending and shifts aggregate demand left, reducing inflation.', ced: '4.6', skill: 1 }
@@ -115,8 +121,8 @@ const DECKS = [
     n: 4, name: 'Current or Financial', blurb: 'Balance of payments: which account records the deal', ced: '6.1',
     bins: ['Current account', 'Financial account'],
     pool: [
-      { id: 'b-export', text: 'A Lawrence firm sells machines to a buyer in Chile', emoji: '🚢', bin: 0, why: 'Exports of goods are recorded in the current account as a credit.', ced: '6.1', skill: 1 },
-      { id: 'b-tv', text: 'A Hewlett family buys a television made in Japan', emoji: '📺', bin: 0, why: 'Imports of goods are recorded in the current account as a debit.', ced: '6.1', skill: 1 },
+      { id: 'b-export', text: 'A Lawrence firm sells machines to a buyer in Chile', emoji: '🚢', bin: 0, why: 'Exports of goods are recorded in the current account as a credit, because the payment for them flows into the country.', ced: '6.1', skill: 1 },
+      { id: 'b-tv', text: 'A Hewlett family buys a television made in Japan', emoji: '📺', bin: 0, why: 'Imports of goods are recorded in the current account as a debit, because the payment for them flows out of the country.', ced: '6.1', skill: 1 },
       { id: 'b-treasury', text: 'A German investor buys U.S. Treasury bonds', emoji: '🏛️', bin: 1, why: 'A foreign purchase of U.S. financial assets is a capital inflow, recorded in the financial account as a credit.', ced: '6.1', skill: 1 },
       { id: 'b-korea', text: 'An American buys shares of a Korean carmaker', emoji: '📈', bin: 1, why: 'A U.S. purchase of foreign financial assets is a capital outflow, recorded in the financial account as a debit.', ced: '6.1', skill: 1 },
       { id: 'b-hotel', text: 'Foreign tourists spend a week at a Cedarhurst hotel', emoji: '🏨', bin: 0, why: 'Services sold to foreigners are exports of services, recorded in the current account as a credit.', ced: '6.1', skill: 1 },
@@ -126,11 +132,13 @@ const DECKS = [
       { id: 'b-branch', text: 'A French bank opens a branch in New York', emoji: '🏦', bin: 1, why: 'Foreign direct investment into the United States is a capital inflow, recorded in the financial account.', ced: '6.1', skill: 1 },
       { id: 'b-aid', text: 'The U.S. government ships grain to a country hit by famine', emoji: '🌾', bin: 0, why: 'Foreign aid is a unilateral transfer, recorded in the current account as a debit.', ced: '6.1', skill: 1 },
       { id: 'b-tower', text: 'A Japanese firm buys a Manhattan office tower', emoji: '🏙️', bin: 1, why: 'A foreign purchase of a U.S. real asset is a capital inflow, recorded in the financial account.', ced: '6.1', skill: 1 },
-      { id: 'b-oil', text: 'A U.S. refinery imports a tanker of crude oil', emoji: '🛢️', bin: 0, why: 'Imports of goods are recorded in the current account as a debit.', ced: '6.1', skill: 1 },
+      { id: 'b-oil', text: 'A U.S. refinery imports a tanker of crude oil', emoji: '🛢️', bin: 0, why: 'A tanker of crude is an import of goods, recorded in the current account as a debit: the payment for it flows out of the country.', ced: '6.1', skill: 1 },
       { id: 'b-interest', text: 'The Treasury pays interest to foreign holders of U.S. bonds', emoji: '💸', bin: 0, why: 'Income paid to foreign owners of U.S. assets is investment income, recorded in the current account as a debit.', ced: '6.1', skill: 2 },
       { id: 'b-tuition', text: 'A Lawrence student pays tuition at a British university', emoji: '🎓', bin: 0, why: 'Education bought abroad is an import of services, recorded in the current account as a debit.', ced: '6.1', skill: 1 }
     ],
     exam: [
+      { stem: 'A Japanese automaker builds a factory in Ohio. In the United States balance of payments, this transaction is recorded as which of the following?', choices: ['A credit in the current account', 'A debit in the current account', 'A credit in the financial account', 'A debit in the financial account'], answer: 2, why: 'Foreign direct investment into the United States is a capital inflow, recorded as a credit in the financial account.', ced: '6.1', skill: 2 },
+      { stem: 'Which of the following would be recorded as a debit in the current account of the United States?', choices: ['A United States firm exports wheat to Egypt', 'A United States resident receives dividends from a German company', 'A United States resident buys a vacation in Italy', 'A Canadian investor buys United States Treasury bonds'], answer: 2, why: 'A vacation purchased abroad is an import of services, recorded as a debit in the current account; exports and income received from abroad are credits, and a foreign purchase of U.S. bonds belongs in the financial account.', ced: '6.1', skill: 2 },
       { stem: 'Which of the following transactions would be recorded in the current account of the United States balance of payments?', choices: ['A U.S. resident buys shares of a Japanese company', 'A German firm builds a plant in Ohio', 'A U.S. firm exports software to Canada', 'A French investor buys U.S. Treasury bonds'], answer: 2, why: 'The current account records trade in goods and services, investment income and transfers; an export of software is a credit in the current account, while purchases of assets belong to the financial account.', ced: '6.1', skill: 1 },
       { stem: 'Assume the United States runs a current account deficit. Which of the following must be true?', choices: ['The United States runs a financial account deficit of equal size', 'The United States runs a financial account surplus of equal size', 'The dollar must depreciate', 'Net exports are positive'], answer: 1, why: 'The current account and the financial account sum to zero, so a current account deficit is matched by a financial account surplus: net capital inflows finance the excess of imports over exports.', ced: '6.1', skill: 1 },
       { stem: 'A U.S. company purchases a factory in Brazil. In the U.S. balance of payments this transaction is recorded as which of the following?', choices: ['A credit in the current account', 'A debit in the current account', 'A credit in the financial account', 'A debit in the financial account'], answer: 3, why: 'Buying a foreign real asset is a capital outflow, recorded as a debit in the financial account.', ced: '6.1', skill: 2 }
@@ -290,8 +298,8 @@ const JUICE = {
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903c"></script>
-<script src="../shared/leaderboard.js?v=20260903c"></script>
+<script src="../shared/arcade.js?v=20260903d"></script>
+<script src="../shared/leaderboard.js?v=20260903d"></script>
 
 <script>
 /* ================================================================================
@@ -316,6 +324,7 @@ const JUICE = {
   var LIGHTNING = 4;          // cards in the finish
   var COMMIT = 0.38;          // how far across the table (as a fraction of its width) a drag must go
   var KEYS = 'ABCD';
+  var EXAM_DRAW = 3;          // questions per sprint, drawn from the level's pool
   var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
 
   /* ===== ELEMENTS ===== */
@@ -801,14 +810,14 @@ const JUICE = {
     examSubEl.textContent = 'Deck ' + D.n + ' · ' + D.name;
     hideSheet();
     var right = 0;
-    var items = Arcade.shuffledExam(D.exam);   // never the same three in the same order with the same letter
+    var items = Arcade.shuffledExam(D.exam).slice(0, EXAM_DRAW);   // three of the pool, in a fresh order with fresh letters
     for (var i = 0; i < items.length; i += 1) {
       var ok = await askQuestion(items[i], i, items.length, token);
       if (!examAlive(token)) return;
       if (ok) right += 1;
     }
     examToken += 1;
-    showExamResult(D, right, D.exam.length);
+    showExamResult(D, right, items.length);
   }
 
   /** @param {any} D @param {number} right @param {number} total */

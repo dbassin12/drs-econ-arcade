@@ -88,9 +88,9 @@ test('boss rungs say so, and no other rung does', () => {
   }
 });
 
-test('every ladder has a three-question Exam Sprint in the exam’s voice', () => {
+test('every ladder has a pool of Exam Sprint items in the exam’s voice, three drawn per sprint', () => {
   for (const L of LADDERS) {
-    assert.equal(L.exam.length, 3, 'ladder ' + L.n);
+    assert.ok(L.exam.length >= 5, 'a pool of at least five for the sprint to draw three from: ' + 'ladder ' + L.n);
     for (const q of L.exam) {
       assert.equal(q.choices.length, 4);
       assert.ok(q.answer >= 0 && q.answer < 4);

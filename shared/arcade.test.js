@@ -235,8 +235,11 @@ test('playNext routes the weakest topic to the level that drills it', () => {
   assert.deepEqual(next('4.1'), {
     game: 'investor', level: 1, url: 'games/investor.html?level=1', label: 'The Investor · Run 1'
   });
-  // a still-unmapped topic falls through to the hardest shift level
-  assert.deepEqual(next('2.7'), {
+  assert.deepEqual([next('2.5').game, next('2.5').level], ['investor', 2], 'the cost of inflation is the Inflation Scare');
+  assert.deepEqual([next('3.9').game, next('3.9').level], ['sort', 3], 'automatic stabilizers are a sort');
+  for (const ced of ['2.7', '5.6', '5.7']) assert.deepEqual([next(ced).game, next(ced).level], ['shift', 3], ced + ' is on the level that draws LRAS');
+  // a still-unmapped topic (Unit 1 has no game yet) falls through to the hardest shift level
+  assert.deepEqual(next('1.1'), {
     game: 'shift', level: 3, url: 'games/shift-happens.html?level=3', label: 'Shift Happens · Level 3'
   });
   // no data at all starts at level 1

@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
 </head>
 <body>
 
@@ -129,7 +129,7 @@ const RUNG_KINDS = {
   maxCreate: { ced: '4.4', skill: 3, unit: '$', dial: { min: 0, max: 10000, step: 500 }, make: function (rng) {
     var pick = pickWith(rng); var rr = pick([10, 20, 25, 50]); var d = 1000; var ex = d - d * rr / 100; var x = ex * 100 / rr;
     return { text: 'A $1,000 cash deposit arrives at a bank with no excess reserves; the reserve requirement is ' + rr + '%. What is the maximum amount of new money the banking system can create?', answer: x,
-      why: 'Excess reserves = $1,000 − ' + (rr / 100) + ' × $1,000 = $' + num(ex) + '; maximum money creation = excess reserves × money multiplier = $' + num(ex) + ' × (1 ÷ ' + (rr / 100) + ') = $' + num(x) + '.' }; } },
+      why: 'Excess reserves = $1,000 − ' + (rr / 100) + ' × $1,000 = $' + num(ex) + '; maximum money creation = excess reserves × money multiplier = $' + num(ex) + ' × (1 ÷ ' + (rr / 100) + ') = $' + num(x) + ' — a maximum: banks holding excess reserves or the public holding currency make the actual expansion smaller.' }; } },
   omoBank: { ced: '4.4', skill: 3, unit: '$M', dial: { min: 0, max: 5000, step: 250 }, make: function (rng) {
     var pick = pickWith(rng); var b = pick([250, 500]); var rr = pick([10, 20, 50]); var x = b * 100 / rr;
     return { text: 'The Fed buys $' + b + ' million of bonds from a bank; the reserve requirement is ' + rr + '%. What is the maximum increase in the money supply?', answer: x,
@@ -144,6 +144,8 @@ const LADDERS = [
   { n: 1, name: 'Measuring the Economy', blurb: 'CPI, inflation, real GDP, the deflator, unemployment', ced: '2.4',
     rungs: ['cpi', 'inflation', 'urate', 'lfpr', 'realgdp', 'deflator', 'growth', 'bossReal'],
     exam: [
+      { stem: 'A country has 90 million people employed, 10 million unemployed, and 50 million adults who are not in the labor force. The labor force participation rate is', choices: ['10 percent', '60 percent', '66.7 percent', '90 percent'], answer: 2, why: 'Labor force participation rate = labor force ÷ working-age population × 100 = (90 + 10) ÷ (90 + 10 + 50) × 100 = 100 ÷ 150 × 100 = 66.7 percent.', ced: '2.3', skill: 3 },
+      { stem: 'The consumer price index was 125 last year and is 130 this year. The inflation rate over the year is', choices: ['4 percent', '5 percent', '25 percent', '30 percent'], answer: 0, why: 'Inflation rate = (130 − 125) ÷ 125 × 100 = 4 percent; the five-point rise in the index is 4 percent of last year’s level.', ced: '2.4', skill: 3 },
       { stem: 'A market basket cost $200 in the base year and $250 in year 2. The consumer price index for year 2 is', choices: ['50', '80', '125', '150'], answer: 2, why: 'CPI = (cost this year ÷ cost in the base year) × 100 = 250 ÷ 200 × 100 = 125.', ced: '2.4', skill: 3 },
       { stem: 'In a country with a labor force of 100 million, 6 million people are unemployed. Which of the following is the unemployment rate?', choices: ['0.6 percent', '6 percent', '9.4 percent', '60 percent'], answer: 1, why: 'Unemployment rate = unemployed ÷ labor force × 100 = 6 ÷ 100 × 100 = 6 percent.', ced: '2.3', skill: 3 },
       { stem: 'Nominal GDP is $2,400 billion and the GDP deflator is 120. Real GDP is', choices: ['$1,200 billion', '$2,000 billion', '$2,280 billion', '$2,880 billion'], answer: 1, why: 'Real GDP = nominal GDP ÷ (deflator ÷ 100) = 2,400 ÷ 1.2 = $2,000 billion.', ced: '2.6', skill: 3 }
@@ -151,6 +153,8 @@ const LADDERS = [
   { n: 2, name: 'Multipliers', blurb: 'The spending and tax multipliers, and the gap they close', ced: '3.2',
     rungs: ['mpcMult', 'mpsMult', 'dgGdp', 'taxMult', 'dtGdp', 'closeGap', 'balanced', 'bossGapTax'],
     exam: [
+      { stem: 'If the marginal propensity to save is 0.25, the tax multiplier is', choices: ['−1', '−3', '−4', '−0.75'], answer: 1, why: 'MPC = 1 − MPS = 0.75, so the tax multiplier = −MPC ÷ MPS = −0.75 ÷ 0.25 = −3.', ced: '3.2', skill: 3 },
+      { stem: 'Assume the marginal propensity to consume is 0.9 and real GDP is $500 billion below full employment. Which of the following is the smallest increase in government purchases that would close the gap?', choices: ['$5 billion', '$50 billion', '$450 billion', '$500 billion'], answer: 1, why: 'The spending multiplier is 1 ÷ (1 − 0.9) = 10, so government purchases must rise by $500 billion ÷ 10 = $50 billion.', ced: '3.8', skill: 3 },
       { stem: 'If the marginal propensity to consume is 0.8, an increase in government purchases of $10 billion will increase real GDP by a maximum of', choices: ['$8 billion', '$10 billion', '$40 billion', '$50 billion'], answer: 3, why: 'The spending multiplier is 1 ÷ (1 − 0.8) = 5, so real GDP rises by at most 5 × $10 billion = $50 billion.', ced: '3.2', skill: 3 },
       { stem: 'Assume the marginal propensity to consume is 0.75. Which of the following has the largest effect on real GDP?', choices: ['A $100 billion increase in government purchases', 'A $100 billion tax cut', 'A $100 billion increase in transfer payments', 'They all have the same effect'], answer: 0, why: 'The spending multiplier (1 ÷ 0.25 = 4) exceeds the tax and transfer multiplier (0.75 ÷ 0.25 = 3) because every dollar of government purchases is spent, while part of a tax cut or transfer is saved.', ced: '3.8', skill: 2 },
       { stem: 'An economy has a recessionary gap of $200 billion and a marginal propensity to consume of 0.5. To close the gap, government purchases should be increased by', choices: ['$50 billion', '$100 billion', '$200 billion', '$400 billion'], answer: 1, why: 'The spending multiplier is 1 ÷ (1 − 0.5) = 2, so the needed increase is $200 billion ÷ 2 = $100 billion.', ced: '3.8', skill: 3 }
@@ -158,6 +162,8 @@ const LADDERS = [
   { n: 3, name: 'Money & Banks', blurb: 'Real vs nominal rates, reserves, and the money multiplier', ced: '4.4',
     rungs: ['fisherReal', 'fisherNominal', 'moneyMult', 'required', 'excess', 'maxCreate', 'omoBank', 'bossSurprise'],
     exam: [
+      { stem: 'A bank has $50,000 in checkable deposits and holds $8,000 in reserves. If the reserve requirement is 10 percent, the maximum additional loan the bank can make is', choices: ['$3,000', '$5,000', '$8,000', '$30,000'], answer: 0, why: 'Required reserves = 0.10 × $50,000 = $5,000; excess reserves = $8,000 − $5,000 = $3,000, and a bank can lend at most its excess reserves.', ced: '4.4', skill: 3 },
+      { stem: 'A saver earned a nominal interest rate of 6 percent while the inflation rate was 4 percent. The real interest rate earned was approximately', choices: ['−2 percent', '2 percent', '4 percent', '10 percent'], answer: 1, why: 'Real interest rate ≈ nominal interest rate − inflation rate = 6 − 4 = 2 percent.', ced: '4.2', skill: 3 },
       { stem: 'If the nominal interest rate is 7 percent and the expected inflation rate is 3 percent, the expected real interest rate is', choices: ['3 percent', '4 percent', '7 percent', '10 percent'], answer: 1, why: 'Real interest rate = nominal interest rate − expected inflation = 7 − 3 = 4 percent.', ced: '4.2', skill: 3 },
       { stem: 'Assume the reserve requirement is 20 percent and banks hold no excess reserves. A new deposit of $1,000 in currency can lead to a maximum increase in the money supply of', choices: ['$200', '$800', '$4,000', '$5,000'], answer: 2, why: 'Excess reserves are $800 and the money multiplier is 1 ÷ 0.2 = 5, so the banking system can create $800 × 5 = $4,000 of new money on top of the deposit.', ced: '4.4', skill: 3 },
       { stem: 'A bank has $10,000 in deposits, $2,000 in reserves and faces a reserve requirement of 10 percent. Its excess reserves are', choices: ['$0', '$1,000', '$2,000', '$8,000'], answer: 1, why: 'Required reserves = 0.10 × $10,000 = $1,000; excess reserves = $2,000 − $1,000 = $1,000.', ced: '4.4', skill: 3 }
@@ -321,8 +327,8 @@ const JUICE = {
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903c"></script>
-<script src="../shared/leaderboard.js?v=20260903c"></script>
+<script src="../shared/arcade.js?v=20260903d"></script>
+<script src="../shared/leaderboard.js?v=20260903d"></script>
 
 <script>
 /* ================================================================================
@@ -344,6 +350,7 @@ const JUICE = {
   var HEARTS = 3;
   var MOVE_PX = 12;           // a release counts only after the knob has travelled this far
   var KEYS = 'ABCD';
+  var EXAM_DRAW = 3;          // questions per sprint, drawn from the level's pool
   var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
 
   /* ===== ELEMENTS ===== */
@@ -844,14 +851,14 @@ const JUICE = {
     examSubEl.textContent = 'Ladder ' + L.n + ' · ' + L.name;
     hideSheet();
     var right = 0;
-    var items = Arcade.shuffledExam(L.exam);   // never the same three in the same order with the same letter
+    var items = Arcade.shuffledExam(L.exam).slice(0, EXAM_DRAW);   // three of the pool, in a fresh order with fresh letters
     for (var i = 0; i < items.length; i += 1) {
       var ok = await askQuestion(items[i], i, items.length, token);
       if (!examAlive(token)) return;
       if (ok) right += 1;
     }
     examToken += 1;
-    showExamResult(L, right, L.exam.length);
+    showExamResult(L, right, items.length);
   }
 
   /** @param {any} L @param {number} right @param {number} total */

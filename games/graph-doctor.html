@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903c">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
 </head>
 <body>
 
@@ -100,18 +100,24 @@ const LESIONS = {
 const WARDS = [
   { n: 1, name: 'AD–AS Ward', blurb: 'The graph the FRQ always asks for, drawn wrong five ways', ced: '3.5', markets: ['adas'], lesionsPer: 2, charts: 5,
     exam: [
+      { stem: 'In a correctly labeled graph of aggregate demand and aggregate supply, the full-employment level of output is shown by which of the following?', choices: ['The intersection of AD and SRAS', 'The vertical long-run aggregate supply curve', 'The point where SRAS meets the vertical axis', 'The horizontal-axis intercept of AD'], answer: 1, why: 'Long-run aggregate supply is a vertical line at the full-employment level of real GDP; labeling that output level (Yf) on the horizontal axis is what earns the graphing point.', ced: '3.4', skill: 4 },
+      { stem: 'Which of the following correctly describes the slope of the short-run aggregate supply curve and the reason for it?', choices: ['Downward sloping, because of the wealth effect', 'Upward sloping, because input prices are sticky while output prices rise', 'Vertical, because output depends on resources', 'Horizontal, because firms always meet demand'], answer: 1, why: 'Short-run aggregate supply slopes upward because nominal wages and other input prices adjust slowly, so a higher price level raises profit per unit and firms produce more.', ced: '3.3', skill: 4 },
       { stem: 'In a correctly labeled graph of aggregate demand and aggregate supply, which of the following is measured on the vertical axis?', choices: ['Real gross domestic product', 'The price level', 'The nominal interest rate', 'The unemployment rate'], answer: 1, why: 'The AD–AS graph plots the price level against real GDP; the price level is on the vertical axis.', ced: '3.5', skill: 4 },
       { stem: 'Which of the following correctly describes the long-run aggregate supply curve?', choices: ['Upward sloping, because higher prices raise profits', 'Downward sloping, because of the wealth effect', 'Vertical at the full-employment level of output', 'Horizontal at the current price level'], answer: 2, why: 'In the long run output is determined by resources and technology, not the price level, so LRAS is vertical at full-employment output.', ced: '3.4', skill: 4 },
       { stem: 'On a correctly labeled AD–AS graph, the short-run equilibrium price level and output are found at which of the following?', choices: ['The intersection of AD and LRAS', 'The intersection of SRAS and LRAS', 'The intersection of AD and SRAS', 'The point where AD meets the horizontal axis'], answer: 2, why: 'Short-run macroeconomic equilibrium is at the intersection of aggregate demand and short-run aggregate supply.', ced: '3.5', skill: 4 }
     ] },
   { n: 2, name: 'Money Ward', blurb: 'The money market and the loanable funds market: nominal or real, money or funds', ced: '4.5', markets: ['money', 'lf'], lesionsPer: 2, charts: 5,
     exam: [
+      { stem: 'In a correctly labeled graph of the loanable funds market, an increase in government borrowing is shown by which of the following?', choices: ['A rightward shift of the supply curve', 'A leftward shift of the supply curve', 'A rightward shift of the demand curve', 'A movement along the demand curve'], answer: 2, why: 'Government borrowing increases the demand for loanable funds, so the demand curve shifts right and the equilibrium real interest rate rises.', ced: '4.7', skill: 4 },
+      { stem: 'On a correctly labeled money market graph, a decrease in the money supply is shown by which of the following?', choices: ['A rightward shift of the vertical money supply curve', 'A leftward shift of the vertical money supply curve', 'A leftward shift of the money demand curve', 'A movement down along the money demand curve'], answer: 1, why: 'The money supply is drawn as a vertical line; a decrease shifts it left, and the nominal interest rate rises at the new intersection with money demand.', ced: '4.5', skill: 4 },
       { stem: 'In a correctly labeled graph of the money market, the vertical axis measures which of the following?', choices: ['The real interest rate', 'The nominal interest rate', 'The price level', 'The inflation rate'], answer: 1, why: 'The money market determines the nominal interest rate, which is measured on its vertical axis.', ced: '4.5', skill: 4 },
       { stem: 'Which of the following is true of the money supply curve in the money market graph?', choices: ['It slopes upward because banks lend more at higher rates', 'It slopes downward because of the opportunity cost of holding money', 'It is vertical because the central bank sets the quantity of money', 'It is horizontal at the federal funds rate'], answer: 2, why: 'The money supply is set by the central bank independently of the interest rate, so it is drawn as a vertical line.', ced: '4.5', skill: 4 },
       { stem: 'In a correctly labeled graph of the loanable funds market, which of the following is measured on the vertical axis?', choices: ['The nominal interest rate', 'The real interest rate', 'The quantity of money', 'The price level'], answer: 1, why: 'The loanable funds market determines the real interest rate, which is measured on its vertical axis, with the quantity of loanable funds on the horizontal axis.', ced: '4.7', skill: 4 }
     ] },
   { n: 3, name: 'Open Economy Ward', blurb: 'The market for dollars and the Phillips curve, three errors a chart', ced: '6.3', markets: ['forex', 'phillips'], lesionsPer: 3, charts: 5,
     exam: [
+      { stem: 'In a correctly labeled graph of the foreign exchange market for the euro, the horizontal axis measures which of the following?', choices: ['The quantity of euros', 'The quantity of dollars', 'The price of the euro in dollars', 'The United States price level'], answer: 0, why: 'A foreign exchange market is drawn for one currency: the quantity of that currency on the horizontal axis and its price in another currency on the vertical axis.', ced: '6.3', skill: 4 },
+      { stem: 'On a correctly labeled Phillips curve graph, the natural rate of unemployment is shown by which of the following?', choices: ['The intersection of the short-run Phillips curve with the vertical axis', 'The vertical long-run Phillips curve', 'The point where inflation equals zero', 'The slope of the short-run Phillips curve'], answer: 1, why: 'The long-run Phillips curve is vertical at the natural rate of unemployment, which is where the economy returns once expectations adjust.', ced: '5.2', skill: 4 },
       { stem: 'In a correctly labeled graph of the foreign exchange market for the U.S. dollar, the vertical axis measures which of the following?', choices: ['The U.S. price level', 'The quantity of dollars', 'The price of the dollar in terms of a foreign currency', 'The U.S. real interest rate'], answer: 2, why: 'The price in the market for dollars is the exchange rate: the price of a dollar in units of foreign currency.', ced: '6.3', skill: 4 },
       { stem: 'Which of the following correctly describes the long-run Phillips curve?', choices: ['Downward sloping, showing the inflation–unemployment trade-off', 'Vertical at the natural rate of unemployment', 'Horizontal at the expected inflation rate', 'Upward sloping, because expectations adjust'], answer: 1, why: 'In the long run unemployment returns to its natural rate whatever the inflation rate, so the long-run Phillips curve is vertical at the natural rate.', ced: '5.2', skill: 4 },
       { stem: 'On a correctly labeled short-run Phillips curve graph, which of the following is measured on the horizontal axis?', choices: ['Real GDP', 'The inflation rate', 'The unemployment rate', 'The price level'], answer: 2, why: 'The Phillips curve plots the inflation rate (vertical) against the unemployment rate (horizontal).', ced: '5.2', skill: 4 }
@@ -269,9 +275,9 @@ const JUICE = {
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903c"></script>
-<script src="../shared/leaderboard.js?v=20260903c"></script>
-<script src="../shared/graph.js?v=20260903c"></script>
+<script src="../shared/arcade.js?v=20260903d"></script>
+<script src="../shared/leaderboard.js?v=20260903d"></script>
+<script src="../shared/graph.js?v=20260903d"></script>
 
 <script>
 /* ================================================================================
@@ -295,6 +301,7 @@ const JUICE = {
   var RADIUS = { text: 14, dot: 18, line: 22 };   // how close the tip must land to a part, by kind, in px
   var TIP_LIFT = 44;          // the tip rides this far above the finger so the target stays visible
   var KEYS = 'ABCD';
+  var EXAM_DRAW = 3;          // questions per sprint, drawn from the level's pool
   var EXAM_FRAME = 'Now say it the way the exam asks — 3 questions, ' + TIMING.examSeconds + ' s each';
 
   /* ===== ELEMENTS ===== */
@@ -959,14 +966,14 @@ const JUICE = {
     examSubEl.textContent = 'Ward ' + W.n + ' · ' + W.name;
     hideSheet();
     var right = 0;
-    var items = Arcade.shuffledExam(W.exam);   // never the same three in the same order with the same letter
+    var items = Arcade.shuffledExam(W.exam).slice(0, EXAM_DRAW);   // three of the pool, in a fresh order with fresh letters
     for (var i = 0; i < items.length; i += 1) {
       var ok = await askQuestion(items[i], i, items.length, token);
       if (!examAlive(token)) return;
       if (ok) right += 1;
     }
     examToken += 1;
-    showExamResult(W, right, W.exam.length);
+    showExamResult(W, right, items.length);
   }
 
   /** @param {any} W @param {number} right @param {number} total */

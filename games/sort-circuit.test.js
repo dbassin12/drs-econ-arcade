@@ -57,9 +57,9 @@ test('no deck is lopsided: each bin holds at least a third of the cards', () => 
   }
 });
 
-test('every deck has a three-question Exam Sprint in the exam’s voice', () => {
+test('every deck has a pool of Exam Sprint items in the exam’s voice, three drawn per sprint', () => {
   for (const D of DECKS) {
-    assert.equal(D.exam.length, 3, 'deck ' + D.n);
+    assert.ok(D.exam.length >= 5, 'a pool of at least five for the sprint to draw three from: ' + 'deck ' + D.n);
     for (const q of D.exam) {
       assert.equal(q.choices.length, 4, 'four choices');
       assert.ok(q.answer >= 0 && q.answer < 4, 'the key points at a choice');

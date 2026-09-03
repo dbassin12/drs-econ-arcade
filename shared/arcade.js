@@ -453,10 +453,13 @@ var Arcade = (function () {
   var CED_TO_LEVEL = {
     '2.1': { game: 'sort', level: 1 }, '2.2': { game: 'sort', level: 1 },    // GDP or not
     '2.3': { game: 'calc', level: 1 }, '2.4': { game: 'calc', level: 1 }, '2.6': { game: 'calc', level: 1 },  // the measurements
+    '2.5': { game: 'investor', level: 2 },                                     // the cost of inflation is the Inflation Scare, felt
+    '2.7': { game: 'shift', level: 3 },                                        // the business cycle's phases are Level 3's gaps
     '3.1': { game: 'shift', level: 1 }, '3.2': { game: 'calc', level: 2 }, '3.8': { game: 'shift', level: 1 },  // multipliers are arithmetic
     '3.3': { game: 'shift', level: 2 }, '3.6': { game: 'shift', level: 2 },
     '3.4': { game: 'shift', level: 3 }, '3.5': { game: 'shift', level: 3 },
-    '3.7': { game: 'shift', level: 3 }, '3.9': { game: 'shift', level: 3 },
+    '3.7': { game: 'shift', level: 3 }, '3.9': { game: 'sort', level: 3 },     // automatic stabilizers are a sort: expansionary in effect
+    '5.6': { game: 'shift', level: 3 }, '5.7': { game: 'shift', level: 3 },    // growth is LRAS, on the level that draws it
     '4.3': { game: 'sort', level: 2 },                                         // what money is
     '4.1': { game: 'investor', level: 1 },                                     // bonds and rates, real returns
     '4.2': { game: 'calc', level: 3 }, '4.4': { game: 'calc', level: 3 },    // Fisher, reserves, the multiplier

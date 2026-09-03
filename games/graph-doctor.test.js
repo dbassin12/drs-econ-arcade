@@ -86,9 +86,9 @@ test('every ward can seat its lesions without two on one part, and ends on round
   });
 });
 
-test('every ward has a three-question Exam Sprint in the exam’s voice', () => {
+test('every ward has a pool of Exam Sprint items in the exam’s voice, three drawn per sprint', () => {
   for (const W of WARDS) {
-    assert.equal(W.exam.length, 3, 'ward ' + W.n);
+    assert.ok(W.exam.length >= 5, 'a pool of at least five for the sprint to draw three from: ' + 'ward ' + W.n);
     for (const q of W.exam) {
       assert.equal(q.choices.length, 4);
       assert.ok(q.answer >= 0 && q.answer < 4);
