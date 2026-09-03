@@ -423,97 +423,120 @@ test('stampFor maps accuracy onto an AP score 1-5', () => {
 
 /* ===== titles ===== */
 
-/** A progress object for titleFor: `medals` fills Levels 1..n, `perfect` marks that many of them
- *  examPerfect, `stamp` is the Fed best (0 for a player who has never run it).
- *  @param {{medals?: (string|null)[], perfect?: number, stamp?: number}} spec @returns {any} */
+/** A progress object for titleFor: `medals` fills Shift Levels 1..n, `perfect` marks that many of
+ *  them examPerfect, `stamp` is the Fed best (0 for a player who has never run it), and `games`
+ *  lists other games' progress the same way.
+ *  @param {{medals?: (string|null)[], perfect?: number, stamp?: number, games?: {medals?: (string|null)[], perfect?: number}[]}} spec @returns {any} */
 function progressOf(spec) {
-  /** @type {Record<string, any>} */
-  const levels = {};
-  (spec.medals || []).forEach((medal, i) => {
-    levels[String(i + 1)] = {
-      cleared: true, acc: 1, best: 1000, medal: medal, exam: { right: 3, total: 3 },
-      examPerfect: i < (spec.perfect || 0)
-    };
-  });
+  /** @param {{medals?: (string|null)[], perfect?: number}} g @returns {any} */
+  const levelsOf = (g) => {
+    /** @type {Record<string, any>} */
+    const levels = {};
+    (g.medals || []).forEach((medal, i) => {
+      levels[String(i + 1)] = {
+        cleared: true, acc: 1, best: 1000, medal: medal, exam: { right: 3, total: 3 },
+        examPerfect: i < (g.perfect || 0)
+      };
+    });
+    return { unlocked: 3, levels: levels };
+  };
   return {
-    shift: { unlocked: 3, levels: levels },
-    fed: spec.stamp ? { score: spec.stamp, initials: 'DSB', date: '2026-09-01T00:00:00.000Z' } : null
+    shift: levelsOf(spec),
+    fed: spec.stamp ? { score: spec.stamp, initials: 'DSB', date: '2026-09-01T00:00:00.000Z' } : null,
+    games: (spec.games || []).map(levelsOf)
   };
 }
 
 const GOLD3 = ['gold', 'gold', 'gold'];
+const GOLD7 = ['gold', 'gold', 'gold', 'gold', 'gold', 'gold', 'gold'];
 
-test('titleFor promotes at 0 / 3 / 7 / 11 / 15 / 19 points', () => {
-  /** @param {{medals?: (string|null)[], perfect?: number, stamp?: number}} spec
+test('titleFor promotes at 0 / 4 / 10 / 18 / 28 / 40 points', () => {
+  /** @param {{medals?: (string|null)[], perfect?: number, stamp?: number, games?: any[]}} spec
    *  @returns {any[]} the rank and name at that many points */
   const rung = (spec) => {
     const t = Arcade.titleFor(progressOf(spec));
     return [t.rank, t.name];
   };
-  // 2 points is one short of Analyst; 3 is the promotion.
-  assert.deepEqual(rung({ medals: ['silver'] }), [0, 'Intern']);
-  assert.deepEqual(rung({ medals: ['gold'] }), [1, 'Analyst']);
-  // 6 = two golds; 7 adds a bronze.
-  assert.deepEqual(rung({ medals: ['gold', 'gold'] }), [1, 'Analyst']);
-  assert.deepEqual(rung({ medals: ['gold', 'gold', 'bronze'] }), [2, 'Branch Economist']);
-  // 10 = nine medal points and a stamp of 1; 11 takes the stamp to 2.
+  // 3 points is one short of Analyst; 4 is the promotion.
+  assert.deepEqual(rung({ medals: ['gold'] }), [0, 'Intern']);
+  assert.deepEqual(rung({ medals: ['gold', 'bronze'] }), [1, 'Analyst']);
+  // 9 = three golds; 10 adds a stamp of 1.
+  assert.deepEqual(rung({ medals: GOLD3 }), [1, 'Analyst']);
   assert.deepEqual(rung({ medals: GOLD3, stamp: 1 }), [2, 'Branch Economist']);
-  assert.deepEqual(rung({ medals: GOLD3, stamp: 2 }), [3, 'Regional Fed President']);
-  // 14 = nine medal points, one perfect exam and a stamp of 3; 15 takes the stamp to 4.
-  assert.deepEqual(rung({ medals: GOLD3, perfect: 1, stamp: 3 }), [3, 'Regional Fed President']);
-  assert.deepEqual(rung({ medals: GOLD3, perfect: 1, stamp: 4 }), [4, 'Vice Chair']);
-  // 18 = nine medal points, three perfect exams and a stamp of 3; 19 takes the stamp to 4.
-  assert.deepEqual(rung({ medals: GOLD3, perfect: 3, stamp: 3 }), [4, 'Vice Chair']);
-  assert.deepEqual(rung({ medals: GOLD3, perfect: 3, stamp: 4 }), [5, 'MAESTRO']);
+  // 17 = nine medal points, three perfect exams and a stamp of 2; 18 takes the stamp to 3.
+  assert.deepEqual(rung({ medals: GOLD3, perfect: 3, stamp: 2 }), [2, 'Branch Economist']);
+  assert.deepEqual(rung({ medals: GOLD3, perfect: 3, stamp: 3 }), [3, 'Regional Fed President']);
+  // 27 = seven golds, two perfect exams and a stamp of 2; 28 takes the stamp to 3.
+  assert.deepEqual(rung({ medals: GOLD7, perfect: 2, stamp: 2 }), [3, 'Regional Fed President']);
+  assert.deepEqual(rung({ medals: GOLD7, perfect: 2, stamp: 3 }), [4, 'Vice Chair']);
+  // 39 = seven golds, seven perfect exams and a stamp of 4; 40 takes the stamp to 5.
+  assert.deepEqual(rung({ medals: GOLD7, perfect: 7, stamp: 4 }), [4, 'Vice Chair']);
+  assert.deepEqual(rung({ medals: GOLD7, perfect: 7, stamp: 5 }), [5, 'MAESTRO']);
 });
 
 test('titleFor carries the rung emoji', () => {
   /** @param {{medals?: (string|null)[], perfect?: number, stamp?: number}} spec */
   const emoji = (spec) => Arcade.titleFor(progressOf(spec)).emoji;
   assert.equal(emoji({}), '\u{1F9FE}');
-  assert.equal(emoji({ medals: ['gold'] }), '\u{1F4C8}');
-  assert.equal(emoji({ medals: ['gold', 'gold', 'bronze'] }), '\u{1F3E2}');
-  assert.equal(emoji({ medals: GOLD3, stamp: 2 }), '\u{1F3DB}\u{FE0F}');
-  assert.equal(emoji({ medals: GOLD3, perfect: 1, stamp: 4 }), '\u{1F3A9}');
-  assert.equal(emoji({ medals: GOLD3, perfect: 3, stamp: 4 }), '\u{1F3BC}');
+  assert.equal(emoji({ medals: ['gold', 'bronze'] }), '\u{1F4C8}');
+  assert.equal(emoji({ medals: GOLD3, stamp: 1 }), '\u{1F3E2}');
+  assert.equal(emoji({ medals: GOLD3, perfect: 3, stamp: 3 }), '\u{1F3DB}\u{FE0F}');
+  assert.equal(emoji({ medals: GOLD7, perfect: 2, stamp: 3 }), '\u{1F3A9}');
+  assert.equal(emoji({ medals: GOLD7, perfect: 7, stamp: 5 }), '\u{1F3BC}');
 });
 
 test('next names the rung above and the points still owed', () => {
-  assert.deepEqual(Arcade.titleFor(progressOf({})).next, { name: 'Analyst', need: 3 });
-  assert.deepEqual(Arcade.titleFor(progressOf({ medals: ['silver'] })).next, { name: 'Analyst', need: 1 });
-  // the hub's example line: 7 points is Branch Economist, 4 short of Regional Fed President
+  assert.deepEqual(Arcade.titleFor(progressOf({})).next, { name: 'Analyst', need: 4 });
+  assert.deepEqual(Arcade.titleFor(progressOf({ medals: ['silver'] })).next, { name: 'Analyst', need: 2 });
+  // the hub's example line: 7 points is Analyst, 3 short of Branch Economist
   assert.deepEqual(
     Arcade.titleFor(progressOf({ medals: ['gold', 'gold', 'bronze'] })).next,
-    { name: 'Regional Fed President', need: 4 }
+    { name: 'Branch Economist', need: 3 }
   );
-  assert.deepEqual(Arcade.titleFor(progressOf({ medals: GOLD3, perfect: 3, stamp: 3 })).next, { name: 'MAESTRO', need: 1 });
-  assert.equal(Arcade.titleFor(progressOf({ medals: GOLD3, perfect: 3, stamp: 4 })).next, null);
-  assert.equal(Arcade.titleFor(progressOf({ medals: GOLD3, perfect: 3, stamp: 5 })).next, null);
+  assert.deepEqual(Arcade.titleFor(progressOf({ medals: GOLD7, perfect: 7, stamp: 4 })).next, { name: 'MAESTRO', need: 1 });
+  assert.equal(Arcade.titleFor(progressOf({ medals: GOLD7, perfect: 7, stamp: 5 })).next, null);
+});
+
+test('titlePoints counts every game’s medals, so MAESTRO asks for breadth', () => {
+  // seven Shift golds alone: Regional Fed President
+  assert.equal(Arcade.titleFor(progressOf({ medals: GOLD7 })).name, 'Regional Fed President');
+  // four Sort Circuit golds and nothing else: Branch Economist
+  assert.equal(Arcade.titleFor(progressOf({ games: [{ medals: ['gold', 'gold', 'gold', 'gold'] }] })).name, 'Branch Economist');
+  // golds across Shift, Sort and Crisis Country: 21 + 12 + 15 = 48, MAESTRO
+  const broad = progressOf({ medals: GOLD7, games: [{ medals: ['gold', 'gold', 'gold', 'gold'] }, { medals: ['gold', 'gold', 'gold', 'gold', 'gold'] }] });
+  assert.equal(Arcade.titleFor(broad).name, 'MAESTRO');
+  // a perfect Exam Sprint in another game is worth the same two points
+  assert.equal(Arcade.titleFor(progressOf({ games: [{ medals: ['gold'], perfect: 1 }] })).next.need, 4 - 5 < 0 ? 5 : 0, 'gold + perfect = 5 points: Analyst, 5 short of Branch Economist');
+  assert.deepEqual(Arcade.titleFor(progressOf({ games: [{ medals: ['gold'], perfect: 1 }] })).next, { name: 'Branch Economist', need: 5 });
+  // a missing or malformed game record counts nothing
+  assert.equal(Arcade.titleFor({ shift: null, fed: null, games: [null, 'junk', { levels: { toString: 1 } }] }).name, 'Intern');
 });
 
 test('a stored medal that names an Object.prototype method is worth nothing', () => {
   // A hand-edited arcade.shift.progress with `medal: "toString"` used to resolve through the
   // prototype chain to a truthy function, so `|| 0` never fired and the hub printed "NaN pts".
   const t = Arcade.titleFor({ shift: { levels: { 1: { medal: 'toString' } } }, fed: null });
-  assert.deepEqual(t, { rank: 0, name: 'Intern', emoji: '\u{1F9FE}', next: { name: 'Analyst', need: 3 } });
+  assert.deepEqual(t, { rank: 0, name: 'Intern', emoji: '\u{1F9FE}', next: { name: 'Analyst', need: 4 } });
   for (const key of ['constructor', 'valueOf', 'hasOwnProperty', '__proto__']) {
-    assert.equal(Arcade.titleFor({ shift: { levels: { 1: { medal: key } } }, fed: null }).next.need, 3, key);
+    assert.equal(Arcade.titleFor({ shift: { levels: { 1: { medal: key } } }, fed: null }).next.need, 4, key);
+    assert.equal(Arcade.titleFor({ shift: null, fed: null, games: [{ levels: { 1: { medal: key } } }] }).next.need, 4, key + ' in another game');
   }
 });
 
 test('titleFor scores an empty progress object as Intern', () => {
-  assert.deepEqual(Arcade.titleFor({}), { rank: 0, name: 'Intern', emoji: '\u{1F9FE}', next: { name: 'Analyst', need: 3 } });
+  assert.deepEqual(Arcade.titleFor({}), { rank: 0, name: 'Intern', emoji: '\u{1F9FE}', next: { name: 'Analyst', need: 4 } });
   assert.equal(Arcade.titleFor({ shift: null, fed: null }).name, 'Intern');
   assert.equal(Arcade.titleFor({ shift: { levels: {} }, fed: null }).name, 'Intern');
 });
 
-test('points cap at the three Shift levels and a 1-5 Fed stamp', () => {
-  // the ceiling is 9 medal points + 6 perfect-exam points + a stamp of 5
-  assert.equal(Arcade.titleFor(progressOf({ medals: GOLD3, perfect: 3, stamp: 5 })).name, 'MAESTRO');
-  const stray = progressOf({ medals: GOLD3, perfect: 3, stamp: 5 });
-  stray.shift.levels['4'] = { cleared: true, acc: 1, best: 1, medal: 'gold', exam: null, examPerfect: true };
+test('points cap at the seven Shift levels and a 1-5 Fed stamp', () => {
+  // Shift's ceiling is 21 medal points + 14 perfect-exam points; with a stamp of 5 that is MAESTRO
+  assert.equal(Arcade.titleFor(progressOf({ medals: GOLD7, perfect: 7, stamp: 5 })).name, 'MAESTRO');
+  const stray = progressOf({ medals: GOLD7, perfect: 7, stamp: 5 });
+  stray.shift.levels['8'] = { cleared: true, acc: 1, best: 1, medal: 'gold', exam: null, examPerfect: true };
   stray.fed.score = 99;
   assert.deepEqual(Arcade.titleFor(stray).next, null);
+  assert.deepEqual(Arcade.titleFor({ shift: null, fed: { score: 99 }, games: [] }).next, { name: 'Branch Economist', need: 5 }, 'a stamp is worth at most five: Analyst, five short of the next rung');
   // an unrecognised medal is worth nothing
   assert.equal(Arcade.titleFor(progressOf({ medals: ['platinum', 'platinum', 'platinum'] })).name, 'Intern');
   assert.equal(Arcade.titleFor(progressOf({ medals: [null, null, null] })).name, 'Intern');
@@ -522,14 +545,17 @@ test('points cap at the three Shift levels and a 1-5 Fed stamp', () => {
 test('titleFor uses a passed progress object verbatim and the store otherwise', () => {
   Arcade.store.set('arcade.shift.progress', progressOf({ medals: GOLD3, perfect: 3, stamp: 0 }).shift);
   Arcade.store.set('arcade.fed.best', { score: 5, initials: 'DSB', date: '2026-09-01T00:00:00.000Z' });
-  // the store holds a MAESTRO, but a passed object is the only progress that counts
+  Arcade.store.set('arcade.crisis.progress', progressOf({ medals: ['gold', 'gold'] }).shift);
+  // the store holds 26 points (a Regional Fed President), but a passed object is the only progress that counts
   assert.equal(Arcade.titleFor({}).name, 'Intern');
-  assert.equal(Arcade.titleFor(progressOf({ medals: ['gold'] })).name, 'Analyst');
-  assert.equal(Arcade.titleFor().name, 'MAESTRO');
+  assert.equal(Arcade.titleFor(progressOf({ medals: ['gold', 'bronze'] })).name, 'Analyst');
+  assert.equal(Arcade.titleFor().name, 'Regional Fed President');
+  Arcade.store.remove('arcade.crisis.progress');
+  assert.equal(Arcade.titleFor().name, 'Regional Fed President', '20 points without Crisis Country');
   Arcade.store.remove('arcade.fed.best');
-  assert.equal(Arcade.titleFor().name, 'Vice Chair');
+  assert.equal(Arcade.titleFor().name, 'Branch Economist');
   Arcade.store.remove('arcade.shift.progress');
-  assert.deepEqual(Arcade.titleFor().next, { name: 'Analyst', need: 3 });
+  assert.deepEqual(Arcade.titleFor().next, { name: 'Analyst', need: 4 });
 });
 
 /* ===== streak ===== */
@@ -788,7 +814,7 @@ test('weightedSample draws in proportion, without replacement, and never a zero-
 
 test('titlePoints counts a medal on any of the seven levels', () => {
   const seven = progressOf({ medals: ['gold', 'gold', 'gold', 'gold', 'gold', 'gold', 'gold'] });
-  assert.equal(Arcade.titleFor(seven).name, 'MAESTRO', 'seven golds are 21 points');
-  const late = progressOf({ medals: [null, null, null, 'bronze', 'silver'] });
-  assert.equal(Arcade.titleFor(late).name, 'Analyst', 'a bronze and a silver on Levels 4 and 5 are 3 points');
+  assert.equal(Arcade.titleFor(seven).name, 'Regional Fed President', 'seven golds are 21 points');
+  const late = progressOf({ medals: [null, null, null, 'bronze', 'silver', 'bronze'] });
+  assert.equal(Arcade.titleFor(late).name, 'Analyst', 'a bronze, a silver and a bronze on Levels 4–6 are 4 points');
 });

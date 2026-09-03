@@ -477,25 +477,29 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
 
   /* ===== ARCADE NIGHT — the projector podium: this device's bests, in giant type ===== */
 
-  /** This device's bests as podium rows, best first.
-   *  @returns {{score:number, initials:string, value:string, game:string}[]} */
+  /** How each game's best reads on the podium. Scores are not comparable across games, so the
+   *  rows are ordered by when they were set, newest first: the projector shows tonight's bests. */
+  var PODIUM_GAMES = [
+    { id: 'shift', name: 'Shift Happens', unit: 'L', value: function (b) { return commas(b.score); } },
+    { id: 'fed', name: 'Fed Chair', unit: '', value: function (b) { return 'Stamp ' + b.score; } },
+    { id: 'sort', name: 'Sort Circuit', unit: 'Deck ', value: function (b) { return commas(b.score); } },
+    { id: 'calc', name: 'Calc Blitz', unit: 'Ladder ', value: function (b) { return commas(b.score); } },
+    { id: 'doctor', name: 'Graph Doctor', unit: 'Ward ', value: function (b) { return commas(b.score); } },
+    { id: 'investor', name: 'The Investor', unit: 'Run ', value: function (b) { return 'Real $' + commas(b.score); } },
+    { id: 'crisis', name: 'Crisis Country', unit: 'Crisis ', value: function (b) { return b.score + ' pts'; } }
+  ];
+
+  /** This device's bests as podium rows, newest first.
+   *  @returns {{when:number, initials:string, value:string, game:string}[]} */
   function podiumRows() {
     var rows = [];
-    var shift = Arcade.bests('shift');
-    var fed = Arcade.bests('fed');
-    if (shift) {
-      rows.push({
-        score: Number(shift.score) || 0, initials: shift.initials, value: commas(shift.score),
-        game: 'Shift Happens' + (shift.level ? ' · L' + shift.level : '')
-      });
-    }
-    if (fed) {
-      rows.push({
-        score: Number(fed.score) || 0, initials: fed.initials, value: 'Stamp ' + fed.score,
-        game: 'Fed Chair'
-      });
-    }
-    rows.sort(function (a, b) { return b.score - a.score; });
+    PODIUM_GAMES.forEach(function (g) {
+      var b = Arcade.bests(g.id);
+      if (!b) return;
+      var when = Date.parse(b.date || '') || 0;
+      rows.push({ when: when, initials: b.initials, value: g.value(b), game: g.name + (b.level && g.unit ? ' · ' + g.unit + b.level : '') });
+    });
+    rows.sort(function (a, b) { return b.when - a.when; });
     return rows;
   }
 

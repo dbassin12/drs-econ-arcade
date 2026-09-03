@@ -1076,45 +1076,59 @@ var Arcade = (function () {
    *  they never gate a level, move a score or change a medal. */
   var TITLES = [
     { at: 0, name: 'Intern', emoji: '🧾' },
-    { at: 3, name: 'Analyst', emoji: '📈' },
-    { at: 7, name: 'Branch Economist', emoji: '🏢' },
-    { at: 11, name: 'Regional Fed President', emoji: '🏛️' },
-    { at: 15, name: 'Vice Chair', emoji: '🎩' },
-    { at: 19, name: 'MAESTRO', emoji: '🎼' }
+    { at: 4, name: 'Analyst', emoji: '📈' },
+    { at: 10, name: 'Branch Economist', emoji: '🏢' },
+    { at: 18, name: 'Regional Fed President', emoji: '🏛️' },
+    { at: 28, name: 'Vice Chair', emoji: '🎩' },
+    { at: 40, name: 'MAESTRO', emoji: '🎼' }
   ];
+  /** The games whose per-level medals count alongside Shift's; each keeps arcade.<id>.progress. */
+  var TITLE_GAMES = ['sort', 'calc', 'doctor', 'investor', 'crisis'];
 
   /** What a Shift level's medal is worth. @type {Record<string, number>} */
   var TITLE_MEDAL_POINTS = { bronze: 1, silver: 2, gold: 3 };
 
-  /** @typedef {{shift?: {levels?: Record<string, any>}|null, fed?: {score?: number}|null}} TitleProgress */
+  /** @typedef {{shift?: {levels?: Record<string, any>}|null, fed?: {score?: number}|null, games?: ({levels?: Record<string, any>}|null)[]}} TitleProgress */
 
-  /** Career points: a medal on each of Shift's seven levels, two more for every level whose Exam
-   *  Sprint was perfect, and the Fed Chair best stamp (1-5). The ladder tops out at 19, so seven
-   *  golds alone make MAESTRO — as they should.
-   *  @param {TitleProgress} p @returns {number} */
-  function titlePoints(p) {
-    var shift = p.shift;
-    var levels = shift && shift.levels && typeof shift.levels === 'object' ? shift.levels : {};
+  /** The medal points in one game's progress record: a medal per level, two more for each level
+   *  whose Exam Sprint was perfect. Only levels 1..cap count, and only own properties do: a stored
+   *  medal of "toString" once resolved through Object.prototype to a truthy function, so `|| 0`
+   *  never fired and the hub's title chip printed "NaN pts".
+   *  @param {any} progress an arcade.<game>.progress object @param {number} cap @returns {number} */
+  function levelPoints(progress, cap) {
+    var levels = progress && progress.levels && typeof progress.levels === 'object' ? progress.levels : {};
     var points = 0;
-    for (var n = 1; n <= 7; n += 1) {
+    for (var n = 1; n <= cap; n += 1) {
       var rec = levels[String(n)];
       if (!rec || typeof rec !== 'object') continue;
-      // Own properties only: a stored medal of "toString" resolved through Object.prototype to a
-      // truthy function, so `|| 0` never fired and the hub's title chip printed "NaN pts".
       var medal = String(rec.medal);
       if (Object.prototype.hasOwnProperty.call(TITLE_MEDAL_POINTS, medal)) points += TITLE_MEDAL_POINTS[medal];
       if (rec.examPerfect) points += 2;
     }
+    return points;
+  }
+
+  /** Career points: a medal on every level of every game (Shift's seven, Sort's four decks, Calc's
+   *  three ladders, the Doctor's three wards, the Investor's three runs, Crisis Country's five),
+   *  two more for each level whose Exam Sprint was perfect, and the Fed Chair best stamp (1-5).
+   *  Seven Shift golds are 21 points — Regional Fed President; MAESTRO at 40 asks for breadth.
+   *  @param {TitleProgress} p @returns {number} */
+  function titlePoints(p) {
+    var points = levelPoints(p.shift, 7);
+    (p.games || []).forEach(function (g) { points += levelPoints(g, 12); });
     var stamp = Number(p.fed && p.fed.score);
     if (Number.isFinite(stamp)) points += Math.min(5, Math.max(0, Math.floor(stamp)));
     return points;
   }
 
-  /** The rank the player has earned across both games.
+  /** The rank the player has earned across every game.
    *  @param {TitleProgress} [progress] used verbatim when given; otherwise read from the store
    *  @returns {{rank:number, name:string, emoji:string, next:{name:string, need:number}|null}} */
   function titleFor(progress) {
-    var p = progress || { shift: store.get('arcade.shift.progress', null), fed: bests('fed') };
+    var p = progress || {
+      shift: store.get('arcade.shift.progress', null), fed: bests('fed'),
+      games: TITLE_GAMES.map(function (id) { return store.get('arcade.' + id + '.progress', null); })
+    };
     var points = titlePoints(p);
     var rank = 0;
     for (var i = 1; i < TITLES.length; i += 1) if (points >= TITLES[i].at) rank = i;
