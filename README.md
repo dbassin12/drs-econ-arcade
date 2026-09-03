@@ -15,7 +15,7 @@ that turns play into a diagnostic. Plain HTML/CSS/JS: no frameworks, no build st
 ├── games/
 │   ├── shift-happens.html        # P0 game: graph surgery under time pressure
 │   ├── fed-chair.html            # P0 preview (1975 era): you are the Fed chair
-│   ├── fed-chair.model.js        # the Fed macro model (pure logic)
+│   ├── fed-chair.model.js        # the Fed macro model and its politics (pure logic)
 │   └── fed-chair.model.test.js
 ├── shared/
 │   ├── arcade.css                # tokens + the whole UI kit (this is the only stylesheet)

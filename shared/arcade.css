@@ -335,8 +335,11 @@ body {
   font-size: 15px;
 }
 .ticker-inner { display: inline-block; white-space: nowrap; padding: 6px 0; animation: marquee 18s linear infinite; }
-.advisor { display: flex; gap: 10px; align-items: flex-start; }
-.advisor-avatar { font-size: 36px; line-height: 1; }
+/* Compact on purpose: two of these sit between the ticker and the dial on a board that has to fit a
+   740 px phone with the meters row above them. The name runs into the quote. */
+.advisor { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; }
+.advisor-avatar { font-size: 24px; line-height: 1.1; }
+.advisor-text { font-size: 13px; line-height: 1.35; }
 .advisor.hawk { border-left: 4px solid var(--red); }
 .advisor.dove { border-left: 4px solid var(--blue); }
 .dial { position: relative; height: 56px; }
@@ -419,8 +422,17 @@ body {
 .pips { display: flex; gap: 4px; }
 .pip { width: 10px; height: 10px; border-radius: 50%; background: var(--bg3); border: 2px solid var(--border); }
 .pip.on { background: var(--gold); border-color: var(--gold-dark); }
-.advisor-name { font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
-.advisor-line { font-size: 14px; line-height: 1.35; color: var(--text2); }
+/* The three meters under the gauges — the street, Washington, credibility — five pips each. Red is
+   the street's anger, blue is Washington's pressure, and credibility keeps the gold it always had. */
+.meters { display: flex; gap: 8px; }
+.meter { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.meter-row { display: flex; align-items: center; gap: 4px; }
+.meter-emoji { font-size: 15px; line-height: 1; margin-right: 2px; }
+.meter-label { font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text2); white-space: nowrap; }
+.meter.street .pip.on { background: var(--red); border-color: var(--red-dark); }
+.meter.washington .pip.on { background: var(--blue); border-color: var(--blue-dark); }
+.advisor-name { font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
+.advisor-line { color: var(--text2); }
 .coin-face { color: #3b2f00; font-weight: 900; font-size: 44px; }
 /* The gavel lands over the board and leaves again; the mount holds the position so the slam
    keyframe owns the transform. */

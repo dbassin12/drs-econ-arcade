@@ -47,7 +47,8 @@ const SCENARIO_1975 = {
     'Your job is one number: the federal funds rate. Drag the dial, then gavel the quarter. You get ten of them, 1975 Q1 through 1977 Q2.',
     'The lag is the whole game. The rate you set today moves output NEXT quarter, and inflation the quarter AFTER that. Nothing you do today can change today’s inflation print — so stop steering by it.',
     'What good looks like: inflation near 2 percent with unemployment near the natural rate, u* = 6 percent. What the dial actually controls is the REAL rate — your rate minus inflation — which is why 6.50 percent today is not tight at all.',
-    'One note on plumbing. In 1975 the Fed works with limited reserves: the desk buys and sells bonds to make a scarce supply of reserves meet demand at the funds rate it wants. Today reserves are ample, and the Fed simply administers the rate it pays on reserve balances — IORB — and the funds rate follows it. Same goal, different machinery.'
+    'One note on plumbing. In 1975 the Fed works with limited reserves: the desk buys and sells bonds to make a scarce supply of reserves meet demand at the funds rate it wants. Today reserves are ample, and the Fed simply administers the rate it pays on reserve balances — IORB — and the funds rate follows it. Same goal, different machinery.',
+    'One more thing. This office answers to Congress, and Congress answers to voters — and 1976 is an election year. Two meters under the gauges keep that score: STREET, how angry the public is, and WASHINGTON, how hard the politicians are leaning on you. Nobody can make you cut. Everybody can make you pay for not cutting.'
   ],
 
   ERAS: [
@@ -74,13 +75,17 @@ const SCENARIO_1975 = {
     hotPrices: 'Bagel prices spike across the Five Towns',
     emptyPlatforms: 'LIRR platforms empty at rush hour',
     negativeReal: 'Bond market asks: is anyone home at the Fed?',
-    bigHike: 'Wall Street gasps'
+    bigHike: 'Wall Street gasps',
+    angryStreet: 'Marchers on Central Avenue for the third Saturday running',
+    hillHeat: 'Capitol Hill wants the Chairman’s calendar'
   },
 
   /* Each quip reads the numbers the player is looking at: pi, u, gap, piExp, cred, rate,
-     real (= rate - pi) and t. The first `when` that answers true wins, so the list runs from
-     the most specific diagnosis down to the fallback. */
+     real (= rate - pi), t, and the two meters, street and washington (0–1). The first `when`
+     that answers true wins, so the list runs from the most specific diagnosis down to the fallback. */
   QUIPS: [
+    { when: (s) => s.washington >= 0.7 && s.pi > 6, hawk: 'Congress wants cheap money before November. That is the best argument against it.', dove: 'Independence is worth nothing if they take it away. Give them a quarter point and keep the dial.' },
+    { when: (s) => s.street >= 0.75 && s.pi > 8, hawk: 'They are marching about prices. Prices are our job. Hold.', dove: 'They are marching. Whatever the textbook says, that is a data point.' },
     { when: (s) => s.pi > 10 && s.u > 8.5, hawk: 'Double-digit prices, and you are worried about the jobs number?', dove: 'Eight and a half percent unemployment is not a rounding error.' },
     { when: (s) => s.u > 9.5, hawk: 'Disinflation costs output. Flinch now and we pay for it twice.', dove: 'We are three points past the natural rate. Cut. Today.' },
     { when: (s) => s.real < -3, hawk: 'A negative real rate is not policy. It is a subsidy for borrowing.', dove: 'That negative real rate is the only thing holding up investment.' },
@@ -128,6 +133,82 @@ const SCENARIO_1975 = {
       button: 'Noted' }
   },
 
+  /* The politics: the words for every rule in FedModel.POLITICAL_EVENTS, keyed by its id, plus
+     the three meters' names and the endings. The rules themselves — when each fires and what it
+     does to the meters and the economy — live in fed-chair.model.js, where they are tested. A
+     card has one button; the hearing and the bill are choices, and the bill's note depends on
+     whether the markets are behind the Chair on the day. */
+  POLITICS: {
+    meters: {
+      street: { emoji: '\u{1F4E3}', label: 'Street' },
+      washington: { emoji: '\u{1F3DB}️', label: 'Washington' },
+      cred: { emoji: '\u{1F3C5}', label: 'Credibility' }
+    },
+    events: {
+      march: { sfx: 'card', emoji: '✊',
+        head: 'JOBLESS MARCH SHUTS ROCKAWAY TURNPIKE',
+        sub: 'Two thousand laid-off workers walk from Inwood to Lawrence behind a banner that reads WHERE ARE THE JOBS. The Nassau police let them.',
+        note: 'Cyclical unemployment is a political fact before it is a statistic: every point above the natural rate is a crowd, and crowds are what Congress hears. Washington pressure rises a notch.',
+        button: 'Noted' },
+      boycott: { sfx: 'card', emoji: '\u{1F9FA}',
+        head: 'FIVE TOWNS SHOPPERS BOYCOTT SUGAR',
+        sub: 'The Cedarhurst A&P has a hand-lettered sign in the window and a line of empty carts outside it. The pound is up 300 percent in a year.',
+        note: 'A boycott of one good cannot lower the price level: inflation is a rise in prices in general, and the money to pay them is still there. It is the public telling you which number they are watching.',
+        button: 'Noted' },
+      savers: { sfx: 'card', emoji: '\u{1F3E6}',
+        head: 'PASSBOOK SAVERS REVOLT',
+        sub: 'Hewlett retirees are earning 5 percent on savings that lose 10 percent a year to prices. A letter to the Ledger asks who at the Fed is minding the store.',
+        note: 'The real interest rate is the nominal rate minus inflation. Two quarters of a deeply negative real rate transfer wealth from savers to borrowers, and the savers have noticed. The street heats up.',
+        button: 'Noted' },
+      strike: { sfx: 'boss', emoji: '\u{1FAA7}',
+        head: 'WILDCAT STRIKE HITS THE INWOOD FREIGHT YARDS',
+        sub: 'Teamsters walk out for a catch-up raise, contract or no contract. Nothing moves through the yards for a week, and the settlement is 14 percent.',
+        note: 'A negative supply shock: higher nominal wages raise per-unit production costs, so short-run aggregate supply shifts left next quarter — the price level rises and real output falls. Persistent inflation writes itself into wages; this is the cost of letting it persist.',
+        button: 'Brace for it' },
+      editorial: { sfx: 'card', emoji: '\u{1F4F0}',
+        head: 'LEDGER EDITORIAL: TIME FOR BURNS TO GO',
+        sub: 'Two quarters of an angry street, and the paper that prints the bagel index has run out of patience with the Board.',
+        note: 'A central bank that loses the public loses its cover: Congress reads the editorial page. Washington pressure climbs, whatever the numbers say.',
+        button: 'Noted' },
+      bondRally: { sfx: 'coin', emoji: '\u{1F4C8}',
+        head: 'BOND MARKET BELIEVES THE FED',
+        sub: 'Two quarters of a real rate above 2 percent, and the long bond is finally rallying: investors are lending on the bet that inflation will fall.',
+        note: 'Expectations are moving. When lenders believe inflation will fall they accept a lower nominal rate — that is what anchored expectations look like on a trading screen — and a Fed the markets back is harder for Congress to push. Washington pressure eases.',
+        button: 'Good' },
+      relief: { sfx: 'coin', emoji: '\u{1F3E0}',
+        head: 'THE MARCHERS GO HOME',
+        sub: 'Help-wanted signs are back on Central Avenue, and the Saturday rally drew eleven people and a dog.',
+        note: 'The street forgives on a lag, the same way it got angry: as unemployment falls toward the natural rate the crowd thins, and Congress hears the quiet. Washington pressure eases.',
+        button: 'Good' },
+      hearing: { sfx: 'boss', emoji: '⚖️',
+        head: 'BANKING COMMITTEE SUMMONS THE CHAIRMAN',
+        sub: 'Senator Proxmire wants to know, under oath, why the Board is not doing what House Concurrent Resolution 133 asked. The cameras are already set up.',
+        note: 'Oversight is the price of independence: Congress created the Fed and can question it. Hold the line and the pressure ratchets up. Signal easing and it eases — but a signal is a promise, and a promise broken next quarter costs more than the hearing did.',
+        hold: 'The Fed is independent',
+        promise: 'Signal easing ahead',
+        promiseToast: 'Promise made — cut next quarter or pay for it' },
+      whitehouse: { sfx: 'boss', emoji: '\u{1F3DB}️',
+        head: 'WHITE HOUSE: “RATES DOWN BY NOVEMBER”',
+        sub: 'The President’s political staff let the Ledger know, off the record, that the recovery is the campaign and the Fed is standing in its way.',
+        note: 'The political business cycle: elected officials want easy money before an election and the inflation bill comes due after it. A Fed that obliges buys a boom for November and pays for it in prices — which is why the central bank is independent in the first place. The street takes the President’s side.',
+        button: 'Understood' },
+      bill: { sfx: 'boss', emoji: '\u{1F5F3}️',
+        head: 'BILL WOULD HAND THE FUNDS RATE TO TREASURY',
+        sub: 'The votes are being counted on a bill that would let the Treasury Secretary set the federal funds rate. Your answer is on the front page tomorrow either way.',
+        noteStrong: 'Ease, and the Board keeps its dial by giving up the reason to have one: expansionary policy under political pressure shifts aggregate demand right, and the price level with it. Hold, and with the real rate above 2 percent the markets are behind you — the bill will die on the floor.',
+        noteWeak: 'Ease, and the Board keeps its dial by giving up the reason to have one: expansionary policy under political pressure shifts aggregate demand right, and the price level with it. Hold, and with the real rate under 2 percent nobody outside this building believes you — the bill has the votes.',
+        ease: 'Ease — give them the cut',
+        hold: 'Hold — let them vote' }
+    },
+    endings: {
+      congress: { head: 'FED FALLS UNDER CONGRESS: Treasury to Set the Funds Rate', sub: 'Burns’s term ends with the bill’s signing; the Board keeps its building and loses its dial' },
+      revolt: { head: 'INFLATION REVOLT: Crowds Fill Central Avenue as Burns Steps Down', sub: 'The Chairman resigns with prices still climbing; the White House has a shortlist by lunchtime' },
+      notReappointed: { sub: 'White House signals the Chairman will not be reappointed when his term ends' },
+      capitulated: { sub: 'Chair’s independence questioned after Capitol Hill “compromise”' },
+      volcker: { sidebar: 'THE DAY THE FED SAID NO' }
+    }
+  },
+
   NEWS: {
     masthead: 'The Five Towns Ledger',
     dateline: 'Cedarhurst, New York · June 1977',
@@ -156,10 +237,13 @@ const SCENARIO_1975 = {
 
   HISTORY_NOTE: 'Burns hit his rate the hard way, trading bonds against a scarce supply of reserves. Today the Fed does not have to: reserves are ample, so it administers the rate it pays on reserve balances (IORB) and the federal funds rate follows.',
 
+  HISTORY_POLITICS: 'The politics were real too. Congress passed H.Con.Res.133 in March 1975 and made the Chairman report on money growth every quarter; the Federal Reserve Reform Act of 1977 wrote the goals of maximum employment and stable prices into the Federal Reserve Act; and when Burns’s term ended in January 1978 President Carter did not reappoint him. Economists call the pattern the political business cycle — easy money before an election, the inflation bill after it — and it is the whole case for a central bank that can say no.',
+
   FRQ: {
     hike: 'Raising the federal funds rate raises the real interest rate, which decreases interest-sensitive consumption and investment spending, so aggregate demand shifts left; the price level and real output fall, and inflation comes down with a lag.',
     cut: 'Lowering the federal funds rate lowers the real interest rate, which increases interest-sensitive consumption and investment spending, so aggregate demand shifts right; the price level rises and real output increases.',
-    hold: 'Holding the nominal federal funds rate while inflation falls raises the real interest rate on its own, which decreases interest-sensitive spending and shifts aggregate demand left even though the Fed never moved.'
+    hold: 'Holding the nominal federal funds rate while inflation falls raises the real interest rate on its own, which decreases interest-sensitive spending and shifts aggregate demand left even though the Fed never moved.',
+    independence: 'An independent central bank can raise the real interest rate to reduce inflation even when it is politically unpopular; a central bank that eases under political pressure increases aggregate demand in the short run, but with expectations unanchored the result is a higher price level rather than permanently lower unemployment.'
   }
 };
 
@@ -185,9 +269,19 @@ const HOWTO = [
   { emoji: '\u23F3', head: 'The lag is the whole game', body: 'Your move hits output next quarter and inflation the quarter after \u2014 watch the pipeline strip. Nothing you do today can change today\u2019s inflation print.' },
   { emoji: '\u{1F4CA}', head: 'Three gauges and the real-rate line', body: 'Inflation, unemployment and the output gap, with your rate minus inflation underneath: the real rate is what the economy actually feels.' },
   { emoji: '\u{1F985}', head: 'Your advisors disagree on purpose', body: 'Dr. Hawk wants it tighter and Prof. Dove wants it looser. Neither of them is the answer; they are the argument you have to settle.' },
-  { emoji: '\u260E\uFE0F', head: 'Some quarters bring a decision', body: 'A card or a phone call slams over the board. Read it \u2014 one of them changes what the next quarter does to you.' },
-  { emoji: '\u{1F3C5}', head: 'Credibility is the row of pips', body: 'It fills when you hold the real rate above neutral long enough to be believed. Anchored expectations are what make disinflation cheap.' },
-  { emoji: '\u{1F170}\uFE0F', head: 'How the AP stamp is scored', body: 'Finish with inflation near 2 and unemployment near 6, avoid a jobs bloodbath, keep expectations anchored \u2014 and hold the Fed\u2019s independence.' }
+  { emoji: '\u260E\uFE0F', head: 'Some quarters bring a decision', body: 'A card or a phone call slams over the board. Read it \u2014 some of them change what the next quarter does to you.' },
+  { emoji: '\u{1F4E3}', head: 'Three meters under the gauges', body: 'STREET is how angry the public is; it chases inflation first. WASHINGTON is how hard Congress and the White House lean on you; it chases unemployment, twice as hard in the 1976 election year. CREDIBILITY fills when you hold the real rate above neutral.' },
+  { emoji: '\u2696\uFE0F', head: 'Politics has consequences', body: 'Ignore Washington and the pressure climbs a ladder: a hearing, then the White House, then a bill to take your dial. Only a Fed the markets believe can hold that bill \u2014 a real rate of 2 or better on the day. An angry street brings marches, boycotts and strikes.' },
+  { emoji: '\u{1F170}\uFE0F', head: 'How the AP stamp is scored', body: 'Finish with inflation near 2 and unemployment near 6, avoid a jobs bloodbath, keep expectations anchored \u2014 and hold the Fed\u2019s independence. A term Congress ends is a 1.' }
+];
+
+/* ================================================================================
+   WHAT IS THIS GAME? \u2014 the purpose, before the rules, on the title screen.
+   ================================================================================ */
+const INTRO = [
+  { emoji: '\u{1F39A}\uFE0F', text: 'You are Arthur Burns in January 1975, and the one thing you control is the federal funds rate. Inflation is 11 percent. Unemployment is 8 and climbing.' },
+  { emoji: '\u23F3', text: 'Your move hits output next quarter and inflation the quarter after \u2014 the lag that makes monetary policy the hardest topic on the AP exam, played by hand.' },
+  { emoji: '\u{1F3DB}\uFE0F', text: 'The street and Washington keep score too. Ten quarters, one number each, and a newspaper that prints what you left behind.' }
 ];
 </script>
 
@@ -208,6 +302,8 @@ const HOWTO = [
       </div>
       <div class="panel" id="initialsPanel" hidden><div class="stack" id="initialsMount"></div></div>
       <button type="button" class="btn btn-block" id="playBtn">Play</button>
+      <!-- the purpose, painted from INTRO: what the game is for, before any rule -->
+      <section class="panel stack intro" id="intro" aria-labelledby="introTitle"></section>
       <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
     </div>
   </section>
@@ -253,26 +349,23 @@ const HOWTO = [
       <header class="topbar">
         <button type="button" class="btn btn-ghost topbar-back" id="turnBack" aria-label="Quit to the era list">←</button>
         <div class="turn-when" id="turnLabel" tabindex="-1" data-focus>1975 · Q1 · Chair Burns</div>
-        <div class="topbar-stats"><div class="pips" id="credPips" role="img" aria-label="Credibility"></div></div>
         <button type="button" class="btn btn-ghost howto-btn" id="turnHowto" aria-label="How to play">?</button>
       </header>
       <div id="gaugeStrip"></div>
       <div class="mono muted" id="realLine"></div>
+      <!-- the street, Washington and credibility: five pips each, painted by paintMeters -->
+      <div class="meters" id="meters" role="group" aria-label="The street, Washington and credibility"></div>
       <div class="pipeline" id="pipeline"></div>
       <div class="ticker" id="ticker"></div>
+      <!-- The name runs into the quote on one line: the board has to fit a 740 px phone whole with
+           the meters row above and two-line quips in both bubbles. -->
       <div class="panel advisor hawk">
         <div class="advisor-avatar" aria-hidden="true">🦅</div>
-        <div>
-          <div class="advisor-name">Dr. Hawk</div>
-          <div class="advisor-line" id="hawkLine"></div>
-        </div>
+        <div class="advisor-text"><span class="advisor-name">Dr. Hawk</span> <span class="advisor-line" id="hawkLine"></span></div>
       </div>
       <div class="panel advisor dove">
         <div class="advisor-avatar" aria-hidden="true">🕊</div>
-        <div>
-          <div class="advisor-name">Prof. Dove</div>
-          <div class="advisor-line" id="doveLine"></div>
-        </div>
+        <div class="advisor-text"><span class="advisor-name">Prof. Dove</span> <span class="advisor-line" id="doveLine"></span></div>
       </div>
       <div class="row">
         <span class="score" id="rateOut">6.50 %</span>
@@ -315,7 +408,7 @@ const HOWTO = [
       </div>
       <div class="panel stack">
         <span class="tag">Say it like the FRQ</span>
-        <div id="frqLine"></div>
+        <div class="stack" id="frqLine"></div>
       </div>
       <a class="btn btn-ghost btn-block" href="../index.html">← Arcade</a>
     </div>
@@ -407,7 +500,7 @@ const HOWTO = [
   };
   var eraList = byId('eraList'), briefingText = byId('briefingText');
   var initialsBtn = byId('initialsBtn'), initialsPanel = byId('initialsPanel'), initialsMount = byId('initialsMount');
-  var turnLabel = byId('turnLabel'), credPips = byId('credPips');
+  var turnLabel = byId('turnLabel'), metersEl = byId('meters'), introEl = byId('intro');
   var gaugeStrip = byId('gaugeStrip'), realLine = byId('realLine'), pipelineEl = byId('pipeline'), tickerEl = byId('ticker');
   var hawkLine = byId('hawkLine'), doveLine = byId('doveLine');
   var rateOut = byId('rateOut'), deltaChip = byId('deltaChip');
@@ -478,6 +571,14 @@ const HOWTO = [
   function alive(token) { return token === runToken; }
   /** @returns {any} the state observed at the start of the current quarter */
   function current() { return run.history[run.t - 1]; }
+  /** @returns {any} the meters as they stand at the start of the current quarter */
+  function currentPol() { return run.politics[run.politics.length - 1]; }
+  /** @returns {any} the meters a quarter ago, for the arrows on the row; null in quarter 1 */
+  function previousPol() { return run.politics[run.politics.length - 2] || null; }
+  /** @returns {any} the last state the run reached: the tenth quarter's, or the one the bill ended it on */
+  function finalState() { return run.history[run.history.length - 1]; }
+  /** @returns {number} quarters actually played */
+  function quartersPlayed() { return run.history.length - 1; }
 
   function startRun() {
     runToken += 1;
@@ -491,7 +592,17 @@ const HOWTO = [
       acceptedCall: false,
       integrity: false,
       peakU: -Infinity,
-      busy: false
+      busy: false,
+      // the politics: the meters per quarter, the events already used, the ladder's rung, the
+      // shocks an event has queued for the coming quarter, and the flags the newspaper reads
+      politics: [Object.assign({}, FedModel.INITIAL_POLITICS)],
+      fired: {},
+      stage: 0,
+      pending: { demand: 0, supply: 0 },
+      promised: false,
+      capitulated: false,
+      volcker: false,
+      ending: null
     };
     show('turn');
     paintTurn({ fresh: true });
@@ -520,7 +631,7 @@ const HOWTO = [
     var state = current();
     run.rate = state.rate;                 // the dial opens where last quarter left it
     paintWhen();
-    paintPips(state.cred);
+    paintMeters(state, currentPol(), previousPol());
     paintPipeline(0);
     paintAdvisors(state);
     paintDial();
@@ -542,12 +653,43 @@ const HOWTO = [
     turnLabel.textContent = when.year + ' · Q' + when.q + ' · Chair Burns';
   }
 
-  /** @param {number} cred 0–1 */
-  function paintPips(cred) {
-    var lit = Math.max(0, Math.min(5, Math.round(cred * 5)));
-    credPips.textContent = '';
-    for (var i = 0; i < 5; i += 1) credPips.appendChild(chip('pip' + (i < lit ? ' on' : '')));
-    credPips.setAttribute('aria-label', 'Credibility ' + lit + ' of 5');
+  /** @param {number} v 0–1 @returns {number} pips lit, 0–5 */
+  function pipsOf(v) { return Math.max(0, Math.min(5, Math.round(v * 5))); }
+
+  /** The three meters under the gauges — the street, Washington, credibility — five pips each, and
+   *  an arrow on any meter that moved this quarter.
+   *  @param {any} state the economy on the board @param {any} pol its meters @param {any} [prev] last quarter's */
+  function paintMeters(state, pol, prev) {
+    var M = SCENARIO_1975.POLITICS.meters;
+    var specs = [
+      { id: 'street', value: pol.street, was: prev ? prev.street : null },
+      { id: 'washington', value: pol.washington, was: prev ? prev.washington : null },
+      { id: 'cred', value: state.cred, was: null }
+    ];
+    metersEl.textContent = '';
+    specs.forEach(function (spec) {
+      var lit = pipsOf(spec.value);
+      var moved = spec.was === null ? '' : spec.value > spec.was + 0.02 ? 'up' : spec.value < spec.was - 0.02 ? 'down' : '';
+      var meter = fill('meter ' + spec.id);
+      var row = fill('meter-row');
+      var emoji = chip('meter-emoji', M[spec.id].emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      for (var i = 0; i < 5; i += 1) row.appendChild(chip('pip' + (i < lit ? ' on' : '')));
+      meter.appendChild(row);
+      meter.appendChild(fill('meter-label', M[spec.id].label + (moved === 'up' ? ' ▲' : moved === 'down' ? ' ▼' : '')));
+      meter.setAttribute('role', 'img');
+      meter.setAttribute('aria-label', M[spec.id].label + ' ' + lit + ' of 5' + (moved ? ', ' + (moved === 'up' ? 'rising' : 'falling') : ''));
+      metersEl.appendChild(meter);
+    });
+  }
+
+  /** Move this quarter's meters by an event's effects and repaint them.
+   *  @param {{street?:number, washington?:number}} effects */
+  function nudgePolitics(effects) {
+    var prevPol = previousPol();
+    run.politics[run.politics.length - 1] = FedModel.bump(currentPol(), effects);
+    paintMeters(current(), currentPol(), prevPol);
   }
 
   /* ===== DIAL — one finger, 2 to 14 percent, a quarter point at a time ===== */
@@ -709,10 +851,13 @@ const HOWTO = [
   function paintTicker(state) {
     var lines = [SCENARIO_1975.HEADLINES[run.t - 1]];
     var T = SCENARIO_1975.TICKER;
+    var pol = currentPol();
     if (state.pi > 10) lines.push(T.hotPrices);
     if (state.u > 9) lines.push(T.emptyPlatforms);
     if (state.rate - state.pi < -3) lines.push(T.negativeReal);
     if (run.lastMove >= FedModel.MAX_MOVE - 1e-9) lines.push(T.bigHike);
+    if (pol.street >= 0.75) lines.push(T.angryStreet);
+    if (pol.washington >= 0.7) lines.push(T.hillHeat);
     var text = lines.join('   ·   ') + '   ·   ';
     // a fresh node restarts the marquee, which is what makes the ticker "slide" each quarter
     tickerEl.textContent = '';
@@ -722,9 +867,11 @@ const HOWTO = [
 
   /** @param {any} state @returns {{hawk:string, dove:string}} */
   function quipsFor(state) {
+    var pol = currentPol();
     var view = {
       pi: state.pi, u: state.u, gap: state.gap, piExp: state.piExp, cred: state.cred,
-      rate: state.rate, real: state.rate - state.pi, t: run.t
+      rate: state.rate, real: state.rate - state.pi, t: run.t,
+      street: pol.street, washington: pol.washington
     };
     for (var i = 0; i < SCENARIO_1975.QUIPS.length; i += 1) {
       if (SCENARIO_1975.QUIPS[i].when(view)) return SCENARIO_1975.QUIPS[i];
@@ -813,8 +960,10 @@ const HOWTO = [
     await beat(BEAT / 2);
     if (!alive(token)) { endSequence(); return; }
 
-    // the quarter actually happens
-    var shocks = FedModel.shocksFor(run.t, { acceptedCall: run.acceptedCall, history: run.history });
+    // the quarter actually happens: the scheduled shocks, plus whatever last quarter's politics queued
+    var scheduled = FedModel.shocksFor(run.t, { acceptedCall: run.acceptedCall, history: run.history });
+    var shocks = { demand: scheduled.demand + run.pending.demand, supply: scheduled.supply + run.pending.supply };
+    run.pending = { demand: 0, supply: 0 };
     var next = FedModel.step(state, rate, shocks);
     run.history.push(next);
     run.moves.push({ t: run.t, rate: rate, prev: prev });
@@ -822,12 +971,19 @@ const HOWTO = [
     if (next.u > run.peakU) run.peakU = next.u;
     var verdict = FedModel.judgeMove(state, rate, prev);
     if (verdict !== null) Arcade.track('4.6', 3, verdict);
+    // …and the politics read the quarter it produced. A promise to ease made at the hearing is
+    // kept by any cut this quarter and broken by anything else.
+    var broke = run.promised && rate >= prev - 1e-9;
+    run.promised = false;
+    var prevPol = currentPol();
+    run.politics.push(FedModel.stepPolitics(prevPol, next, { move: rate - prev, brokenPromise: broke }));
     run.t += 1;
 
     setGauges(next, !sequence.skip);
     if (next.pi < state.pi) Arcade.sfx.play('coin');
     if (next.u > 9 && next.u > state.u) { Arcade.sfx.play('wrong'); gauges.u.flash('red'); }
-    paintPips(next.cred);
+    paintMeters(next, currentPol(), prevPol);
+    if (broke) Arcade.toast('Promise broken — Washington remembers');
     await beat(BEAT);
     if (!alive(token)) { endSequence(); return; }
 
@@ -845,6 +1001,13 @@ const HOWTO = [
     var event = SCENARIO_1975.EVENTS[run.t];
     if (event) await playEvent(event, token);
     if (!alive(token)) return;
+
+    // then the one political event the meters have earned, if any — after the call, so Congress
+    // has heard the Chair's answer before it decides what to do about it
+    var rule = FedModel.dueEvent(FedModel.politicsView(currentPol(), current(), { stage: run.stage, t: run.t }), run.fired);
+    if (rule) await playPolitical(rule, token);
+    if (!alive(token)) return;
+    if (run.ending) { run.busy = false; showNewspaper(); return; }
 
     run.busy = false;
     paintTurn();
@@ -902,55 +1065,133 @@ const HOWTO = [
         // Neither branch calls Arcade.track. Taking or refusing the call is a values choice, not a
         // Monetary Policy item, and recording it as one put a right/wrong answer on CED 4.6 into
         // the topic diagnostic a teacher pastes into a gradebook. It still costs the run its
-        // Integrity point and still feeds the shock schedule — it is just not a measurement.
+        // Integrity point, still feeds the shock schedule, and now moves Washington — it is just
+        // not a measurement.
         addButton(event.accept, 'btn btn-ghost btn-block', function () {
           run.acceptedCall = true;
           run.integrity = false;
+          nudgePolitics({ washington: FedModel.POLITICS_1975.callAccept });
         });
         addButton(event.refuse, 'btn btn-block', function () {
           run.acceptedCall = false;
           run.integrity = true;
+          nudgePolitics({ washington: FedModel.POLITICS_1975.callRefuse });
           Arcade.toast('\u{1F3C5} Integrity');
         });
+      } else if (event.kind === 'choice') {
+        // a political decision: two answers, each with consequences the caller has already wired
+        event.choices.forEach(function (c) {
+          addButton(c.label, c.primary ? 'btn btn-block' : 'btn btn-ghost btn-block', c.onPick);
+        });
       } else {
-        addButton(event.button, 'btn btn-block', function () { /* the card is a warning, not a choice */ });
+        // a card is a warning, not a choice; a political card applies its effects on the way out
+        addButton(event.button, 'btn btn-block', event.onPick || function () { });
       }
       eventSheet.setAttribute('aria-hidden', 'false');
       eventSheet.classList.add('open');
       // It says aria-modal="true", so it has to behave like one: focus lands inside it and Tab
       // cannot walk out into the board — where #turnBack is never disabled, so a keyboard user
       // could quit the run from inside a "modal". Escape dismisses a card, which is a warning with
-      // one button; it does not dismiss the call, because that is a forced choice and letting a
-      // keypress take the independent answer would hand out the integrity point for free.
-      releaseSheet = Arcade.trapFocus(eventSheet, event.kind === 'call' ? null : function () {
-        settle(function () { /* a card is a warning: acknowledging it is the whole interaction */ });
+      // one button; it does not dismiss the call or a political choice, because those are forced
+      // choices and letting a keypress take the independent answer would hand out the integrity
+      // point for free.
+      var forced = event.kind === 'call' || event.kind === 'choice';
+      releaseSheet = Arcade.trapFocus(eventSheet, forced ? null : function () {
+        settle(event.onPick || function () { /* acknowledging a card is the whole interaction */ });
       });
     });
   }
 
-  /* ===== NEWSPAPER ===== */
+  /* ===== POLITICAL EVENTS — what the meters earn, and what the Chair answers ===== */
 
-  /** @returns {{raw:number, stamp:number}} */
-  function scoreRun() {
-    return FedModel.score({ peakU: run.peakU, final: run.history[TURNS] }, { integrity: run.integrity });
+  /** Raise the sheet for a rule out of FedModel.POLITICAL_EVENTS: a card acknowledges itself, the
+   *  hearing and the bill are answered. The words come from SCENARIO_1975.POLITICS; the
+   *  consequences come from FedModel.resolveEvent and land in settlePolitical.
+   *  @param {any} rule @param {number} token @returns {Promise<void>} */
+  function playPolitical(rule, token) {
+    var words = SCENARIO_1975.POLITICS.events[rule.id];
+    if (!words) return Promise.resolve();
+    run.fired[rule.id] = true;
+    var P = FedModel.POLITICS_1975;
+    var view = FedModel.politicsView(currentPol(), current(), { stage: run.stage, t: run.t });
+    var event = { kind: 'card', sfx: words.sfx, emoji: words.emoji, head: words.head, sub: words.sub, note: words.note, button: words.button };
+    if (rule.id === 'hearing') {
+      event.kind = 'choice';
+      event.choices = [
+        { label: words.promise, primary: false, onPick: function () { settlePolitical(rule, 'promise', view); } },
+        { label: words.hold, primary: true, onPick: function () { settlePolitical(rule, 'hold', view); } }
+      ];
+    } else if (rule.id === 'bill') {
+      // the note tells the truth about the vote before the Chair answers: the same test resolveEvent applies
+      var believed = view.cred >= P.volckerCred || view.real >= P.volckerReal;
+      event.kind = 'choice';
+      event.note = believed ? words.noteStrong : words.noteWeak;
+      event.choices = [
+        { label: words.ease, primary: false, onPick: function () { settlePolitical(rule, 'ease', view); } },
+        { label: words.hold, primary: true, onPick: function () { settlePolitical(rule, 'hold', view); } }
+      ];
+    } else {
+      event.onPick = function () { settlePolitical(rule, null, view); };
+    }
+    return playEvent(event, token);
   }
 
-  /** @param {number} stamp @returns {string} */
-  function headlineFor(stamp) {
-    var N = SCENARIO_1975.NEWS;
-    var final = run.history[TURNS];
+  /** Apply a rule's outcome: the meters move, this quarter's credibility may move, a shock may be
+   *  queued for the coming quarter, the ladder climbs a rung, and the bill can end the term.
+   *  @param {any} rule @param {string|null} choice @param {any} view the politicsView the rule fired on */
+  function settlePolitical(rule, choice, view) {
+    var res = FedModel.resolveEvent(rule, choice, view);
+    var state = current();
+    var prevPol = previousPol();
+    run.politics[run.politics.length - 1] = FedModel.bump(currentPol(), res.effects);
+    if (res.effects.cred) state.cred = Math.max(0, Math.min(1, state.cred + res.effects.cred));
+    run.pending.demand += res.effects.demand || 0;
+    run.pending.supply += res.effects.supply || 0;
+    if (res.flags.promised) { run.promised = true; Arcade.toast(SCENARIO_1975.POLITICS.events.hearing.promiseToast); }
+    if (res.flags.capitulated) { run.capitulated = true; Arcade.toast('Independence bent'); }
+    if (res.flags.volcker) { run.volcker = true; Arcade.sfx.play('win'); Arcade.toast('\u{1F3C5} Volcker moment'); }
+    if (rule.stage !== undefined) run.stage = rule.stage + 1;
+    if (res.ending) run.ending = res.ending;
+    paintMeters(state, currentPol(), prevPol);
+  }
+
+  /* ===== NEWSPAPER ===== */
+
+  /** @returns {{raw:number, stamp:number}} the integrity point needs the call refused and the bill
+   *  not eased into; a term Congress ended is capped by the model */
+  function scoreRun() {
+    return FedModel.score({ peakU: run.peakU, final: finalState() }, { integrity: run.integrity && !run.capitulated, ended: run.ending });
+  }
+
+  /** @param {number} stamp @param {string|null} verdict from FedModel.politicalVerdict @returns {string} */
+  function headlineFor(stamp, verdict) {
+    var N = SCENARIO_1975.NEWS, E = SCENARIO_1975.POLITICS.endings;
+    var final = finalState();
+    // the politics that ended a term or a Chairmanship outrank the economics; the economics keep
+    // their own order beneath them
+    if (verdict === 'congress') return E.congress.head;
+    if (verdict === 'revolt') return E.revolt.head;
     if (final.pi >= 9) return N.roaredBack;
     if (run.peakU >= 10) return N.bloodbath;
     return N.byStamp[stamp] || N.fallbackHead;
   }
 
-  /** Three sentences, all of them read off the run. @returns {string} */
+  /** @returns {string} 'Held', 'Defended', 'Bent' or 'Lost' — what the term did to the Fed's independence */
+  function independenceWord() {
+    if (run.ending === 'congress') return 'Lost';
+    if (run.volcker) return 'Defended';
+    if (run.acceptedCall || run.capitulated) return 'Bent';
+    return 'Held';
+  }
+
+  /** Three sentences, all of them read off the run — four when the bill cut it short. @returns {string} */
   function newspaperBody() {
-    var final = run.history[TURNS];
+    var final = finalState();
     var offBy = Math.abs(final.u - 6);
     var side = offBy < 0.25 ? 'right at the 6 percent economists call the natural rate'
       : num(offBy) + ' points ' + (final.u > 6 ? 'above' : 'below') + ' the 6 percent economists call the natural rate';
-    return 'Inflation leaves the Board at ' + num(final.pi) + ' percent, against the 2 percent this newspaper is told counts as price stability. '
+    var opening = run.ending ? 'The term ended after ' + quartersPlayed() + ' quarters, with the dial in other hands. ' : '';
+    return opening + 'Inflation leaves the Board at ' + num(final.pi) + ' percent, against the 2 percent this newspaper is told counts as price stability. '
       + 'Unemployment finishes at ' + num(final.u) + ' percent, ' + side + '. '
       + 'At its worst the jobless rate touched ' + num(run.peakU) + ' percent on the Chairman’s watch.';
   }
@@ -972,16 +1213,24 @@ const HOWTO = [
     runToken += 1;                       // the run is over; nothing still in flight may touch it
     Arcade.voice.stop();
     var result = scoreRun();
-    var final = run.history[TURNS];
-    var N = SCENARIO_1975.NEWS;
+    var final = finalState();
+    var pol = currentPol();
+    var verdict = FedModel.politicalVerdict(pol, { ending: run.ending });
+    var N = SCENARIO_1975.NEWS, E = SCENARIO_1975.POLITICS.endings;
 
     newspaperEl.textContent = '';
     newspaperEl.appendChild(fill('np-masthead', N.masthead));
-    newspaperEl.appendChild(fill('np-dateline', N.dateline));
-    newspaperEl.appendChild(fill('np-head', headlineFor(result.stamp)));
+    newspaperEl.appendChild(fill('np-dateline', run.ending ? 'Cedarhurst, New York · ' + quarterLabel(run.t) : N.dateline));
+    newspaperEl.appendChild(fill('np-head', headlineFor(result.stamp, verdict)));
+    if (verdict === 'congress') newspaperEl.appendChild(fill('np-sub', E.congress.sub));
+    else if (verdict === 'revolt') newspaperEl.appendChild(fill('np-sub', E.revolt.sub));
+    else if (verdict === 'notReappointed') newspaperEl.appendChild(fill('np-sub', E.notReappointed.sub));
     if (run.acceptedCall) newspaperEl.appendChild(fill('np-sub', N.acceptedSub));
+    if (run.capitulated) newspaperEl.appendChild(fill('np-sub', E.capitulated.sub));
     newspaperEl.appendChild(fill('np-body', newspaperBody()));
-    if (run.integrity) newspaperEl.appendChild(fill('np-sidebar', N.refusedSidebar));
+    // the sidebar is the Chair's finest hour, so a Chair who lost the dial does not get one
+    if (run.volcker) newspaperEl.appendChild(fill('np-sidebar', E.volcker.sidebar));
+    else if (run.integrity && !run.capitulated && verdict !== 'congress') newspaperEl.appendChild(fill('np-sidebar', N.refusedSidebar));
 
     var beforeTitle = Arcade.titleFor();      // the rank as it stood before this term was banked
     Arcade.saveBest('fed', { score: result.stamp, initials: Arcade.initials() });
@@ -991,14 +1240,16 @@ const HOWTO = [
 
     show('news');
     var panel = Arcade.endScreen(newsEnd, {
-      title: 'THE RECORD', sub: 'Ten quarters, one number a quarter.',
+      title: run.ending ? 'THE RECORD · CUT SHORT' : 'THE RECORD',
+      sub: run.ending ? quartersPlayed() + ' quarters, then the bill.' : 'Ten quarters, one number a quarter.',
       // the Fed game grades with the AP stamp, not a medal, so the medal slot stays empty
       score: Math.round(result.raw), stamp: result.stamp, medal: null,
       stats: [
         { label: 'Inflation, end of term', value: num(final.pi) + ' %' },
         { label: 'Unemployment, end of term', value: num(final.u) + ' %' },
         { label: 'Worst unemployment', value: num(run.peakU) + ' %' },
-        { label: 'Independence', value: run.integrity ? 'Held' : 'Bent' }
+        { label: 'Street · Washington', value: pipsOf(pol.street) + ' · ' + pipsOf(pol.washington) + ' of 5' },
+        { label: 'Independence', value: independenceWord() }
       ],
       buttons: [
         { label: 'What really happened →', primary: true, variant: 'gold', onClick: ignoringSkipTap(showHistory) },
@@ -1036,11 +1287,13 @@ const HOWTO = [
 
   var chartSeries = 'pi';
 
-  /** The player's ten quarters against the ten that happened. history[k] is the state observed at
-   *  the start of quarter k + 1, which is exactly what HISTORY_1975[k] measures. */
+  /** The player's quarters against the ten that happened. history[k] is the state observed at the
+   *  start of quarter k + 1, which is exactly what HISTORY_1975[k] measures; a term the bill cut
+   *  short draws the quarters it had and stops. */
   function paintChart() {
     var mine = [], theirs = FedModel.HISTORY_1975[chartSeries];
-    for (var k = 0; k < TURNS; k += 1) mine.push(run.history[k][chartSeries]);
+    var played = Math.min(TURNS, run.history.length);
+    for (var k = 0; k < played; k += 1) mine.push(run.history[k][chartSeries]);
 
     var svg = svgEl('svg', { viewBox: '0 0 ' + CH.w + ' ' + CH.h }, 'hist-chart');
     svg.setAttribute('role', 'img');
@@ -1093,12 +1346,32 @@ const HOWTO = [
   function showHistory() {
     historyText.textContent = '';
     SCENARIO_1975.HISTORY.forEach(function (line) { historyText.appendChild(fill('', line)); });
+    historyText.appendChild(fill('', SCENARIO_1975.HISTORY_POLITICS));
     historyText.appendChild(fill('muted', SCENARIO_1975.HISTORY_NOTE));
 
     chartSeries = 'pi';
     paintChart();
-    frqLine.textContent = SCENARIO_1975.FRQ[dominantMove()];
+    // two rubric sentences: the move the player made most, and the one the politics were about
+    frqLine.textContent = '';
+    frqLine.appendChild(fill('', SCENARIO_1975.FRQ[dominantMove()]));
+    frqLine.appendChild(fill('muted', SCENARIO_1975.FRQ.independence));
     show('history');
+  }
+
+  /** The title screen's "what is this game?" panel, painted from INTRO. */
+  function paintIntro() {
+    introEl.textContent = '';
+    var title = fill('intro-title', 'What is this game?');
+    title.id = 'introTitle';
+    introEl.appendChild(title);
+    INTRO.forEach(function (line) {
+      var row = fill('intro-line');
+      var emoji = fill('intro-emoji', line.emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      row.appendChild(emoji);
+      row.appendChild(fill('intro-text', line.text));
+      introEl.appendChild(row);
+    });
   }
 
   chartToggle.addEventListener('click', function () {
@@ -1205,6 +1478,7 @@ const HOWTO = [
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
   buildGauges();
+  paintIntro();
   lockBoard(true);
 
   initialsBtn.textContent = Arcade.initials();

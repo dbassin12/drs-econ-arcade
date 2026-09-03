@@ -1,6 +1,6 @@
 // @ts-check
 /* DRS Econ Arcade — the 1975 economy the Fed Chair game plays against.
-   Sections: constants · clampRate · step · shocksFor · simulate · judgeMove · score · search.
+   Sections: constants · clampRate · step · shocksFor · politics · simulate · judgeMove · score · search.
    Pure arithmetic on plain objects: no DOM, no storage, no clock, so the whole file loads
    under `node --test` and the game in fed-chair.html is only a face on top of it.
 
@@ -111,32 +111,271 @@ var FedModel = (function () {
     return { demand: 0, supply: 0 };
   }
 
+  /* ===== POLITICS — the street, Washington, and what ignoring them costs =====
+     Two meters ride alongside the economy. STREET is public anger. It chases inflation first and
+     unemployment second — the 1970s public hated the price of sugar more than the jobless rate —
+     and it chases with a lag, because a crowd takes a quarter to notice and a quarter to forgive.
+     WASHINGTON is the pressure to ease: it climbs with unemployment — twice as fast in 1976, an
+     election year — and with an angry street; it falls when the Chair is visibly cutting or when
+     jobs come back; and it jumps when Congress is told no. That asymmetry is the political
+     business cycle: please Washington and the street pays, please the street and Washington
+     comes for the dial. Neither meter touches the arithmetic above. They decide which events fire,
+     and one of them can end a term. */
+
+  /** The tuned politics. Meters run 0–1; quarters are 1-based; `electionQuarters` is 1976. */
+  var POLITICS_1975 = {
+    streetSpeed: 0.5, streetPi: 0.11, piBase: 3, streetU: 0.04, uBase: 5, hotAbove: 0.75,
+    negRealBelow: -3, posRealAbove: 2,
+    jobsBar: 8, jobsHeat: 0.05, electionQuarters: [5, 6, 7, 8], electionBoost: 2,
+    cutRelief: 0.10, hikeCost: 0.05, coolBelow: 7, cooling: 0.06, spillAbove: 0.6, spill: 0.10,
+    callRefuse: 0.25, callAccept: -0.15,
+    hearingHold: 0.10, hearingPromise: -0.25, promiseCred: -0.10, brokenPromise: 0.40,
+    billEase: -0.40, billEaseCred: -0.10, billEaseDemand: 2, billHeld: -0.35,
+    volckerCred: 0.3, volckerReal: 2,
+    reappointAbove: 0.7, revoltAbove: 0.75, endedCap: 30
+  };
+
+  var CALL_QUARTER = 4;    // the quarter the Washington call opens
+
+  /** @typedef {{street:number, washington:number, hot:number, negRealRun:number, posRealRun:number, peakStreet:number}} Politics */
+
+  /** January 1975: an angry street, and a Congress already restless. @type {Politics} */
+  var INITIAL_POLITICS = { street: 0.55, washington: 0.2, hot: 0, negRealRun: 0, posRealRun: 0, peakStreet: 0.55 };
+
+  /** The political events, in the order they are checked: the ladder first — the hearing, then the
+   *  White House, then the bill, each needing the rung below it (`stage`) — then the street. Each
+   *  fires once a run and at most one fires a quarter. `when` reads a politicsView; `minT` is the
+   *  first quarter an event may open, and the two that punish inflation wait until the Chair's own
+   *  policy has had time to show, because the inflation of 1975 is inherited and every policy
+   *  carries it for a year. `effects` is what a card does on its own; a `choice` event's effects
+   *  come from resolveEvent. The words for each id live in the game file, in SCENARIO_1975.POLITICS. */
+  var POLITICAL_EVENTS = [
+    { id: 'bill', stage: 2, choice: true, when: function (v) { return v.washington >= 0.95; } },
+    { id: 'whitehouse', stage: 1, when: function (v) { return v.washington >= 0.7; }, effects: { street: 0.1 } },
+    { id: 'hearing', stage: 0, minT: 5, choice: true, when: function (v) { return v.washington >= 0.45; } },
+    { id: 'strike', minT: 7, when: function (v) { return v.street >= 0.75 && v.pi >= 8; }, effects: { supply: 1.0 } },
+    { id: 'editorial', minT: 7, when: function (v) { return v.hot >= 2; }, effects: { washington: 0.15 } },
+    { id: 'march', when: function (v) { return v.street >= 0.5 && v.u >= 8.5; }, effects: { washington: 0.05 } },
+    { id: 'boycott', when: function (v) { return v.street >= 0.5 && v.pi >= 9; }, effects: {} },
+    { id: 'savers', when: function (v) { return v.negRealRun >= 2; }, effects: { street: 0.1 } },
+    { id: 'bondRally', when: function (v) { return v.posRealRun >= 2; }, effects: { washington: -0.1 } },
+    { id: 'relief', when: function (v) { return v.street < 0.45 && v.peakStreet >= 0.6; }, effects: { washington: -0.1 } }
+  ];
+
+  /** Advance the two meters one quarter, reading the economy the quarter just produced.
+   *
+   *    target      = clamp(streetPi * (pi - piBase) + streetU * (u - uBase))
+   *    street'     = street + streetSpeed * (target - street)
+   *    washington' = washington + jobsHeat * max(0, u - jobsBar) * (election ? boost : 1)
+   *                  + spill * max(0, street' - spillAbove) - (u < coolBelow ? cooling : 0)
+   *                  - cutRelief if the Chair cut, + hikeCost if the Chair hiked
+   *                  + brokenPromise if a promise to ease was not kept
+   *
+   *  @param {Politics} prev
+   *  @param {FedState} econ the state just stepped to; its `t` is the quarter about to open
+   *  @param {{move?:number, brokenPromise?:boolean}} [ctx] the rate change that produced `econ`
+   *  @param {typeof POLITICS_1975} [params]
+   *  @returns {Politics} */
+  function stepPolitics(prev, econ, ctx, params) {
+    var P = params || POLITICS_1975;
+    var c = ctx || {};
+    var target = clamp(P.streetPi * (econ.pi - P.piBase) + P.streetU * (econ.u - P.uBase), 0, 1);
+    var street = clamp(prev.street + P.streetSpeed * (target - prev.street), 0, 1);
+    var election = P.electionQuarters.indexOf(econ.t) >= 0;
+    var jobs = P.jobsHeat * Math.max(0, econ.u - P.jobsBar) * (election ? P.electionBoost : 1);
+    var spill = P.spill * Math.max(0, street - P.spillAbove);
+    var cool = econ.u < P.coolBelow ? P.cooling : 0;
+    var move = c.move || 0;
+    var policy = move < -1e-9 ? -P.cutRelief : move > 1e-9 ? P.hikeCost : 0;
+    var washington = clamp(prev.washington + jobs + spill - cool + policy + (c.brokenPromise ? P.brokenPromise : 0), 0, 1);
+    var real = typeof econ.real === 'number' ? econ.real : econ.rate - econ.pi;
+    return {
+      street: street,
+      washington: washington,
+      hot: street >= P.hotAbove ? prev.hot + 1 : 0,
+      negRealRun: real < P.negRealBelow ? prev.negRealRun + 1 : 0,
+      posRealRun: real >= P.posRealAbove ? prev.posRealRun + 1 : 0,
+      peakStreet: Math.max(prev.peakStreet, street)
+    };
+  }
+
+  /** Move the meters by an event's effects, inside 0–1. Only street and washington are meters; a
+   *  cred, demand or supply effect is the caller's to apply to the economy.
+   *  @param {Politics} pol @param {{street?:number, washington?:number}} [effects] @returns {Politics} */
+  function bump(pol, effects) {
+    var e = effects || {};
+    var out = Object.assign({}, pol);
+    out.street = clamp(pol.street + (e.street || 0), 0, 1);
+    out.washington = clamp(pol.washington + (e.washington || 0), 0, 1);
+    out.peakStreet = Math.max(out.peakStreet, out.street);
+    return out;
+  }
+
+  /** Everything a rule's `when` may read: the meters and their counters, the ladder stage, the
+   *  quarter about to open, and the economy as it stands.
+   *  @param {Politics} pol @param {FedState} econ @param {{stage?:number, t?:number}} [extra] */
+  function politicsView(pol, econ, extra) {
+    var x = extra || {};
+    return {
+      street: pol.street, washington: pol.washington, hot: pol.hot, negRealRun: pol.negRealRun,
+      posRealRun: pol.posRealRun, peakStreet: pol.peakStreet,
+      stage: x.stage || 0, t: x.t === undefined ? econ.t : x.t,
+      pi: econ.pi, u: econ.u, gap: econ.gap, cred: econ.cred, rate: econ.rate,
+      real: typeof econ.real === 'number' ? econ.real : econ.rate - econ.pi
+    };
+  }
+
+  /** The one event due now, or null: the first rule in order that has not fired, whose rung is the
+   *  current one, whose quarter has come, and whose condition holds.
+   *  @param {any} view a politicsView @param {Record<string, boolean>} [fired] ids already used
+   *  @param {any[]} [rules] defaults to POLITICAL_EVENTS @returns {any} the rule, or null */
+  function dueEvent(view, fired, rules) {
+    var list = rules || POLITICAL_EVENTS;
+    var done = fired || {};
+    for (var i = 0; i < list.length; i += 1) {
+      var r = list[i];
+      if (done[r.id]) continue;
+      if (r.stage !== undefined && r.stage !== view.stage) continue;
+      if (r.minT !== undefined && view.t < r.minT) continue;
+      if (r.when(view)) return r;
+    }
+    return null;
+  }
+
+  /** What an event does once it has been answered. A card's effects are its own. The hearing is
+   *  held or answered with a promise to ease; the bill is eased into, or held — and holding it is
+   *  survived only by a Fed the markets believe, which is credibility of volckerCred or a real rate
+   *  of volckerReal or better on the day; otherwise it passes and the term ends.
+   *  @param {any} rule @param {string|null} choice 'hold' | 'promise' | 'ease'; anything else holds
+   *  @param {any} view the politicsView the rule fired on @param {typeof POLITICS_1975} [params]
+   *  @returns {{effects:{street?:number, washington?:number, cred?:number, demand?:number, supply?:number},
+   *             flags:{promised?:boolean, capitulated?:boolean, volcker?:boolean}, ending:string|null}} */
+  function resolveEvent(rule, choice, view, params) {
+    var P = params || POLITICS_1975;
+    var out = { effects: {}, flags: {}, ending: null };
+    if (!rule.choice) { out.effects = Object.assign({}, rule.effects || {}); return out; }
+    if (rule.id === 'hearing') {
+      if (choice === 'promise') {
+        out.effects = { washington: P.hearingPromise, cred: P.promiseCred };
+        out.flags.promised = true;
+      } else {
+        out.effects = { washington: P.hearingHold };
+      }
+      return out;
+    }
+    if (rule.id === 'bill') {
+      if (choice === 'ease') {
+        out.effects = { washington: P.billEase, cred: P.billEaseCred, demand: P.billEaseDemand };
+        out.flags.capitulated = true;
+      } else if (view.cred >= P.volckerCred || view.real >= P.volckerReal) {
+        out.effects = { washington: P.billHeld };
+        out.flags.volcker = true;
+      } else {
+        out.ending = 'congress';
+      }
+      return out;
+    }
+    return out;
+  }
+
+  /** The political story a term ends on: the bill passed, the street in revolt, a Chair the White
+   *  House will not reappoint, or nothing to add to the economics.
+   *  @param {Politics} pol the meters as the term ends @param {{ending?:string|null}} [flags]
+   *  @param {typeof POLITICS_1975} [params] @returns {string|null} */
+  function politicalVerdict(pol, flags, params) {
+    var P = params || POLITICS_1975;
+    var f = flags || {};
+    if (f.ending) return f.ending;
+    if (pol.street >= P.revoltAbove) return 'revolt';
+    if (pol.washington >= P.reappointAbove) return 'notReappointed';
+    return null;
+  }
+
   /* ===== simulate — ten quarters ===== */
 
   /** Play a whole run. Each requested rate is clamped against the quarter before it, and the
    *  shocks are read off the history as it is built, so the spiral can see what inflation did.
+   *  With `politics` on, the two meters advance each quarter, the Washington call moves them when
+   *  it opens, one political event may open each quarter — answered by `decide` when it is a
+   *  choice — and the bill can end the run early, in which case the history stops there.
    *  @param {number[]} rates ten requested rates, quarter 1 first
-   *  @param {{acceptedCall?:boolean, params?:typeof PARAMS_1975, initial?:FedState}} [options]
-   *  @returns {{history:FedState[], peakU:number, final:FedState}} eleven states: the opening one
-   *    plus one per quarter, the worst unemployment reached, and where it ended */
+   *  @param {{acceptedCall?:boolean, params?:typeof PARAMS_1975, initial?:FedState,
+   *           politics?:boolean, decide?:(id:string, view:any) => string,
+   *           politicsParams?:typeof POLITICS_1975, initialPolitics?:Politics}} [options]
+   *    `decide` answers 'hold' | 'promise' to the hearing and 'ease' | 'hold' to the bill; the
+   *    default holds the line at both.
+   *  @returns {{history:FedState[], peakU:number, final:FedState, politics?:Politics[],
+   *    events?:{t:number, id:string, choice:string|null}[], ending?:string|null,
+   *    capitulated?:boolean, volcker?:boolean, stage?:number, verdict?:string|null}}
+   *    the opening state plus one per quarter played, the worst unemployment reached, and where
+   *    it ended; with politics, the meters per quarter, the events by the quarter they opened, and
+   *    the verdict */
   function simulate(rates, options) {
     var o = options || {};
     var params = o.params || PARAMS_1975;
+    var P = o.politicsParams || POLITICS_1975;
     // A copy, never the constant itself: `history[0]` is handed straight back to the caller, and
     // one poke at it would rewrite INITIAL_1975 for every later simulate(), search() and run.
     var history = [Object.assign({}, o.initial || INITIAL_1975)];
     var peakU = -Infinity;
+    var pol = Object.assign({}, o.initialPolitics || INITIAL_POLITICS);
+    var politics = [pol];
+    /** @type {{t:number, id:string, choice:string|null}[]} */ var events = [];
+    /** @type {Record<string, boolean>} */ var fired = {};
+    var stage = 0, pending = { demand: 0, supply: 0 };
+    var promised = false, capitulated = false, volcker = false;
+    /** @type {string|null} */ var ending = null;
+    var decide = typeof o.decide === 'function' ? o.decide : function () { return 'hold'; };
 
     for (var t = 1; t <= TURNS; t++) {
       var state = history[t - 1];
       var rate = clampRate(rates[t - 1], state.rate);
       var shocks = shocksFor(t, { acceptedCall: !!o.acceptedCall, history: history });
+      if (o.politics) {
+        shocks = { demand: shocks.demand + pending.demand, supply: shocks.supply + pending.supply };
+        pending = { demand: 0, supply: 0 };
+      }
       var next = step(state, rate, shocks, params);
       history.push(next);
       if (next.u > peakU) peakU = next.u;
+      if (!o.politics) continue;
+
+      var broke = promised && rate >= state.rate - 1e-9;
+      promised = false;
+      pol = stepPolitics(pol, next, { move: rate - state.rate, brokenPromise: broke }, P);
+      if (t + 1 === CALL_QUARTER) pol = bump(pol, { washington: o.acceptedCall ? P.callAccept : P.callRefuse });
+      var view = politicsView(pol, next, { stage: stage, t: t + 1 });
+      var rule = t < TURNS ? dueEvent(view, fired) : null;   // nothing opens after the last quarter
+      if (rule) {
+        fired[rule.id] = true;
+        var choice = rule.choice ? decide(rule.id, view) : null;
+        var res = resolveEvent(rule, choice, view, P);
+        pol = bump(pol, res.effects);
+        if (res.effects.cred) next.cred = clamp(next.cred + res.effects.cred, 0, 1);
+        pending.demand += res.effects.demand || 0;
+        pending.supply += res.effects.supply || 0;
+        if (res.flags.promised) promised = true;
+        if (res.flags.capitulated) capitulated = true;
+        if (res.flags.volcker) volcker = true;
+        if (rule.stage !== undefined) stage = rule.stage + 1;
+        events.push({ t: t + 1, id: rule.id, choice: choice });
+        if (res.ending) { ending = res.ending; politics.push(pol); break; }
+      }
+      politics.push(pol);
     }
 
-    return { history: history, peakU: peakU, final: history[TURNS] };
+    var final = history[history.length - 1];
+    /** @type {any} */ var out = { history: history, peakU: peakU, final: final };
+    if (o.politics) {
+      out.politics = politics;
+      out.events = events;
+      out.ending = ending;
+      out.capitulated = capitulated;
+      out.volcker = volcker;
+      out.stage = stage;
+      out.verdict = politicalVerdict(politics[politics.length - 1], { ending: ending }, P);
+    }
+    return out;
   }
 
   /* ===== judgeMove — was that the move the moment called for? ===== */
@@ -158,9 +397,11 @@ var FedModel = (function () {
 
   /** Score a finished run out of 105: 40 for landing inflation on target, 30 for unemployment at
    *  the natural rate, 20 for not having wrecked the labour market on the way, 10 for having
-   *  brought expectations back down, and 5 for having refused the White House.
+   *  brought expectations back down, and 5 for having held the Fed's independence. A term that
+   *  Congress ended is capped at endedCap: whatever the numbers were the day the bill passed, the
+   *  Chair did not finish the job.
    *  @param {{peakU:number, final:{pi:number, u:number, piExp:number}}} run
-   *  @param {{integrity?:boolean}} [options]
+   *  @param {{integrity?:boolean, ended?:string|null}} [options]
    *  @returns {{raw:number, stamp:number}} raw out of 105 and a 1–5 stamp */
   function score(run, options) {
     var o = options || {};
@@ -173,6 +414,7 @@ var FedModel = (function () {
       + 20 * clamp(1 - Math.max(0, peak - 8) / 4, 0, 1)
       + 10 * clamp(1 - Math.abs(f.piExp - 2) / 9, 0, 1)
       + 5 * (o.integrity ? 1 : 0);
+    if (o.ended) raw = Math.min(raw, POLITICS_1975.endedCap);
     var stamp = raw >= 70 ? 5 : raw >= 65 ? 4 : raw >= 55 ? 3 : raw >= 42 ? 2 : 1;
     return { raw: raw, stamp: stamp };
   }
@@ -180,9 +422,12 @@ var FedModel = (function () {
   /* ===== search — how good could a run have been? ===== */
 
   /** Random-sample legal rate paths and keep the best-scoring one. Used to sanity-check that the
-   *  par the game hands out is beatable; not part of play.
+   *  par the game hands out is beatable; not part of play. With `politics` on, each path is played
+   *  against the meters too, holding the line at every choice unless `decide` says otherwise, and
+   *  a capitulation or an ended term scores as it would in the game.
    *  @param {{n?:number, acceptedCall?:boolean, integrity?:boolean, params?:typeof PARAMS_1975,
-   *           initial?:FedState, rng?:() => number}} [options]
+   *           initial?:FedState, rng?:() => number, politics?:boolean,
+   *           decide?:(id:string, view:any) => string}} [options]
    *  @returns {{raw:number, stamp:number, path:number[]}} */
   function search(options) {
     var o = options || {};
@@ -201,7 +446,8 @@ var FedModel = (function () {
         path.push(rate);
         prev = rate;
       }
-      var result = score(simulate(path, { acceptedCall: !!o.acceptedCall, params: o.params, initial: initial }), { integrity: integrity });
+      var run = simulate(path, { acceptedCall: !!o.acceptedCall, params: o.params, initial: initial, politics: !!o.politics, decide: o.decide });
+      var result = score(run, { integrity: integrity && !run.capitulated, ended: run.ending });
       if (result.raw > best.raw) best = { raw: result.raw, stamp: result.stamp, path: path };
     }
     return best;
@@ -210,7 +456,11 @@ var FedModel = (function () {
   return {
     PARAMS_1975: PARAMS_1975, INITIAL_1975: INITIAL_1975, HISTORY_1975: HISTORY_1975,
     RATE_MIN: RATE_MIN, RATE_MAX: RATE_MAX, RATE_STEP: RATE_STEP, MAX_MOVE: MAX_MOVE,
+    POLITICS_1975: POLITICS_1975, INITIAL_POLITICS: INITIAL_POLITICS, POLITICAL_EVENTS: POLITICAL_EVENTS,
+    CALL_QUARTER: CALL_QUARTER,
     clampRate: clampRate, step: step, shocksFor: shocksFor, simulate: simulate,
+    stepPolitics: stepPolitics, bump: bump, politicsView: politicsView, dueEvent: dueEvent,
+    resolveEvent: resolveEvent, politicalVerdict: politicalVerdict,
     judgeMove: judgeMove, score: score, search: search
   };
 }());

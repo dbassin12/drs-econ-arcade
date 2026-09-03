@@ -402,3 +402,239 @@ test('every path the search samples is one a player could have played', () => {
     prev = rate;
   });
 });
+
+/* ===== politics — the street, Washington, and the events they fire ===== */
+
+const P = FedModel.POLITICS_1975;
+const POL0 = FedModel.INITIAL_POLITICS;
+
+/** A politics record with every counter at rest. @param {number} street @param {number} washington */
+function pol(street, washington) {
+  return { street: street, washington: washington, hot: 0, negRealRun: 0, posRealRun: 0, peakStreet: street };
+}
+
+/** @param {Object<string, any>} [over] @returns {any} a politicsView of a calm economy in quarter 6 */
+function view(over) {
+  return Object.assign({ street: 0, washington: 0, hot: 0, negRealRun: 0, posRealRun: 0, peakStreet: 0,
+    stage: 0, t: 6, pi: 5, u: 6, cred: 0.1, real: 1.5 }, over || {});
+}
+
+/** @param {string} id */
+function rule(id) { return FedModel.POLITICAL_EVENTS.find((r) => r.id === id); }
+
+/** @param {any} r a simulate() result @returns {string[]} its events as "Q5:hearing/hold" */
+function events(r) { return r.events.map((e) => 'Q' + e.t + ':' + e.id + (e.choice ? '/' + e.choice : '')); }
+
+test('the politics constants and opening meters are the ones the game is tuned to', () => {
+  assert.deepEqual(POL0, { street: 0.55, washington: 0.2, hot: 0, negRealRun: 0, posRealRun: 0, peakStreet: 0.55 });
+  assert.equal(FedModel.CALL_QUARTER, 4);
+  assert.deepEqual(FedModel.POLITICAL_EVENTS.map((r) => r.id),
+    ['bill', 'whitehouse', 'hearing', 'strike', 'editorial', 'march', 'boycott', 'savers', 'bondRally', 'relief']);
+  assert.equal(P.volckerReal, 2);
+  assert.equal(P.brokenPromise, 0.40);
+  assert.equal(P.endedCap, 30);
+});
+
+test('the street moves halfway to a target that weighs inflation over unemployment', () => {
+  const econ = { t: 2, pi: 11, u: 8, gap: 0, piExp: 11, rate: 6.5, cred: 0.1, real: -4.5 };
+  const next = FedModel.stepPolitics(POL0, econ, { move: 0 });
+  near(next.street, 0.775, 'target 0.11*(11-3) + 0.04*(8-5) clamps to 1; street = 0.55 + 0.5*(1 - 0.55)');
+  const calm = FedModel.stepPolitics(POL0, Object.assign({}, econ, { pi: 3, u: 5 }), { move: 0 });
+  near(calm.street, 0.275, 'a 3-and-5 economy pulls the street halfway to zero');
+  near(next.peakStreet, 0.775, 'peakStreet follows a rise');
+  near(calm.peakStreet, 0.55, 'and remembers the worst through a fall');
+});
+
+test('washington climbs with unemployment above 8, twice as fast in 1976', () => {
+  const base = { t: 2, pi: 5, u: 9, gap: -6, piExp: 5, rate: 6.5, cred: 0.1, real: 1.5 };   // street lands at 0.465: no spill
+  near(FedModel.stepPolitics(POL0, base, { move: 0 }).washington, 0.25, 'a point above 8 costs 0.05');
+  near(FedModel.stepPolitics(POL0, Object.assign({}, base, { t: 5 }), { move: 0 }).washington, 0.30, 'and 0.10 in an election quarter');
+  near(FedModel.stepPolitics(POL0, Object.assign({}, base, { u: 8 }), { move: 0 }).washington, 0.20, 'exactly 8 is not above 8');
+});
+
+test('cutting relieves washington, hiking costs it, jobs under 7 cool it, a broken promise burns it', () => {
+  const quiet = { t: 2, pi: 5, u: 7.5, gap: -3, piExp: 5, rate: 6.5, cred: 0.1, real: 1.5 };
+  near(FedModel.stepPolitics(POL0, quiet, { move: -0.25 }).washington, 0.10, 'a cut of any size');
+  near(FedModel.stepPolitics(POL0, quiet, { move: 0.25 }).washington, 0.25, 'a hike of any size');
+  near(FedModel.stepPolitics(POL0, Object.assign({}, quiet, { u: 6.9 }), { move: 0 }).washington, 0.14, 'jobs under 7');
+  near(FedModel.stepPolitics(POL0, quiet, { move: 0, brokenPromise: true }).washington, 0.60, 'a broken promise');
+});
+
+test('an angry street spills into washington above 0.6', () => {
+  const hot = { t: 2, pi: 11, u: 8, gap: -4, piExp: 11, rate: 6.5, cred: 0.1, real: -4.5 };   // street lands at 0.775
+  near(FedModel.stepPolitics(POL0, hot, { move: 0 }).washington, 0.2 + 0.10 * (0.775 - 0.6), 'spill = 0.10 x (street - 0.6); u of 8 adds nothing');
+});
+
+test('the counters: a hot street, and runs of negative and positive real rates', () => {
+  const hot = { t: 2, pi: 11, u: 8, gap: -4, piExp: 11, rate: 6.5, cred: 0.1, real: -4.5 };
+  let p = FedModel.stepPolitics(POL0, hot, {});
+  assert.equal(p.hot, 1); assert.equal(p.negRealRun, 1); assert.equal(p.posRealRun, 0);
+  p = FedModel.stepPolitics(p, hot, {});
+  assert.equal(p.hot, 2); assert.equal(p.negRealRun, 2);
+  p = FedModel.stepPolitics(p, Object.assign({}, hot, { pi: 3, u: 5, real: 2.5 }), {});
+  assert.equal(p.hot, 0, 'a cool quarter resets it'); assert.equal(p.negRealRun, 0); assert.equal(p.posRealRun, 1);
+  assert.equal(FedModel.stepPolitics(POL0, { t: 2, pi: 11, u: 8, rate: 6.5, cred: 0.1 }, {}).negRealRun, 1,
+    'the real rate is read off rate - pi when the state carries none');
+});
+
+test('the meters never leave 0-1, and bump treats a missing effect as zero', () => {
+  const top = FedModel.stepPolitics(pol(1, 0.99), { t: 5, pi: 14, u: 14, rate: 6.5, cred: 0 }, { move: 1, brokenPromise: true });
+  assert.equal(top.street, 1); assert.equal(top.washington, 1);
+  const floor = FedModel.bump(pol(0.05, 0.05), { street: -1, washington: -1 });
+  assert.equal(floor.street, 0); assert.equal(floor.washington, 0); assert.equal(floor.peakStreet, 0.05);
+  const up = FedModel.bump(pol(0.5, 0.5), { street: 0.3 });
+  near(up.street, 0.8); near(up.washington, 0.5); near(up.peakStreet, 0.8, 'a bump can set a new peak');
+});
+
+test('dueEvent takes the first rule in order that has not fired, on its rung, in its quarter', () => {
+  assert.equal(FedModel.dueEvent(view(), {}), null, 'a calm economy fires nothing');
+  assert.equal(FedModel.dueEvent(view({ washington: 0.5 }), {}).id, 'hearing');
+  assert.equal(FedModel.dueEvent(view({ washington: 0.5, t: 4 }), {}), null, 'the hearing waits for quarter 5');
+  assert.equal(FedModel.dueEvent(view({ washington: 0.5 }), { hearing: true }), null, 'and fires once');
+  assert.equal(FedModel.dueEvent(view({ washington: 0.99 }), {}).id, 'hearing', 'the ladder is climbed a rung at a time');
+  assert.equal(FedModel.dueEvent(view({ washington: 0.99, stage: 1 }), {}).id, 'whitehouse');
+  assert.equal(FedModel.dueEvent(view({ washington: 0.99, stage: 2 }), {}).id, 'bill');
+  assert.equal(FedModel.dueEvent(view({ washington: 0.94, stage: 2 }), {}), null, 'the bill needs 0.95');
+  assert.equal(FedModel.dueEvent(view({ street: 0.8, pi: 8, t: 7 }), {}).id, 'strike');
+  assert.equal(FedModel.dueEvent(view({ street: 0.8, pi: 8, t: 6 }), {}), null, 'the strike waits for quarter 7');
+  assert.equal(FedModel.dueEvent(view({ street: 0.8, pi: 7.9, t: 7, u: 9 }), {}).id, 'march', 'inflation under 8 is a march, not a strike');
+  assert.equal(FedModel.dueEvent(view({ hot: 2, t: 7 }), {}).id, 'editorial');
+  assert.equal(FedModel.dueEvent(view({ street: 0.6, pi: 9.5 }), {}).id, 'boycott');
+  assert.equal(FedModel.dueEvent(view({ negRealRun: 2 }), {}).id, 'savers');
+  assert.equal(FedModel.dueEvent(view({ posRealRun: 2 }), {}).id, 'bondRally');
+  assert.equal(FedModel.dueEvent(view({ street: 0.4, peakStreet: 0.7 }), {}).id, 'relief');
+  assert.equal(FedModel.dueEvent(view({ street: 0.4, peakStreet: 0.5 }), {}), null, 'relief needs a street that was once angry');
+});
+
+test('a card is its own effects; the hearing is held or promised', () => {
+  assert.deepEqual(FedModel.resolveEvent(rule('strike'), null, view()), { effects: { supply: 1.0 }, flags: {}, ending: null });
+  assert.notEqual(FedModel.resolveEvent(rule('strike'), null, view()).effects, rule('strike').effects, 'a copy, never the rule\'s own object');
+  const held = FedModel.resolveEvent(rule('hearing'), 'hold', view());
+  assert.deepEqual(held, { effects: { washington: 0.10 }, flags: {}, ending: null });
+  assert.deepEqual(FedModel.resolveEvent(rule('hearing'), 'whatever', view()), held, 'anything that is not a promise holds');
+  assert.deepEqual(FedModel.resolveEvent(rule('hearing'), 'promise', view()),
+    { effects: { washington: -0.25, cred: -0.10 }, flags: { promised: true }, ending: null });
+});
+
+test('the bill is eased into, or held - and held only by a Fed the markets believe', () => {
+  assert.deepEqual(FedModel.resolveEvent(rule('bill'), 'ease', view({ cred: 0, real: -2 })),
+    { effects: { washington: -0.40, cred: -0.10, demand: 2 }, flags: { capitulated: true }, ending: null });
+  assert.deepEqual(FedModel.resolveEvent(rule('bill'), 'hold', view({ cred: 0.05, real: 2 })),
+    { effects: { washington: -0.35 }, flags: { volcker: true }, ending: null }, 'a real rate of 2 holds it');
+  assert.deepEqual(FedModel.resolveEvent(rule('bill'), 'hold', view({ cred: 0.3, real: -1 })),
+    { effects: { washington: -0.35 }, flags: { volcker: true }, ending: null }, 'so does credibility of 0.3');
+  assert.deepEqual(FedModel.resolveEvent(rule('bill'), 'hold', view({ cred: 0.29, real: 1.99 })),
+    { effects: {}, flags: {}, ending: 'congress' }, 'with neither, the bill passes');
+});
+
+test('the verdict: the bill, the revolt, the reappointment, or nothing to add', () => {
+  assert.equal(FedModel.politicalVerdict(pol(0.9, 0.9), { ending: 'congress' }), 'congress', 'an ended term is its own story');
+  assert.equal(FedModel.politicalVerdict(pol(0.75, 0.9), {}), 'revolt', 'the street outranks the White House');
+  assert.equal(FedModel.politicalVerdict(pol(0.74, 0.7), {}), 'notReappointed');
+  assert.equal(FedModel.politicalVerdict(pol(0.74, 0.69), {}), null);
+});
+
+test('score caps a term Congress ended at 30, which is a 1', () => {
+  const ended = FedModel.score(fakeRun(2, 6, 2, 8), { integrity: true, ended: 'congress' });
+  near(ended.raw, 30, 'raw');
+  assert.equal(ended.stamp, 1);
+  near(FedModel.score(fakeRun(2, 6, 2, 8), { integrity: true, ended: null }).raw, 105, 'a null ending caps nothing');
+});
+
+/* ===== the whole run with politics on - the calibration the game is tuned to ===== */
+
+test('simulate without politics is unchanged; with politics it adds the meters, the events and the verdict', () => {
+  const plain = FedModel.simulate(POLICIES.hold.rates, {});
+  assert.equal(plain.politics, undefined); assert.equal(plain.events, undefined); assert.equal(plain.ending, undefined);
+  const r = FedModel.simulate(POLICIES.hold.rates, { politics: true });
+  assert.equal(r.politics.length, r.history.length, 'one politics entry per state');
+  assert.deepEqual(r.politics[0], POL0);
+  assert.notEqual(r.politics[0], POL0, 'a copy, not the constant');
+  assert.equal(r.ending, null);
+});
+
+test('holding at 6.5 and refusing everyone: the march, the hearing, the White House - and no reappointment', () => {
+  const r = FedModel.simulate(POLICIES.hold.rates, { politics: true });
+  assert.deepEqual(events(r), ['Q2:march', 'Q3:boycott', 'Q4:savers', 'Q5:hearing/hold', 'Q6:whitehouse']);
+  assert.equal(r.ending, null);
+  assert.equal(r.verdict, 'notReappointed');
+  assert.equal(r.history.length, 11, 'the term runs its course');
+  const w = r.politics[10].washington;
+  assert.ok(w >= 0.7 && w < 0.95, 'ends leaned on, short of the bill: ' + w);
+  assert.equal(FedModel.score(r, { integrity: true, ended: r.ending }).stamp, 3);
+});
+
+test('the tuned best path survives Washington with a 5, whether it holds the line or promises to ease', () => {
+  const held = FedModel.simulate(POLICIES.best.rates, { politics: true });
+  assert.deepEqual(events(held), ['Q2:march', 'Q3:boycott', 'Q4:savers', 'Q5:hearing/hold']);
+  assert.equal(held.verdict, null);
+  assert.equal(FedModel.score(held, { integrity: true, ended: held.ending }).stamp, 5);
+  const promised = FedModel.simulate(POLICIES.best.rates, { politics: true, decide: (id) => (id === 'hearing' ? 'promise' : 'hold') });
+  assert.deepEqual(events(promised), ['Q2:march', 'Q3:boycott', 'Q4:savers', 'Q5:hearing/promise']);
+  assert.ok(promised.politics[10].washington < held.politics[10].washington, 'a promise the path keeps - it cuts next quarter - leaves less pressure');
+  assert.equal(FedModel.score(promised, { integrity: true, ended: promised.ending }).stamp, 5);
+});
+
+test('hiking a point a quarter brings the bill by Q7; a real rate above 2 holds it, and the White House remembers', () => {
+  const r = FedModel.simulate(POLICIES.aggressive.rates, { politics: true });
+  assert.deepEqual(events(r), ['Q2:march', 'Q3:boycott', 'Q5:hearing/hold', 'Q6:whitehouse', 'Q7:bill/hold', 'Q8:bondRally']);
+  assert.equal(r.volcker, true); assert.equal(r.ending, null); assert.equal(r.capitulated, false);
+  assert.equal(r.verdict, 'notReappointed');
+  const eased = FedModel.simulate(POLICIES.aggressive.rates, { politics: true, decide: (id) => (id === 'bill' ? 'ease' : 'hold') });
+  assert.equal(eased.capitulated, true); assert.equal(eased.volcker, false);
+  assert.ok(eased.history[7].gap > r.history[7].gap, 'the forced easing lands on demand the next quarter');
+  assert.ok(FedModel.score(eased, { integrity: false, ended: null }).raw < FedModel.score(r, { integrity: true, ended: null }).raw,
+    'and it costs the integrity point');
+});
+
+test('a hawk with a real rate under 2 loses the dial: the term ends on the bill', () => {
+  const hawk = [7.5, 8.5, 9.0, 9.0, 8.5, 8.0, 7.5, 7.0, 6.5, 6.0];
+  const r = FedModel.simulate(hawk, { politics: true });
+  assert.deepEqual(events(r).slice(-1), ['Q7:bill/hold']);
+  assert.equal(r.ending, 'congress'); assert.equal(r.verdict, 'congress');
+  assert.equal(r.history.length, 7, 'six quarters played; the seventh opens on the bill and never runs');
+  assert.equal(r.final, r.history[6]);
+  assert.equal(r.politics.length, 7);
+  assert.equal(FedModel.score(r, { integrity: true, ended: r.ending }).stamp, 1);
+});
+
+test('cutting into the shock keeps inflation in double digits: the strike, the editorial, the revolt', () => {
+  const r = FedModel.simulate(POLICIES.cut.rates, { politics: true });
+  assert.deepEqual(events(r), ['Q2:march', 'Q3:boycott', 'Q4:savers', 'Q7:strike', 'Q8:editorial']);
+  const plain = FedModel.simulate(POLICIES.cut.rates, {});
+  near(r.history[7].pi - plain.history[7].pi, 1.0, 'the strike is a one-point supply shock on the quarter after it');
+  assert.equal(r.verdict, 'revolt');
+  assert.ok(r.politics[10].washington < 0.45, 'Washington got the cuts it wanted: ' + r.politics[10].washington);
+});
+
+test('taking the call pleases Washington and enrages the street', () => {
+  const refused = FedModel.simulate(POLICIES.hold.rates, { politics: true, acceptedCall: false });
+  const taken = FedModel.simulate(POLICIES.hold.rates, { politics: true, acceptedCall: true });
+  near(refused.politics[3].washington - taken.politics[3].washington, 0.40, 'the call opens quarter 4: +0.25 refused, -0.15 taken');
+  assert.ok(events(taken).indexOf('Q5:hearing/hold') < 0, 'no hearing for a Chair who did as asked');
+  assert.ok(events(taken).indexOf('Q7:strike') >= 0 && events(taken).indexOf('Q8:editorial') >= 0, 'but the inflation it buys brings the street out');
+  assert.ok(taken.politics[10].street > refused.politics[10].street);
+  assert.equal(FedModel.simulate(POLICIES.best.rates, { politics: true, acceptedCall: true }).verdict, 'revolt',
+    'even the tuned path ends in the revolt once it takes the call');
+});
+
+test('a promise to ease that is not kept costs more than holding the line would have', () => {
+  const stay = rep(10, 6.5);
+  const kept = stay.slice(); kept[4] = 6.25;          // quarter 5: the first quarter after a hearing that opens it
+  const promise = (id) => (id === 'hearing' ? 'promise' : 'hold');
+  const broken = FedModel.simulate(stay, { politics: true, decide: promise });
+  const honoured = FedModel.simulate(kept, { politics: true, decide: promise });
+  const held = FedModel.simulate(stay, { politics: true });
+  assert.equal(events(broken)[3], 'Q5:hearing/promise');
+  const gap = broken.politics[5].washington - honoured.politics[5].washington;
+  assert.ok(Math.abs(gap - 0.50) < 0.02, 'broken: +0.40, and no cut relief either: ' + gap.toFixed(3));
+  assert.ok(broken.politics[5].washington > held.politics[5].washington, 'worse off than having held the line');
+});
+
+test('search with politics on still finds a 5 while holding the line at every choice', () => {
+  const best = FedModel.search({ n: 3000, rng: lcg(1975), politics: true });
+  assert.equal(best.stamp, 5, 'best raw ' + best.raw.toFixed(1));
+  const replay = FedModel.simulate(best.path, { politics: true });
+  assert.equal(replay.ending, null);
+  near(best.raw, FedModel.score(replay, { integrity: !replay.capitulated, ended: replay.ending }).raw, 'the path replays to its score');
+});
