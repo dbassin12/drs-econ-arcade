@@ -39,7 +39,9 @@ teacher owns that receives initials and scores on every new personal best.
 │   ├── graph.js                  # the SVG graph engine — markets are data
 │   ├── graph.test.js
 │   ├── leaderboard.js            # the class board's client: posts every new best, reads the board back
-│   └── leaderboard.test.js
+│   ├── leaderboard.test.js
+│   ├── glossary.js               # the CED's terms, one definition each — the 📖 on the hub and every how-to
+│   └── glossary.test.js
 ├── leaderboard/
 │   ├── apps-script.js            # the class board's server: one Google Apps Script web app on one Sheet
 │   ├── apps-script.test.js

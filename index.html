@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="shared/arcade.css?v=20260903d">
+<link rel="stylesheet" href="shared/arcade.css?v=20260903f">
 </head>
 <body>
 
@@ -143,6 +143,8 @@
   <section class="panel readiness stack">
     <h2 class="panel-title">My AP Readiness</h2>
     <div class="stack" id="readinessBody">Play a level to see your heat map</div>
+    <!-- The CED's terms, one definition a tap: the words every WHY line and every exam item is written in. -->
+    <button type="button" class="btn btn-ghost btn-block btn-sm glossary-btn">📖 The terms, as the exam uses them</button>
   </section>
 
   <!-- The class board: every student's bests, read from the class endpoint named in
@@ -176,8 +178,9 @@
 if (self !== top) { try { top.location = self.location; } catch (e) { document.documentElement.hidden = true; } }
 </script>
 
-<script src="shared/arcade.js?v=20260903d"></script>
-<script src="shared/leaderboard.js?v=20260903d"></script>
+<script src="shared/arcade.js?v=20260903f"></script>
+<script src="shared/leaderboard.js?v=20260903f"></script>
+<script src="shared/glossary.js?v=20260903f"></script>
 <script>
 /* ================================================================================
    THE HUB — the one page students bookmark. Sections: elements · game cards ·
@@ -682,6 +685,7 @@ if (self !== top) { try { top.location = self.location; } catch (e) { document.d
     Arcade.sfx.bindMuteButton(byId('muteBtn'));
     Arcade.voice.bindButton(byId('voiceBtn'));
     Arcade.mountBigTypeButton(byId('bigTypeBtn'));   // this also applies the stored Arcade Night state
+    if (Arcade.mountGlossary) Arcade.mountGlossary();
     initialsBtn.textContent = Arcade.initials();
     initialsBtn.setAttribute('aria-expanded', 'false');
     // Debounced: a double tap on the chip used to open the sheet and close it again in one motion.

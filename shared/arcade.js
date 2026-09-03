@@ -1448,6 +1448,94 @@ var Arcade = (function () {
     for (var i = 0; i < btns.length; i += 1) btns[i].addEventListener('click', debounced(openSwitcher));
   }
 
+  /* ===== GLOSSARY — the CED's terms behind every 📖: shared/glossary.js is the data, this is the sheet =====
+     A search box, the terms by unit, a definition a tap at a time. It opens from the hub and from every
+     game's how-to screen, never from a play screen, so it informs without cluttering a round. */
+
+  /** @type {any} */ var glossaryEl = null;
+  /** @type {(() => void)|null} */ var releaseGlossary = null;
+  var glossarySeq = 0;
+
+  function closeGlossary() {
+    if (!glossaryEl || glossaryEl.hidden) return;
+    glossarySeq += 1;
+    var seq = glossarySeq;
+    if (releaseGlossary) { var release = releaseGlossary; releaseGlossary = null; release(); }
+    glossaryEl.classList.remove('open');
+    setTimeout(function () { if (seq === glossarySeq) glossaryEl.hidden = true; }, 300);
+  }
+
+  function openGlossary() {
+    if (!glossaryEl || !glossaryEl.hidden) return;
+    glossarySeq += 1;
+    glossaryEl.hidden = false;
+    glossaryEl.scrollTop = 0;
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function () { glossaryEl.classList.add('open'); });
+    else glossaryEl.classList.add('open');
+    releaseGlossary = trapFocus(glossaryEl, closeGlossary);
+  }
+
+  /** @returns {any} the sheet, appended to body */
+  function buildGlossary() {
+    var G = typeof Glossary !== 'undefined' ? Glossary : null;
+    var sheet = make('sheet glossary');
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-label', 'The terms, as the exam uses them');
+    sheet.hidden = true;
+    var stack = make('stack');
+    // The head stays put while the list scrolls under it, so the ✕ and the search box are always in reach.
+    var head = make('glossary-head stack');
+    var titleRow = make('row');
+    titleRow.appendChild(make('sheet-msg', '📖 The terms, as the exam uses them'));
+    var close = button('✕', 'btn btn-ghost glossary-close', closeGlossary);
+    close.setAttribute('aria-label', 'Close the glossary');
+    titleRow.appendChild(close);
+    head.appendChild(titleRow);
+    var find = document.createElement('input');
+    find.type = 'search';
+    find.className = 'glossary-find';
+    find.placeholder = 'Find a term';
+    find.setAttribute('aria-label', 'Find a term');
+    var list = make('glossary-list');
+    /** @param {string} q */
+    function paint(q) {
+      list.textContent = '';
+      var by = G ? G.byUnit(G.find(q)) : {};
+      Object.keys(by).sort().forEach(function (u) {
+        list.appendChild(make('glossary-unit', 'Unit ' + u + ' · ' + (UNIT_NAMES[Number(u)] || '')));
+        by[u].forEach(function (g) {
+          var item = make('glossary-item' + (q ? ' open' : ''));
+          var term = button(g.term, 'glossary-term', function () {
+            var open = item.classList.toggle('open');
+            term.setAttribute('aria-expanded', open ? 'true' : 'false');
+          });
+          term.setAttribute('aria-expanded', q ? 'true' : 'false');
+          item.appendChild(term);
+          item.appendChild(make('glossary-def', g.def));
+          list.appendChild(item);
+        });
+      });
+      if (!list.firstChild) list.appendChild(make('muted', q ? 'No term matches “' + q + '”' : 'The glossary did not load'));
+    }
+    find.addEventListener('input', function () { paint(find.value); });
+    paint('');
+    head.appendChild(find);
+    stack.appendChild(head);
+    stack.appendChild(list);
+    stack.appendChild(button('Close', 'btn btn-ghost btn-block', closeGlossary));
+    sheet.appendChild(stack);
+    document.body.appendChild(sheet);
+    return sheet;
+  }
+
+  /** Build the sheet once and bind every .glossary-btn on the page to it. */
+  function mountGlossary() {
+    if (typeof document === 'undefined' || !document.body) return;
+    if (!glossaryEl) glossaryEl = buildGlossary();
+    var btns = document.querySelectorAll('.glossary-btn');
+    for (var i = 0; i < btns.length; i += 1) btns[i].addEventListener('click', debounced(openGlossary));
+  }
+
   /* ===== THE SLAM — a stamp that lands over the screen and leaves: BOSS, ⚡ LIGHTNING, FOMC 5.25 % ===== */
 
   /** @type {any} */ var slamMount = null;
@@ -1616,7 +1704,7 @@ var Arcade = (function () {
     medalFor: medalFor, safeMedal: safeMedal, stampFor: stampFor, titleFor: titleFor, titlePoints: titlePoints, career: career,
     onBest: onBest, initialsEntry: initialsEntry,
     bigType: bigType, mountBigTypeButton: mountBigTypeButton, toast: toast,
-    GAME_LIST: GAME_LIST, mountSwitcher: mountSwitcher
+    GAME_LIST: GAME_LIST, mountSwitcher: mountSwitcher, mountGlossary: mountGlossary
   };
 }());
 

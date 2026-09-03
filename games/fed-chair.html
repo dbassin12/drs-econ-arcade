@@ -19,7 +19,7 @@
 <!-- Nunito and JetBrains Mono arrive with the stylesheet; the newspaper is the one screen that
      needs a serif, so Playfair Display 900 is loaded here and nowhere else in the arcade. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&display=swap">
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903f">
 </head>
 <body>
 
@@ -678,6 +678,7 @@ const INTRO = [
         <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
       </header>
       <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-ghost btn-block btn-sm glossary-btn">📖 The terms, as the exam uses them</button>
       <button type="button" class="btn btn-block" id="howtoGo">Got it — take the chair</button>
     </div>
   </section>
@@ -779,10 +780,11 @@ const INTRO = [
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903d"></script>
-<script src="../shared/leaderboard.js?v=20260903d"></script>
-<script src="../shared/graph.js?v=20260903d"></script>
-<script src="fed-chair.model.js?v=20260903d"></script>
+<script src="../shared/arcade.js?v=20260903f"></script>
+<script src="../shared/leaderboard.js?v=20260903f"></script>
+<script src="../shared/glossary.js?v=20260903f"></script>
+<script src="../shared/graph.js?v=20260903f"></script>
+<script src="fed-chair.model.js?v=20260903f"></script>
 
 <script>
 /* ================================================================================
@@ -1685,7 +1687,7 @@ const INTRO = [
   var SERIES = {
     pi: { name: 'Inflation', legend: 'Inflation rate (π%)', next: 'u' },
     u: { name: 'Unemployment', legend: 'Unemployment rate (u%)', next: 'rate' },
-    rate: { name: 'The federal funds rate', legend: 'Fed funds rate (%)', next: 'pi' }
+    rate: { name: 'The federal funds rate', legend: 'Federal funds rate (%)', next: 'pi' }
   };
 
   function paintChart() {
@@ -1940,6 +1942,7 @@ const INTRO = [
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
+  if (Arcade.mountGlossary) Arcade.mountGlossary();
   if (Arcade.mountSwitcher) Arcade.mountSwitcher({ current: 'fed' });   // absent only on an engine a cache held back
   buildGauges(S.GAUGES.pi);
   paintIntro();

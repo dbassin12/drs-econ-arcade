@@ -772,6 +772,25 @@ html.big-type .board { order: -1; }
 /* Where you already are: green, and it only closes the sheet. */
 .switch-item.current { border-color: var(--green); color: var(--green); box-shadow: 0 4px 0 var(--green-dark); }
 
+/* ===== GLOSSARY — the sheet behind every 📖: a search box, the terms by unit, one definition a tap ===== */
+.sheet.glossary { max-height: 84vh; overflow-y: auto; }
+.glossary-head { position: sticky; top: -16px; z-index: 1; margin: -16px -16px 0; padding: 16px 16px 8px; background: var(--bg2); gap: 8px; }
+.glossary-head .row { justify-content: space-between; }
+.glossary-head .sheet-msg { flex: 1 1 auto; min-width: 0; }
+.glossary-close { width: 48px; height: 48px; flex: 0 0 48px; padding: 0; }
+.glossary-find { width: 100%; min-height: 48px; padding: 10px 14px; border: 2px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font: 600 16px var(--font); }
+.glossary-find:focus { outline: none; border-color: var(--blue); }
+.glossary-list { display: flex; flex-direction: column; gap: 4px; }
+.glossary-unit { margin-top: 8px; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--text2); }
+.glossary-term { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border: 2px solid var(--border); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: 800 15px var(--font); text-align: left; cursor: pointer; }
+.glossary-term::after { content: '+'; flex: 0 0 auto; color: var(--text3); font-weight: 900; }
+.glossary-item.open .glossary-term { border-color: var(--blue); }
+.glossary-item.open .glossary-term::after { content: '−'; }
+.glossary-def { display: none; padding: 6px 12px 10px; font-size: 15px; line-height: 1.45; color: var(--text2); }
+.glossary-item.open .glossary-def { display: block; }
+/* The 📖 button carries a sentence: sentence case, like the practice switch. */
+.glossary-btn { text-transform: none; letter-spacing: normal; font-size: 15px; }
+
 /* ===== WHAT IS THIS? — the purpose panel on a title screen, one emoji and one sentence a line ===== */
 .intro-title { font-weight: 900; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
 .intro-line { display: flex; gap: 10px; align-items: flex-start; }

@@ -960,3 +960,5 @@ test('slam is a safe no-op without a document', () => {
   Arcade.slam('BOSS');
   Arcade.slam('FOMC · HOLD', { sfx: null, ms: 10 });
 });
+
+test('mountGlossary is a safe no-op without a document', () => { Arcade.mountGlossary(); });

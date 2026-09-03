@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903f">
 </head>
 <body>
 
@@ -140,7 +140,7 @@ const EXAM_ITEMS = [
   { cards: ['spend', 'taxcut'], stem: 'An economy is in a recession. Which of the following fiscal policies would be most effective in increasing real output in the short run?', choices: ['Increasing government purchases', 'Increasing personal income taxes', 'Decreasing transfer payments', 'Selling government bonds to the public'], answer: 0, why: 'Higher government purchases increase aggregate demand directly, and by the full spending multiplier, raising real output in the short run.', ced: '3.8', skill: 2 },
   { cards: ['spend', 'taxcut', 'austerity', 'taxup'], stem: 'Assume the government increases spending financed by borrowing. Which of the following is a likely effect in the loanable funds market?', choices: ['The real interest rate falls and private investment rises', 'The real interest rate rises and private investment falls', 'The supply of loanable funds increases', 'The demand for loanable funds decreases'], answer: 1, why: 'Government borrowing increases the demand for loanable funds, raising the real interest rate and crowding out some private investment.', ced: '5.5', skill: 2 },
   { cards: ['taxup', 'austerity', 'imf'], stem: 'Which of the following is a short-run effect of contractionary fiscal policy?', choices: ['Aggregate demand shifts right and the price level rises', 'Aggregate demand shifts left and real output falls', 'Short-run aggregate supply shifts right', 'The unemployment rate falls'], answer: 1, why: 'Lower government spending or higher taxes reduce aggregate demand, lowering real output and the price level and raising unemployment in the short run.', ced: '3.8', skill: 2 },
-  { cards: ['hike', 'cut'], stem: 'A country’s central bank raises its policy interest rate. Which of the following is the most likely effect on the country’s currency in the foreign exchange market?', choices: ['It depreciates, because imports become cheaper', 'It appreciates, because higher returns attract capital inflows', 'It is unaffected, because interest rates do not affect exchange rates', 'It depreciates, because the money supply increases'], answer: 1, why: 'Higher interest rates attract foreign financial capital; the demand for the currency rises and it appreciates.', ced: '6.4', skill: 2 },
+  { cards: ['hike', 'cut'], stem: 'A country’s central bank raises its policy interest rate. Which of the following is the most likely effect on the country’s currency in the foreign exchange market?', choices: ['It depreciates, because imports become cheaper', 'It appreciates, because higher returns attract capital inflows', 'It is unaffected, because interest rates do not affect exchange rates', 'It depreciates, because the money supply increases'], answer: 1, why: 'Higher real interest rates attract foreign financial capital; the demand for the currency rises and it appreciates.', ced: '6.4', skill: 2 },
   { cards: ['reform', 'lean'], stem: 'Which of the following is most likely to reduce expected inflation in an economy with a history of high inflation?', choices: ['Financing the budget deficit by creating money', 'A credible commitment by an independent central bank to a low inflation target', 'Indexing wages to the price level', 'A large increase in government purchases'], answer: 1, why: 'Expected inflation falls when the public believes the central bank will hold prices down; a credible, independent central bank shifts short-run aggregate supply right by lowering expected inflation.', ced: '5.3', skill: 2 },
   { cards: ['print', 'lean'], stem: 'A government finances a persistent budget deficit by having its central bank create money. In the long run this will most likely result in which of the following?', choices: ['Lower unemployment and stable prices', 'A higher price level with no lasting increase in real output', 'A permanent increase in real GDP', 'Lower expected inflation'], answer: 1, why: 'Money creation shifts aggregate demand right, but as expected inflation rises short-run aggregate supply shifts left; in the long run output returns to potential at a higher price level.', ced: '5.1', skill: 2 },
   { cards: ['float', 'defend', 'devalue', 'controls'], stem: 'A country with a fixed exchange rate faces a persistent capital outflow. To maintain the peg its central bank must', choices: ['Buy foreign currency with domestic currency', 'Sell foreign reserves and buy domestic currency', 'Lower the domestic interest rate', 'Increase the domestic money supply'], answer: 1, why: 'Defending a fixed rate against downward pressure means selling foreign reserves to buy the domestic currency, which drains reserves while the pressure lasts.', ced: '6.4', skill: 2 },
@@ -232,6 +232,7 @@ const JUICE = {
         <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
       </header>
       <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-ghost btn-block btn-sm glossary-btn">📖 The terms, as the exam uses them</button>
       <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
     </div>
   </section>
@@ -292,9 +293,10 @@ const JUICE = {
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903d"></script>
-<script src="../shared/leaderboard.js?v=20260903d"></script>
-<script src="crisis.model.js?v=20260903d"></script>
+<script src="../shared/arcade.js?v=20260903f"></script>
+<script src="../shared/leaderboard.js?v=20260903f"></script>
+<script src="../shared/glossary.js?v=20260903f"></script>
+<script src="crisis.model.js?v=20260903f"></script>
 
 <script>
 /* ================================================================================
@@ -1010,6 +1012,7 @@ const JUICE = {
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
+  if (Arcade.mountGlossary) Arcade.mountGlossary();
   if (Arcade.mountSwitcher) Arcade.mountSwitcher({ current: 'crisis' });   // absent only on an engine a cache held back
   sheetBtn.style.display = 'none';
   paintIntro();

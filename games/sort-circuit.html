@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903f">
 </head>
 <body>
 
@@ -97,11 +97,11 @@ const DECKS = [
       { id: 'p-taxcut', text: 'Congress cuts personal income taxes', emoji: '💸', bin: 0, why: 'A cut in personal income taxes raises disposable income and consumption spending, shifting aggregate demand right: expansionary fiscal policy.', ced: '3.8', skill: 1 },
       { id: 'p-highways', text: 'Congress funds a national highway rebuild', emoji: '🚧', bin: 0, why: 'An increase in government purchases increases aggregate demand directly: expansionary fiscal policy.', ced: '3.8', skill: 1 },
       { id: 'p-iorb-down', text: 'The Fed lowers the interest rate it pays on reserve balances', emoji: '🏦', bin: 0, why: 'With ample reserves, lowering the administered rate lowers the federal funds rate and other interest rates, increasing interest-sensitive spending and shifting aggregate demand right: expansionary monetary policy.', ced: '4.6', skill: 1 },
-      { id: 'p-sell-bonds', text: 'The Fed sells government bonds on the open market', emoji: '📉', bin: 1, why: 'In a limited-reserves system an open-market sale drains reserves and decreases the money supply, raising interest rates and shifting aggregate demand left: contractionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-sell-bonds', text: 'The Fed sells government bonds on the open market', emoji: '📉', bin: 1, why: 'In a limited-reserves system an open-market sale drains reserves and decreases the money supply, raising the nominal interest rate and shifting aggregate demand left: contractionary monetary policy.', ced: '4.6', skill: 1 },
       { id: 'p-iorb-up', text: 'The Fed raises its policy rate by 75 basis points', emoji: '📈', bin: 1, why: 'A higher policy rate raises the real interest rate, decreases interest-sensitive consumption and investment, and shifts aggregate demand left: contractionary monetary policy.', ced: '4.6', skill: 1 },
       { id: 'p-defense', text: 'Congress cuts defense spending', emoji: '✂️', bin: 1, why: 'A decrease in government purchases decreases aggregate demand: contractionary fiscal policy.', ced: '3.8', skill: 1 },
       { id: 'p-taxup', text: 'Congress raises taxes to shrink the deficit', emoji: '🏛️', bin: 1, why: 'Higher taxes reduce disposable income and consumption spending, shifting aggregate demand left: contractionary fiscal policy.', ced: '3.8', skill: 1 },
-      { id: 'p-buy-bonds', text: 'The Fed buys government bonds on the open market', emoji: '🖨️', bin: 0, why: 'In a limited-reserves system an open-market purchase adds reserves and increases the money supply, lowering interest rates and shifting aggregate demand right: expansionary monetary policy.', ced: '4.6', skill: 1 },
+      { id: 'p-buy-bonds', text: 'The Fed buys government bonds on the open market', emoji: '🖨️', bin: 0, why: 'In a limited-reserves system an open-market purchase adds reserves and increases the money supply, lowering the nominal interest rate and shifting aggregate demand right: expansionary monetary policy.', ced: '4.6', skill: 1 },
       { id: 'p-checks', text: 'Stimulus checks land in every Five Towns account', emoji: '📬', bin: 0, why: 'Transfer payments raise disposable income and consumption spending, shifting aggregate demand right: expansionary fiscal policy.', ced: '3.8', skill: 1 },
       { id: 'p-stabilizer', text: 'A recession hits and unemployment benefits automatically rise', emoji: '🛟', bin: 0, why: 'Automatic stabilizers such as unemployment insurance increase transfer payments in a recession without new legislation, supporting consumption and aggregate demand: expansionary in effect.', ced: '3.9', skill: 2 },
       { id: 'p-qe', text: 'The Fed launches a program of long-term bond purchases', emoji: '🏗️', bin: 0, why: 'Buying long-term assets lowers long-term interest rates and increases interest-sensitive spending, shifting aggregate demand right: expansionary monetary policy.', ced: '4.6', skill: 1 },
@@ -230,6 +230,7 @@ const JUICE = {
         <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
       </header>
       <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-ghost btn-block btn-sm glossary-btn">📖 The terms, as the exam uses them</button>
       <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
     </div>
   </section>
@@ -298,8 +299,9 @@ const JUICE = {
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903d"></script>
-<script src="../shared/leaderboard.js?v=20260903d"></script>
+<script src="../shared/arcade.js?v=20260903f"></script>
+<script src="../shared/leaderboard.js?v=20260903f"></script>
+<script src="../shared/glossary.js?v=20260903f"></script>
 
 <script>
 /* ================================================================================
@@ -1032,6 +1034,7 @@ const JUICE = {
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
+  if (Arcade.mountGlossary) Arcade.mountGlossary();
   if (Arcade.mountSwitcher) Arcade.mountSwitcher({ current: 'sort' });   // absent only on an engine a cache held back
   sheetBtn.style.display = 'none';
   paintIntro();

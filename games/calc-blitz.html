@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903f">
 </head>
 <body>
 
@@ -253,6 +253,7 @@ const JUICE = {
         <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
       </header>
       <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-ghost btn-block btn-sm glossary-btn">📖 The terms, as the exam uses them</button>
       <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
     </div>
   </section>
@@ -327,8 +328,9 @@ const JUICE = {
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903d"></script>
-<script src="../shared/leaderboard.js?v=20260903d"></script>
+<script src="../shared/arcade.js?v=20260903f"></script>
+<script src="../shared/leaderboard.js?v=20260903f"></script>
+<script src="../shared/glossary.js?v=20260903f"></script>
 
 <script>
 /* ================================================================================
@@ -1071,6 +1073,7 @@ const JUICE = {
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
+  if (Arcade.mountGlossary) Arcade.mountGlossary();
   if (Arcade.mountSwitcher) Arcade.mountSwitcher({ current: 'calc' });   // absent only on an engine a cache held back
   sheetBtn.style.display = 'none';
   paintIntro();

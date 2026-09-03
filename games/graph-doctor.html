@@ -16,7 +16,7 @@
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="../shared/arcade.css?v=20260903d">
+<link rel="stylesheet" href="../shared/arcade.css?v=20260903f">
 </head>
 <body>
 
@@ -43,16 +43,16 @@ const MARKET_SHORT = { adas: 'AD–AS', money: 'Money market', lf: 'Loanable fun
 
 const LESIONS = {
   adas: [
-    { id: 'adas-y', kind: 'axisY', wrong: 'Real interest rate', why: 'The AD–AS graph puts the price level on the vertical axis and real GDP on the horizontal; the interest rate is the price in the money and loanable funds markets.', ced: '3.5', skill: 4 },
+    { id: 'adas-y', kind: 'axisY', wrong: 'Real interest rate', why: 'The AD–AS graph puts the price level on the vertical axis and real GDP on the horizontal; the nominal interest rate is the price in the money market and the real interest rate the price in the loanable funds market.', ced: '3.5', skill: 4 },
     { id: 'adas-x', kind: 'axisX', wrong: 'Quantity of money', why: 'The horizontal axis of the AD–AS graph measures real GDP (real output), not a quantity of money.', ced: '3.5', skill: 4 },
     { id: 'adas-ad-tag', kind: 'tag', curve: 'AD', wrong: 'SRAS', why: 'The downward-sloping curve is aggregate demand; short-run aggregate supply slopes upward.', ced: '3.1', skill: 4 },
     { id: 'adas-sras-tag', kind: 'tag', curve: 'SRAS', wrong: 'AD', why: 'The upward-sloping curve is short-run aggregate supply; aggregate demand slopes downward.', ced: '3.3', skill: 4 },
-    { id: 'adas-lras-tag', kind: 'tag', curve: 'LRAS', wrong: 'SRAS', why: 'The vertical curve at full-employment output is long-run aggregate supply, not SRAS.', ced: '3.4', skill: 4 },
+    { id: 'adas-lras-tag', kind: 'tag', curve: 'LRAS', wrong: 'SRAS', why: 'The vertical curve at full-employment output is long-run aggregate supply, not short-run aggregate supply.', ced: '3.4', skill: 4 },
     { id: 'adas-ad-slope', kind: 'slope', curve: 'AD', why: 'Aggregate demand slopes downward: a lower price level raises real wealth, lowers interest rates and raises net exports.', ced: '3.1', skill: 4 },
     { id: 'adas-sras-slope', kind: 'slope', curve: 'SRAS', why: 'Short-run aggregate supply slopes upward: with input prices sticky, a higher price level raises profit per unit and firms produce more.', ced: '3.3', skill: 4 },
     { id: 'adas-lras-slope', kind: 'vertical', curve: 'LRAS', why: 'Long-run aggregate supply is vertical at full-employment output: in the long run, output does not depend on the price level.', ced: '3.4', skill: 4 },
-    { id: 'adas-dot', kind: 'dot', why: 'Short-run equilibrium is where AD and SRAS intersect; the equilibrium point must sit on both curves.', ced: '3.5', skill: 4 },
-    { id: 'adas-tick', kind: 'tick', wrong: 'u*', why: 'The output level where LRAS meets the axis is full-employment output, labeled Yf; u* is the natural rate of unemployment, which belongs on a Phillips curve.', ced: '3.4', skill: 4 },
+    { id: 'adas-dot', kind: 'dot', why: 'Short-run equilibrium is where aggregate demand and short-run aggregate supply intersect; the equilibrium point must sit on both curves.', ced: '3.5', skill: 4 },
+    { id: 'adas-tick', kind: 'tick', wrong: 'u*', why: 'The output level where long-run aggregate supply meets the axis is full-employment output, labeled Yf; u* is the natural rate of unemployment, which belongs on a Phillips curve.', ced: '3.4', skill: 4 },
     { id: 'adas-ad-none', kind: 'missingTag', curve: 'AD', why: 'Every curve must be labeled; an unlabeled aggregate demand curve earns no point.', ced: '3.1', skill: 4 },
     { id: 'adas-sras-none', kind: 'missingTag', curve: 'SRAS', why: 'Every curve must be labeled; an unlabeled short-run aggregate supply curve earns no point.', ced: '3.3', skill: 4 }
   ],
@@ -61,7 +61,7 @@ const LESIONS = {
     { id: 'money-x', kind: 'axisX', wrong: 'Real GDP', why: 'The horizontal axis of the money market measures the quantity of money.', ced: '4.5', skill: 4 },
     { id: 'money-ms-tag', kind: 'tag', curve: 'MS', wrong: 'MD', why: 'The vertical curve is the money supply, fixed by the central bank; money demand slopes downward.', ced: '4.5', skill: 4 },
     { id: 'money-md-tag', kind: 'tag', curve: 'MD', wrong: 'MS', why: 'The downward-sloping curve is money demand; the money supply is vertical.', ced: '4.5', skill: 4 },
-    { id: 'money-ms-slope', kind: 'vertical', curve: 'MS', why: 'The money supply is vertical because the central bank sets it independently of the interest rate.', ced: '4.5', skill: 4 },
+    { id: 'money-ms-slope', kind: 'vertical', curve: 'MS', why: 'The money supply is vertical because the central bank sets it independently of the nominal interest rate.', ced: '4.5', skill: 4 },
     { id: 'money-md-slope', kind: 'slope', curve: 'MD', why: 'Money demand slopes downward: a higher nominal interest rate raises the opportunity cost of holding money, so less is demanded.', ced: '4.5', skill: 4 },
     { id: 'money-dot', kind: 'dot', why: 'The equilibrium nominal interest rate is where money supply and money demand intersect; the point must sit on both curves.', ced: '4.5', skill: 4 },
     { id: 'money-md-none', kind: 'missingTag', curve: 'MD', why: 'Every curve must be labeled; an unlabeled money demand curve earns no point.', ced: '4.5', skill: 4 }
@@ -81,7 +81,7 @@ const LESIONS = {
     { id: 'fx-x', kind: 'axisX', wrong: 'Quantity of yen', why: 'In the market for dollars the horizontal axis measures the quantity of dollars; a market for yen would be a different graph.', ced: '6.3', skill: 4 },
     { id: 'fx-s-tag', kind: 'tag', curve: 'S', wrong: 'D$', why: 'The upward-sloping curve is the supply of dollars, from Americans buying foreign goods and assets; demand for dollars slopes downward.', ced: '6.3', skill: 4 },
     { id: 'fx-d-tag', kind: 'tag', curve: 'D', wrong: 'S$', why: 'The downward-sloping curve is the demand for dollars, from foreigners buying U.S. goods and assets; supply slopes upward.', ced: '6.3', skill: 4 },
-    { id: 'fx-s-slope', kind: 'slope', curve: 'S', why: 'The supply of dollars slopes upward: a stronger dollar makes foreign goods cheaper for Americans, who supply more dollars to buy them.', ced: '6.3', skill: 4 },
+    { id: 'fx-s-slope', kind: 'slope', curve: 'S', why: 'The supply of dollars slopes upward: an appreciation of the dollar makes foreign goods cheaper for Americans, who supply more dollars to buy them.', ced: '6.3', skill: 4 },
     { id: 'fx-d-slope', kind: 'slope', curve: 'D', why: 'The demand for dollars slopes downward: a cheaper dollar makes U.S. goods cheaper for foreigners, who demand more dollars to buy them.', ced: '6.3', skill: 4 },
     { id: 'fx-dot', kind: 'dot', why: 'The equilibrium exchange rate is where the supply of and demand for dollars intersect; the point must sit on both curves.', ced: '6.3', skill: 4 },
     { id: 'fx-d-none', kind: 'missingTag', curve: 'D', why: 'Every curve must be labeled; an unlabeled demand for dollars earns no point.', ced: '6.3', skill: 4 }
@@ -103,7 +103,7 @@ const WARDS = [
       { stem: 'In a correctly labeled graph of aggregate demand and aggregate supply, the full-employment level of output is shown by which of the following?', choices: ['The intersection of AD and SRAS', 'The vertical long-run aggregate supply curve', 'The point where SRAS meets the vertical axis', 'The horizontal-axis intercept of AD'], answer: 1, why: 'Long-run aggregate supply is a vertical line at the full-employment level of real GDP; labeling that output level (Yf) on the horizontal axis is what earns the graphing point.', ced: '3.4', skill: 4 },
       { stem: 'Which of the following correctly describes the slope of the short-run aggregate supply curve and the reason for it?', choices: ['Downward sloping, because of the wealth effect', 'Upward sloping, because input prices are sticky while output prices rise', 'Vertical, because output depends on resources', 'Horizontal, because firms always meet demand'], answer: 1, why: 'Short-run aggregate supply slopes upward because nominal wages and other input prices adjust slowly, so a higher price level raises profit per unit and firms produce more.', ced: '3.3', skill: 4 },
       { stem: 'In a correctly labeled graph of aggregate demand and aggregate supply, which of the following is measured on the vertical axis?', choices: ['Real gross domestic product', 'The price level', 'The nominal interest rate', 'The unemployment rate'], answer: 1, why: 'The AD–AS graph plots the price level against real GDP; the price level is on the vertical axis.', ced: '3.5', skill: 4 },
-      { stem: 'Which of the following correctly describes the long-run aggregate supply curve?', choices: ['Upward sloping, because higher prices raise profits', 'Downward sloping, because of the wealth effect', 'Vertical at the full-employment level of output', 'Horizontal at the current price level'], answer: 2, why: 'In the long run output is determined by resources and technology, not the price level, so LRAS is vertical at full-employment output.', ced: '3.4', skill: 4 },
+      { stem: 'Which of the following correctly describes the long-run aggregate supply curve?', choices: ['Upward sloping, because higher prices raise profits', 'Downward sloping, because of the wealth effect', 'Vertical at the full-employment level of output', 'Horizontal at the current price level'], answer: 2, why: 'In the long run output is determined by resources and technology, not the price level, so long-run aggregate supply is vertical at full-employment output.', ced: '3.4', skill: 4 },
       { stem: 'On a correctly labeled AD–AS graph, the short-run equilibrium price level and output are found at which of the following?', choices: ['The intersection of AD and LRAS', 'The intersection of SRAS and LRAS', 'The intersection of AD and SRAS', 'The point where AD meets the horizontal axis'], answer: 2, why: 'Short-run macroeconomic equilibrium is at the intersection of aggregate demand and short-run aggregate supply.', ced: '3.5', skill: 4 }
     ] },
   { n: 2, name: 'Money Ward', blurb: 'The money market and the loanable funds market: nominal or real, money or funds', ced: '4.5', markets: ['money', 'lf'], lesionsPer: 2, charts: 5,
@@ -111,7 +111,7 @@ const WARDS = [
       { stem: 'In a correctly labeled graph of the loanable funds market, an increase in government borrowing is shown by which of the following?', choices: ['A rightward shift of the supply curve', 'A leftward shift of the supply curve', 'A rightward shift of the demand curve', 'A movement along the demand curve'], answer: 2, why: 'Government borrowing increases the demand for loanable funds, so the demand curve shifts right and the equilibrium real interest rate rises.', ced: '4.7', skill: 4 },
       { stem: 'On a correctly labeled money market graph, a decrease in the money supply is shown by which of the following?', choices: ['A rightward shift of the vertical money supply curve', 'A leftward shift of the vertical money supply curve', 'A leftward shift of the money demand curve', 'A movement down along the money demand curve'], answer: 1, why: 'The money supply is drawn as a vertical line; a decrease shifts it left, and the nominal interest rate rises at the new intersection with money demand.', ced: '4.5', skill: 4 },
       { stem: 'In a correctly labeled graph of the money market, the vertical axis measures which of the following?', choices: ['The real interest rate', 'The nominal interest rate', 'The price level', 'The inflation rate'], answer: 1, why: 'The money market determines the nominal interest rate, which is measured on its vertical axis.', ced: '4.5', skill: 4 },
-      { stem: 'Which of the following is true of the money supply curve in the money market graph?', choices: ['It slopes upward because banks lend more at higher rates', 'It slopes downward because of the opportunity cost of holding money', 'It is vertical because the central bank sets the quantity of money', 'It is horizontal at the federal funds rate'], answer: 2, why: 'The money supply is set by the central bank independently of the interest rate, so it is drawn as a vertical line.', ced: '4.5', skill: 4 },
+      { stem: 'Which of the following is true of the money supply curve in the money market graph?', choices: ['It slopes upward because banks lend more at higher rates', 'It slopes downward because of the opportunity cost of holding money', 'It is vertical because the central bank sets the quantity of money', 'It is horizontal at the federal funds rate'], answer: 2, why: 'The money supply is set by the central bank independently of the nominal interest rate, so it is drawn as a vertical line.', ced: '4.5', skill: 4 },
       { stem: 'In a correctly labeled graph of the loanable funds market, which of the following is measured on the vertical axis?', choices: ['The nominal interest rate', 'The real interest rate', 'The quantity of money', 'The price level'], answer: 1, why: 'The loanable funds market determines the real interest rate, which is measured on its vertical axis, with the quantity of loanable funds on the horizontal axis.', ced: '4.7', skill: 4 }
     ] },
   { n: 3, name: 'Open Economy Ward', blurb: 'The market for dollars and the Phillips curve, three errors a chart', ced: '6.3', markets: ['forex', 'phillips'], lesionsPer: 3, charts: 5,
@@ -207,6 +207,7 @@ const JUICE = {
         <button type="button" class="btn btn-ghost howto-btn switch-btn" aria-label="Switch game">🎮</button>
       </header>
       <div class="stack" id="howtoCards"></div>
+      <button type="button" class="btn btn-ghost btn-block btn-sm glossary-btn">📖 The terms, as the exam uses them</button>
       <button type="button" class="btn btn-block" id="howtoGo">Got it — play</button>
     </div>
   </section>
@@ -275,9 +276,10 @@ const JUICE = {
   </div>
 </div>
 
-<script src="../shared/arcade.js?v=20260903d"></script>
-<script src="../shared/leaderboard.js?v=20260903d"></script>
-<script src="../shared/graph.js?v=20260903d"></script>
+<script src="../shared/arcade.js?v=20260903f"></script>
+<script src="../shared/leaderboard.js?v=20260903f"></script>
+<script src="../shared/glossary.js?v=20260903f"></script>
+<script src="../shared/graph.js?v=20260903f"></script>
 
 <script>
 /* ================================================================================
@@ -548,8 +550,8 @@ const JUICE = {
    *  @param {string} market @param {any} parts @returns {any[]} */
   function targetsOf(market, parts) {
     var out = [];
-    if (parts.yLabel) out.push({ kind: 'text', el: parts.yLabel, name: 'Y axis' });
-    if (parts.xLabel) out.push({ kind: 'text', el: parts.xLabel, name: 'X axis' });
+    if (parts.yLabel) out.push({ kind: 'text', el: parts.yLabel, name: 'Vertical axis' });
+    if (parts.xLabel) out.push({ kind: 'text', el: parts.xLabel, name: 'Horizontal axis' });
     Object.keys(parts.curves).forEach(function (name) {
       var c = parts.curves[name];
       var shown = ArcadeGraph.MARKETS[market].curves[name].label || name;
@@ -1186,6 +1188,7 @@ const JUICE = {
   Arcade.bigType(Arcade.store.get('arcade.bigType', false));
   Arcade.sfx.bindMuteButton(byId('muteBtn'));
   Arcade.voice.bindButton(byId('voiceBtn'));
+  if (Arcade.mountGlossary) Arcade.mountGlossary();
   if (Arcade.mountSwitcher) Arcade.mountSwitcher({ current: 'doctor' });   // absent only on an engine a cache held back
   sheetBtn.style.display = 'none';
   paintIntro();
